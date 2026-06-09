@@ -248,6 +248,137 @@ function agruparServicos(dados) {
     return resultado;
 }
 
+
+function formatarMoedaGrafico(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+    });
+}
+
+const pluginRotulosValores = {
+    id: "pluginRotulosValores",
+    afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+
+        ctx.save();
+        ctx.font = "bold 12px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "bottom";
+        ctx.fillStyle = "#4d3f43";
+
+        chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = chart.getDatasetMeta(datasetIndex);
+
+            meta.data.forEach((element, index) => {
+                const valor = dataset.data[index];
+
+                if (!valor || valor <= 0) return;
+
+                const posicao = element.tooltipPosition();
+                const texto = formatarMoedaGrafico(valor);
+
+                if (chart.config.type === "doughnut") {
+                    const total = dataset.data.reduce((acc, item) => acc + Number(item || 0), 0);
+                    const percentual = total > 0 ? ((valor / total) * 100).toFixed(1).replace(".", ",") : "0,0";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(`${percentual}%`, posicao.x, posicao.y);
+                } else {
+                    ctx.fillText(texto, posicao.x, posicao.y - 8);
+                }
+            });
+        });
+
+        ctx.restore();
+    }
+};
+
+function opcoesGraficoBarras(tituloEixo = "Faturamento") {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: {
+            padding: {
+                top: 28,
+                right: 18,
+                bottom: 8,
+                left: 8
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                callbacks: {
+                    label(context) {
+                        return `${context.dataset.label || tituloEixo}: ${formatarMoedaGrafico(context.raw)}`;
+                    }
+                }
+            }
+        },
+        scales: {
+            x: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    color: "#4d3f43",
+                    font: {
+                        weight: "bold"
+                    }
+                }
+            },
+            y: {
+                beginAtZero: true,
+                grid: {
+                    color: "rgba(214, 90, 126, .14)"
+                },
+                ticks: {
+                    color: "#8a737b",
+                    callback(value) {
+                        return formatarMoedaGrafico(value);
+                    }
+                }
+            }
+        }
+    };
+}
+
+function opcoesGraficoRosca() {
+    return {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: "58%",
+        layout: {
+            padding: 22
+        },
+        plugins: {
+            legend: {
+                position: "bottom",
+                labels: {
+                    color: "#4d3f43",
+                    font: {
+                        weight: "bold"
+                    },
+                    padding: 18
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label(context) {
+                        const total = context.dataset.data.reduce((acc, item) => acc + Number(item || 0), 0);
+                        const valor = Number(context.raw || 0);
+                        const percentual = total > 0 ? ((valor / total) * 100).toFixed(1).replace(".", ",") : "0,0";
+                        return `${context.label}: ${formatarMoedaGrafico(valor)} (${percentual}%)`;
+                    }
+                }
+            }
+        }
+    };
+}
+
+
 function renderizarGraficos(dados) {
     const porDia = agruparPorCampo(dados, "data");
     const porEspecie = agruparPorCampo(dados, "especie");

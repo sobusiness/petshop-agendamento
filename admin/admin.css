@@ -346,3 +346,20 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         grid-template-columns: 1fr;
     }
 }
+
+.chart-card {
+    min-height: 390px;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: 310px !important;
+}
+
+.chart-card.full-width {
+    min-height: 430px;
+}
+
+.chart-card.full-width canvas {
+    height: 340px !important;
+}
