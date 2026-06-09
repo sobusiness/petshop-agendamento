@@ -1,0 +1,509 @@
+const horaInicio = 9;
+const horaFim = 17;
+const diasFechados = [0, 3];
+const horarioAlmoco = "12:00";
+const telefoneWhatsappPetlyne = "5511957260772";
+
+let dadosPreAgendamento = null;
+
+const horariosPadrao = [];
+
+for (let hora = horaInicio; hora <= horaFim; hora++) {
+    horariosPadrao.push(`${hora.toString().padStart(2, "0")}:00`);
+}
+
+const agendamentosExistentes = [
+    { data: "2026-06-12", horario: "10:00" },
+    { data: "2026-06-12", horario: "14:00" }
+];
+
+const precosBanhoCaes = {
+    "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
+    "Médio": { "Curto": 60, "Médio": 70, "Longo": 80 },
+    "Grande": { "Curto": 80, "Médio": 90, "Longo": 100 }
+};
+
+const precosTosaCaes = {
+    "Pequeno": { "Geral": 70, "Verão": 85, "Bebê": 95, "Tesoura": 110 },
+    "Médio": { "Geral": 80, "Verão": 95, "Bebê": 110, "Tesoura": 125 },
+    "Grande": { "Geral": 90, "Verão": 100, "Bebê": null, "Tesoura": 140 }
+};
+
+const precosHidratacaoCaes = {
+    "Pequeno": 15,
+    "Médio": 20,
+    "Grande": 30
+};
+
+const precoTosaHigienicaAvulsa = 12;
+const precoCorteUnhaAvulso = 12;
+const precoBanhoSecoGato = 80;
+
+function formatarMoeda(valor) {
+    return valor.toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+    });
+}
+
+function gerarProtocolo() {
+    const numero = Math.floor(10000 + Math.random() * 90000);
+    return `LYNE-${numero}`;
+}
+
+function formatarTelefoneCelular(valor) {
+    valor = valor.replace(/\D/g, "");
+
+    if (valor.length > 11) valor = valor.slice(0, 11);
+    if (valor.length <= 2) return valor;
+    if (valor.length <= 7) return `(${valor.slice(0, 2)}) ${valor.slice(2)}`;
+
+    return `(${valor.slice(0, 2)}) ${valor.slice(2, 7)}-${valor.slice(7, 11)}`;
+}
+
+document.getElementById("telefone").addEventListener("input", function () {
+    this.value = formatarTelefoneCelular(this.value);
+});
+
+document.getElementById("especie").addEventListener("change", atualizarServicosPorEspecie);
+document.getElementById("porte").addEventListener("change", atualizarResumoServicos);
+document.getElementById("servicoPrincipal").addEventListener("change", controlarCamposServico);
+document.getElementById("pelagem").addEventListener("change", atualizarResumoServicos);
+document.getElementById("tipoTosa").addEventListener("change", atualizarResumoServicos);
+document.getElementById("adicionalHidratacao").addEventListener("change", atualizarResumoServicos);
+document.getElementById("adicionalTosaHigienica").addEventListener("change", atualizarResumoServicos);
+document.getElementById("adicionalCorteUnha").addEventListener("change", atualizarResumoServicos);
+document.getElementById("data").addEventListener("change", carregarHorariosDisponiveis);
+
+function atualizarServicosPorEspecie() {
+    const especie = document.getElementById("especie").value;
+    const servicoPrincipal = document.getElementById("servicoPrincipal");
+    const adicionalHidratacao = document.getElementById("adicionalHidratacao");
+    const adicionalTosaHigienica = document.getElementById("adicionalTosaHigienica");
+    const adicionalCorteUnha = document.getElementById("adicionalCorteUnha");
+
+    servicoPrincipal.innerHTML = "";
+    adicionalHidratacao.checked = false;
+    adicionalTosaHigienica.checked = false;
+    adicionalCorteUnha.checked = false;
+
+    adicionalHidratacao.closest(".checkbox-line").style.display = "flex";
+    adicionalTosaHigienica.closest(".checkbox-line").style.display = "flex";
+    adicionalCorteUnha.closest(".checkbox-line").style.display = "flex";
+
+    if (especie === "") {
+        servicoPrincipal.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
+        servicoPrincipal.disabled = true;
+    }
+
+    if (especie === "Cão") {
+        servicoPrincipal.disabled = false;
+        servicoPrincipal.innerHTML = `
+            <option value="">Selecione</option>
+            <option value="Banho">Banho</option>
+            <option value="Tosa">Tosa</option>
+        `;
+    }
+
+    if (especie === "Gato") {
+        servicoPrincipal.disabled = false;
+        servicoPrincipal.innerHTML = `
+            <option value="">Selecione</option>
+            <option value="Banho a Seco">Banho a Seco</option>
+        `;
+
+        adicionalHidratacao.closest(".checkbox-line").style.display = "none";
+    }
+
+    controlarCamposServico();
+    atualizarResumoServicos();
+}
+
+function controlarCamposServico() {
+    const especie = document.getElementById("especie").value;
+    const servicoPrincipal = document.getElementById("servicoPrincipal").value;
+
+    document.getElementById("areaPelagem").style.display = "none";
+    document.getElementById("areaTipoTosa").style.display = "none";
+
+    if (servicoPrincipal !== "Banho") {
+        document.getElementById("pelagem").value = "";
+    }
+
+    if (servicoPrincipal !== "Tosa") {
+        document.getElementById("tipoTosa").value = "";
+    }
+
+    if (especie === "Cão" && servicoPrincipal === "Banho") {
+        document.getElementById("areaPelagem").style.display = "block";
+    }
+
+    if (especie === "Cão" && servicoPrincipal === "Tosa") {
+        document.getElementById("areaTipoTosa").style.display = "block";
+    }
+
+    atualizarResumoServicos();
+}
+
+function calcularServicosSelecionados() {
+    const especie = document.getElementById("especie").value;
+    const porte = document.getElementById("porte").value;
+    const servicoPrincipal = document.getElementById("servicoPrincipal").value;
+    const pelagem = document.getElementById("pelagem").value;
+    const tipoTosa = document.getElementById("tipoTosa").value;
+
+    const itens = [];
+    let total = 0;
+
+    if (especie === "Cão" && servicoPrincipal === "Banho" && porte && pelagem) {
+        const valor = precosBanhoCaes[porte][pelagem];
+        itens.push({ nome: `Banho (${porte} / Pelo ${pelagem})`, valor });
+        total += valor;
+    }
+
+    if (especie === "Cão" && servicoPrincipal === "Tosa" && porte && tipoTosa) {
+        const valor = precosTosaCaes[porte][tipoTosa];
+
+        if (valor !== null) {
+            itens.push({ nome: `Tosa ${tipoTosa} (${porte})`, valor });
+            total += valor;
+        }
+    }
+
+    if (especie === "Gato" && servicoPrincipal === "Banho a Seco") {
+        itens.push({ nome: "Banho a Seco para Gato", valor: precoBanhoSecoGato });
+        total += precoBanhoSecoGato;
+    }
+
+    if (especie === "Cão" && document.getElementById("adicionalHidratacao").checked && porte) {
+        const valor = precosHidratacaoCaes[porte];
+        itens.push({ nome: `Hidratação (${porte})`, valor });
+        total += valor;
+    }
+
+    if (document.getElementById("adicionalTosaHigienica").checked) {
+        itens.push({ nome: "Tosa Higiênica Avulsa", valor: precoTosaHigienicaAvulsa });
+        total += precoTosaHigienicaAvulsa;
+    }
+
+    if (document.getElementById("adicionalCorteUnha").checked) {
+        itens.push({ nome: "Corte de Unha Avulso", valor: precoCorteUnhaAvulso });
+        total += precoCorteUnhaAvulso;
+    }
+
+    return { itens, total };
+}
+
+function atualizarResumoServicos() {
+    const resumo = calcularServicosSelecionados();
+    const listaResumo = document.getElementById("listaResumo");
+    const totalAgendamento = document.getElementById("totalAgendamento");
+
+    listaResumo.innerHTML = "";
+
+    const porte = document.getElementById("porte").value;
+    const especie = document.getElementById("especie").value;
+    const servicoPrincipal = document.getElementById("servicoPrincipal").value;
+    const tipoTosa = document.getElementById("tipoTosa").value;
+
+    if (especie === "Cão" && servicoPrincipal === "Tosa" && porte === "Grande" && tipoTosa === "Bebê") {
+        listaResumo.innerHTML = `<p class="alerta-resumo">Tosa Bebê não está disponível para porte Grande.</p>`;
+        totalAgendamento.textContent = formatarMoeda(0);
+        return;
+    }
+
+    if (resumo.itens.length === 0) {
+        listaResumo.innerHTML = "<p>Nenhum serviço selecionado.</p>";
+        totalAgendamento.textContent = formatarMoeda(0);
+        return;
+    }
+
+    resumo.itens.forEach(item => {
+        const linha = document.createElement("div");
+        linha.className = "resumo-item";
+        linha.innerHTML = `<span>${item.nome}</span><strong>${formatarMoeda(item.valor)}</strong>`;
+        listaResumo.appendChild(linha);
+    });
+
+    totalAgendamento.textContent = formatarMoeda(resumo.total);
+}
+
+function carregarHorariosDisponiveis() {
+    const dataSelecionada = document.getElementById("data").value;
+    const selectHorario = document.getElementById("horario");
+
+    selectHorario.innerHTML = "";
+
+    if (!dataSelecionada) {
+        selectHorario.innerHTML = "<option>Selecione uma data primeiro</option>";
+        return;
+    }
+
+    const data = new Date(dataSelecionada + "T00:00:00");
+    const diaSemana = data.getDay();
+
+    if (diasFechados.includes(diaSemana)) {
+        selectHorario.innerHTML = "<option>Petshop fechado neste dia</option>";
+        return;
+    }
+
+    const horariosOcupados = agendamentosExistentes
+        .filter(agendamento => agendamento.data === dataSelecionada)
+        .map(agendamento => agendamento.horario);
+
+    let existeHorarioLivre = false;
+
+    horariosPadrao.forEach(horario => {
+        const option = document.createElement("option");
+
+        if (horario === horarioAlmoco) {
+            option.value = horario;
+            option.textContent = `${horario} - Almoço`;
+            option.disabled = true;
+            selectHorario.appendChild(option);
+            return;
+        }
+
+        const ocupado = horariosOcupados.includes(horario);
+
+        option.value = horario;
+        option.textContent = ocupado ? `${horario} - Indisponível` : `${horario} - Disponível`;
+        option.disabled = ocupado;
+
+        if (!ocupado) existeHorarioLivre = true;
+
+        selectHorario.appendChild(option);
+    });
+
+    if (!existeHorarioLivre) {
+        selectHorario.innerHTML = "<option>Todos os horários estão indisponíveis</option>";
+    }
+}
+
+function validarAgendamento() {
+    const telefoneNumeros = document.getElementById("telefone").value.replace(/\D/g, "");
+    const resumo = calcularServicosSelecionados();
+
+    const camposObrigatorios = [
+        "cliente",
+        "telefone",
+        "pet",
+        "especie",
+        "sexo",
+        "raca",
+        "porte",
+        "observacaoPet",
+        "servicoPrincipal",
+        "data",
+        "horario"
+    ];
+
+    for (const campo of camposObrigatorios) {
+        if (document.getElementById(campo).value.trim() === "") {
+            alert("Preencha todos os dados obrigatórios.");
+            return false;
+        }
+    }
+
+    if (telefoneNumeros.length !== 11) {
+        alert("Digite um telefone celular válido com DDD. Exemplo: (11) 99999-9999");
+        return false;
+    }
+
+    const especie = document.getElementById("especie").value;
+    const servicoPrincipal = document.getElementById("servicoPrincipal").value;
+    const porte = document.getElementById("porte").value;
+    const pelagem = document.getElementById("pelagem").value;
+    const tipoTosa = document.getElementById("tipoTosa").value;
+    const horario = document.getElementById("horario").value;
+
+    if (especie === "Cão" && servicoPrincipal === "Banho" && pelagem === "") {
+        alert("Selecione o tipo de pelagem.");
+        return false;
+    }
+
+    if (especie === "Cão" && servicoPrincipal === "Tosa" && tipoTosa === "") {
+        alert("Selecione o tipo de tosa.");
+        return false;
+    }
+
+    if (especie === "Cão" && servicoPrincipal === "Tosa" && porte === "Grande" && tipoTosa === "Bebê") {
+        alert("Tosa Bebê não está disponível para porte Grande.");
+        return false;
+    }
+
+    if (resumo.itens.length === 0 || resumo.total <= 0) {
+        alert("Selecione pelo menos um serviço válido.");
+        return false;
+    }
+
+    if (
+        horario === horarioAlmoco ||
+        horario === "Petshop fechado neste dia" ||
+        horario === "Todos os horários estão indisponíveis" ||
+        horario === "Selecione uma data primeiro"
+    ) {
+        alert("Selecione um horário disponível.");
+        return false;
+    }
+
+    return true;
+}
+
+function abrirPreviaAgendamento() {
+    if (!validarAgendamento()) return;
+
+    const resumo = calcularServicosSelecionados();
+    const data = document.getElementById("data").value;
+    const dataFormatada = new Date(data + "T00:00:00").toLocaleDateString("pt-BR");
+
+    dadosPreAgendamento = {
+        cliente: document.getElementById("cliente").value.trim(),
+        telefone: document.getElementById("telefone").value.trim(),
+        pet: document.getElementById("pet").value.trim(),
+        especie: document.getElementById("especie").value,
+        sexo: document.getElementById("sexo").value,
+        raca: document.getElementById("raca").value.trim(),
+        porte: document.getElementById("porte").value,
+        observacaoPet: document.getElementById("observacaoPet").value,
+        data,
+        dataFormatada,
+        horario: document.getElementById("horario").value,
+        resumo
+    };
+
+    const servicosHtml = resumo.itens.map(item => {
+        return `${item.nome}: <strong>${formatarMoeda(item.valor)}</strong>`;
+    }).join("<br>");
+
+    document.getElementById("mensagemPrevia").innerHTML = `
+        Cliente: <strong>${dadosPreAgendamento.cliente}</strong><br>
+        Pet: <strong>${dadosPreAgendamento.pet}</strong><br>
+        Espécie: <strong>${dadosPreAgendamento.especie}</strong><br>
+        Sexo: <strong>${dadosPreAgendamento.sexo}</strong><br>
+        Raça: <strong>${dadosPreAgendamento.raca}</strong><br>
+        Porte: <strong>${dadosPreAgendamento.porte}</strong><br>
+        Observação: <strong>${dadosPreAgendamento.observacaoPet}</strong><br><br>
+        ${servicosHtml}<br><br>
+        Total previsto: <strong>${formatarMoeda(resumo.total)}</strong><br>
+        Data: <strong>${dataFormatada}</strong><br>
+        Horário: <strong>${dadosPreAgendamento.horario}</strong>
+    `;
+
+    document.getElementById("popupPrevia").classList.add("ativo");
+}
+
+function fecharPrevia() {
+    document.getElementById("popupPrevia").classList.remove("ativo");
+}
+
+function montarMensagemWhatsappAgendamento(dados, protocolo) {
+    const servicosTexto = dados.resumo.itens
+        .map(item => `- ${item.nome} - ${formatarMoeda(item.valor)}`)
+        .join("\n");
+
+    return (
+`*Novo agendamento Petlyne*
+
+*Protocolo:* ${protocolo}
+*Nome Cliente:* ${dados.cliente}
+*Data:* ${dados.dataFormatada}
+*Horario:* ${dados.horario}
+*Nome Pet:* ${dados.pet}
+*Especie:* ${dados.especie}
+*Sexo:* ${dados.sexo}
+*Raca:* ${dados.raca}
+*Porte:* ${dados.porte}
+
+*Servico(s):*
+${servicosTexto}
+
+*Valor Total:* ${formatarMoeda(dados.resumo.total)}
+*Observacoes:* ${dados.observacaoPet}`
+    );
+}
+
+function atualizarBotaoWhatsappAgendamento(dados, protocolo) {
+    const mensagem = montarMensagemWhatsappAgendamento(dados, protocolo);
+    const url = `https://wa.me/${telefoneWhatsappPetlyne}?text=${encodeURIComponent(mensagem)}`;
+
+    const botao = document.getElementById("botaoWhatsappAgendamento");
+    botao.href = url;
+}
+
+function confirmarAgendamentoFinal() {
+    if (!dadosPreAgendamento) return;
+
+    const protocolo = gerarProtocolo();
+
+    agendamentosExistentes.push({
+        data: dadosPreAgendamento.data,
+        horario: dadosPreAgendamento.horario,
+        protocolo
+    });
+
+    fecharPrevia();
+
+    atualizarBotaoWhatsappAgendamento(dadosPreAgendamento, protocolo);
+    mostrarPopupConfirmacao(dadosPreAgendamento, protocolo);
+
+    limparFormulario();
+    carregarHorariosDisponiveis();
+
+    dadosPreAgendamento = null;
+}
+
+function mostrarPopupConfirmacao(dados, protocolo) {
+    const servicosHtml = dados.resumo.itens.map(item => {
+        return `${item.nome}: <strong>${formatarMoeda(item.valor)}</strong>`;
+    }).join("<br>");
+
+    document.getElementById("mensagemConfirmacao").innerHTML = `
+        Protocolo: <strong>${protocolo}</strong><br><br>
+        <strong>${dados.cliente}</strong>, o agendamento do pet <strong>${dados.pet}</strong> foi confirmado.<br><br>
+        ${servicosHtml}<br><br>
+        Total previsto: <strong>${formatarMoeda(dados.resumo.total)}</strong><br>
+        Data: <strong>${dados.dataFormatada}</strong><br>
+        Horário: <strong>${dados.horario}</strong>
+    `;
+
+    document.getElementById("popupConfirmacao").classList.add("ativo");
+}
+
+function fecharPopup() {
+    document.getElementById("popupConfirmacao").classList.remove("ativo");
+}
+
+function limparFormulario() {
+    document.getElementById("cliente").value = "";
+    document.getElementById("telefone").value = "";
+    document.getElementById("pet").value = "";
+    document.getElementById("especie").value = "";
+    document.getElementById("sexo").value = "";
+    document.getElementById("raca").value = "";
+    document.getElementById("porte").value = "";
+    document.getElementById("observacaoPet").value = "";
+    document.getElementById("servicoPrincipal").innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
+    document.getElementById("servicoPrincipal").disabled = true;
+    document.getElementById("pelagem").value = "";
+    document.getElementById("tipoTosa").value = "";
+    document.getElementById("adicionalHidratacao").checked = false;
+    document.getElementById("adicionalTosaHigienica").checked = false;
+    document.getElementById("adicionalCorteUnha").checked = false;
+    document.getElementById("data").value = "";
+    document.getElementById("horario").innerHTML = "<option>Selecione uma data primeiro</option>";
+    document.getElementById("areaPelagem").style.display = "none";
+    document.getElementById("areaTipoTosa").style.display = "none";
+
+    atualizarResumoServicos();
+}
+
+function iniciarPagina() {
+    const servicoPrincipal = document.getElementById("servicoPrincipal");
+    servicoPrincipal.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
+    servicoPrincipal.disabled = true;
+
+    atualizarResumoServicos();
+}
+
+iniciarPagina();

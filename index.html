@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petlyne Agendamentos</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<header>
+    <h1>🐾 Petlyne</h1>
+    <p>Agendamento Online</p>
+</header>
+
+<main class="container">
+
+    <section class="card">
+        <h2>Agendar Serviço</h2>
+
+        <div class="form-grid">
+            <div>
+                <label for="cliente">Nome do Cliente</label>
+                <input type="text" id="cliente" placeholder="Digite seu nome">
+            </div>
+
+            <div>
+                <label for="telefone">Telefone Celular</label>
+                <input type="tel" id="telefone" placeholder="(11) 99999-9999" maxlength="15" inputmode="numeric" autocomplete="tel">
+            </div>
+
+            <div>
+                <label for="pet">Nome do Pet</label>
+                <input type="text" id="pet" placeholder="Digite o nome do pet">
+            </div>
+
+            <div>
+                <label for="especie">Espécie</label>
+                <select id="especie">
+                    <option value="">Selecione</option>
+                    <option value="Cão">Cão</option>
+                    <option value="Gato">Gato</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="sexo">Sexo</label>
+                <select id="sexo">
+                    <option value="">Selecione</option>
+                    <option value="Macho">Macho</option>
+                    <option value="Fêmea">Fêmea</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="raca">Raça</label>
+                <input type="text" id="raca" placeholder="Ex: Shih Tzu, Poodle, SRD">
+            </div>
+
+            <div>
+                <label for="porte">Porte</label>
+                <select id="porte">
+                    <option value="">Selecione</option>
+                    <option value="Pequeno">Pequeno</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Grande">Grande</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="observacaoPet">Observações do Pet</label>
+                <select id="observacaoPet">
+                    <option value="">Selecione</option>
+                    <option value="Sem Observação">Sem Observação</option>
+                    <option value="Pet Bravo(a)">Pet Bravo(a)</option>
+                    <option value="Não gosta de secador">Não gosta de secador</option>
+                    <option value="Alérgico a perfume">Alérgico a perfume</option>
+                    <option value="Ansioso">Ansioso</option>
+                    <option value="Idoso">Idoso</option>
+                    <option value="Filhote">Filhote</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="servicoPrincipal">Serviço Principal</label>
+                <select id="servicoPrincipal">
+                    <option value="">Selecione a espécie primeiro</option>
+                </select>
+            </div>
+
+            <div id="areaPelagem" class="conditional-field">
+                <label for="pelagem">Tipo de Pelagem</label>
+                <select id="pelagem">
+                    <option value="">Selecione</option>
+                    <option value="Curto">Curto</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Longo">Longo</option>
+                </select>
+            </div>
+
+            <div id="areaTipoTosa" class="conditional-field">
+                <label for="tipoTosa">Tipo de Tosa</label>
+                <select id="tipoTosa">
+                    <option value="">Selecione</option>
+                    <option value="Geral">Geral</option>
+                    <option value="Verão">Verão</option>
+                    <option value="Bebê">Bebê</option>
+                    <option value="Tesoura">Tesoura</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="data">Data</label>
+                <input type="date" id="data" onclick="this.showPicker && this.showPicker()" onfocus="this.showPicker && this.showPicker()">
+            </div>
+
+            <div>
+                <label for="horario">Horário</label>
+                <select id="horario">
+                    <option>Selecione uma data primeiro</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="areaAdicionais" class="adicionais-box">
+            <h3>Serviços Avulsos / Adicionais</h3>
+
+            <label class="checkbox-line">
+                <input type="checkbox" id="adicionalHidratacao" value="Hidratação">
+                <span>Hidratação</span>
+            </label>
+
+            <label class="checkbox-line">
+                <input type="checkbox" id="adicionalTosaHigienica" value="Tosa Higiênica Avulsa">
+                <span>Tosa Higiênica Avulsa — R$ 12,00</span>
+            </label>
+
+            <label class="checkbox-line">
+                <input type="checkbox" id="adicionalCorteUnha" value="Corte de Unha Avulso">
+                <span>Corte de Unha Avulso — R$ 12,00</span>
+            </label>
+        </div>
+
+        <div id="resumoServicos" class="resumo-box">
+            <h3>Resumo do Agendamento</h3>
+            <div id="listaResumo">
+                <p>Nenhum serviço selecionado.</p>
+            </div>
+            <div class="total-line">
+                <span>Total previsto:</span>
+                <strong id="totalAgendamento">R$ 0,00</strong>
+            </div>
+        </div>
+
+        <button onclick="abrirPreviaAgendamento()">Confirmar Agendamento</button>
+    </section>
+
+    <section class="card pacotes-card">
+        <h2>Pacotes Petlyne</h2>
+        <p>
+            Temos opções de pacotes <strong>mensais</strong> e <strong>quinzenais</strong>
+            para manter os cuidados do seu pet sempre em dia.
+        </p>
+
+        <a
+            class="whatsapp-button"
+            href="https://wa.me/5511957260772?text=Olá! Gostaria de saber mais sobre os pacotes mensais e quinzenais da Petlyne."
+            target="_blank">
+            Saber mais pelo WhatsApp
+        </a>
+    </section>
+
+</main>
+
+<div id="popupPrevia" class="popup-overlay">
+    <div class="popup-card">
+        <div class="popup-icon">📋</div>
+        <h2>Revise seu agendamento</h2>
+        <p id="mensagemPrevia"></p>
+
+        <div class="popup-actions">
+            <button class="btn-secondary" onclick="fecharPrevia()">Voltar</button>
+            <button onclick="confirmarAgendamentoFinal()">Confirmar</button>
+        </div>
+    </div>
+</div>
+
+<div id="popupConfirmacao" class="popup-overlay">
+    <div class="popup-card">
+        <div class="popup-icon">✅</div>
+        <h2>Agendamento confirmado!</h2>
+        <p id="mensagemConfirmacao"></p>
+
+        <a
+            id="botaoWhatsappAgendamento"
+            class="whatsapp-button popup-whatsapp"
+            href="#"
+            target="_blank">
+            Enviar agendamento pelo WhatsApp
+        </a>
+
+        <button onclick="fecharPopup()">Fechar</button>
+    </div>
+</div>
+
+<script src="app.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,276 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(135deg, #eaf6f8, #f7fbfc);
+    color: #24343a;
+}
+
+header {
+    background: linear-gradient(135deg, #1f7a8c, #155b68);
+    color: white;
+    text-align: center;
+    padding: 28px 20px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.15);
+}
+
+header h1 {
+    font-size: 34px;
+    margin-bottom: 5px;
+}
+
+header p {
+    font-size: 15px;
+    opacity: .95;
+}
+
+.container {
+    max-width: 1050px;
+    margin: 28px auto;
+    padding: 18px;
+}
+
+.card {
+    background: white;
+    border-radius: 22px;
+    padding: 28px;
+    box-shadow: 0 12px 35px rgba(0,0,0,.12);
+    border: 1px solid rgba(31,122,140,.12);
+    margin-bottom: 24px;
+}
+
+.card h2 {
+    margin-bottom: 22px;
+    font-size: 26px;
+    color: #1f7a8c;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px 18px;
+}
+
+label {
+    display: block;
+    margin-bottom: 7px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #33464d;
+}
+
+input,
+select {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1px solid #cfdde1;
+    border-radius: 12px;
+    font-size: 15px;
+    background: #fbfefe;
+    outline: none;
+    transition: .2s;
+}
+
+input:focus,
+select:focus {
+    border-color: #1f7a8c;
+    box-shadow: 0 0 0 3px rgba(31,122,140,.12);
+}
+
+button,
+.whatsapp-button {
+    width: 100%;
+    margin-top: 22px;
+    background: linear-gradient(135deg, #1f7a8c, #16606f);
+    color: white;
+    border: none;
+    padding: 15px;
+    border-radius: 14px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: .2s;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+}
+
+button:hover,
+.whatsapp-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(31,122,140,.28);
+}
+
+.conditional-field {
+    display: none;
+}
+
+.adicionais-box,
+.resumo-box {
+    margin-top: 20px;
+    padding: 18px;
+    border-radius: 16px;
+}
+
+.adicionais-box {
+    background: #f7fbfc;
+    border: 1px solid #d7e8ec;
+}
+
+.resumo-box {
+    background: #eef8fa;
+    border: 1px solid #cfe5ea;
+}
+
+.adicionais-box h3,
+.resumo-box h3 {
+    color: #1f7a8c;
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.checkbox-line {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.checkbox-line input {
+    width: auto;
+}
+
+.resumo-box p {
+    color: #60747c;
+    line-height: 1.5;
+}
+
+.resumo-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 9px 0;
+    border-bottom: 1px solid #d5e7eb;
+    font-size: 15px;
+}
+
+.total-line {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 2px solid #1f7a8c;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.total-line strong {
+    color: #1f7a8c;
+    font-size: 21px;
+}
+
+.alerta-resumo {
+    color: #b24545 !important;
+    font-weight: bold;
+}
+
+.pacotes-card {
+    background: linear-gradient(135deg, #ffffff, #eef8fa);
+}
+
+.pacotes-card p {
+    line-height: 1.6;
+}
+
+.whatsapp-button {
+    background: linear-gradient(135deg, #25D366, #128C7E);
+}
+
+.popup-whatsapp {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.popup-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, .55);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    z-index: 999;
+}
+
+.popup-overlay.ativo {
+    display: flex;
+}
+
+.popup-card {
+    background: white;
+    max-width: 520px;
+    width: 100%;
+    border-radius: 22px;
+    padding: 30px;
+    text-align: center;
+    box-shadow: 0 14px 45px rgba(0,0,0,.28);
+    animation: aparecer .25s ease;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.popup-icon {
+    font-size: 45px;
+    margin-bottom: 10px;
+}
+
+.popup-card h2 {
+    margin-bottom: 15px;
+    color: #1f7a8c;
+}
+
+.popup-card p {
+    line-height: 1.5;
+    margin-bottom: 18px;
+}
+
+.popup-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.btn-secondary {
+    background: #6d7f86;
+}
+
+@keyframes aparecer {
+    from {
+        opacity: 0;
+        transform: scale(.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@media (max-width: 750px) {
+    .container {
+        max-width: 760px;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .popup-actions {
+        grid-template-columns: 1fr;
+    }
+}
