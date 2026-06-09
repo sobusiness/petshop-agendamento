@@ -156,6 +156,41 @@
             Banho a Seco &gt; sem porte/pelagem/tosa &gt; R$ 80,00
         </div>
 
+        <div class="service-filters">
+            <h3>Filtrar regras cadastradas</h3>
+
+            <div class="service-filter-grid">
+                <input type="text" id="filtroNomeServico" placeholder="Filtrar por serviço. Ex: Banho" oninput="renderizarServicosAdmin()">
+
+                <select id="filtroPorteServico" onchange="renderizarServicosAdmin()">
+                    <option value="">Todos os portes</option>
+                    <option value="Pequeno">Pequeno</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Grande">Grande</option>
+                    <option value="__sem__">Sem porte</option>
+                </select>
+
+                <select id="filtroPelagemServico" onchange="renderizarServicosAdmin()">
+                    <option value="">Todas as pelagens</option>
+                    <option value="Curto">Curto</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Longo">Longo</option>
+                    <option value="__sem__">Sem pelagem</option>
+                </select>
+
+                <select id="filtroTipoTosaServico" onchange="renderizarServicosAdmin()">
+                    <option value="">Todos os tipos de tosa</option>
+                    <option value="Geral">Geral</option>
+                    <option value="Verão">Verão</option>
+                    <option value="Bebê">Bebê</option>
+                    <option value="Tesoura">Tesoura</option>
+                    <option value="__sem__">Sem tipo</option>
+                </select>
+
+                <button class="secondary-button" onclick="limparFiltrosServicos()">Limpar Filtros</button>
+            </div>
+        </div>
+
         <div id="listaServicosAdmin" class="service-list"></div>
     </section>
 

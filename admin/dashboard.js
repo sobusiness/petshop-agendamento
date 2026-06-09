@@ -349,16 +349,66 @@ async function salvarServico() {
     renderizarServicosAdmin();
 }
 
+
+function valorFiltroServico(id) {
+    const elemento = document.getElementById(id);
+    return elemento ? elemento.value : "";
+}
+
+function campoBateFiltro(valorCampo, valorFiltro) {
+    if (!valorFiltro) return true;
+    if (valorFiltro === "__sem__") return !valorCampo;
+    return valorCampo === valorFiltro;
+}
+
+function obterServicosAdminFiltrados() {
+    const filtroNome = valorFiltroServico("filtroNomeServico").trim().toLowerCase();
+    const filtroPorte = valorFiltroServico("filtroPorteServico");
+    const filtroPelagem = valorFiltroServico("filtroPelagemServico");
+    const filtroTipoTosa = valorFiltroServico("filtroTipoTosaServico");
+
+    return servicosAdmin.filter(servico => {
+        const nomeOk = !filtroNome || (servico.nome || "").toLowerCase().includes(filtroNome);
+        const porteOk = campoBateFiltro(servico.porte || "", filtroPorte);
+        const pelagemOk = campoBateFiltro(servico.pelagem || "", filtroPelagem);
+        const tipoTosaOk = campoBateFiltro(servico.tipoTosa || "", filtroTipoTosa);
+
+        return nomeOk && porteOk && pelagemOk && tipoTosaOk;
+    });
+}
+
+function limparFiltrosServicos() {
+    document.getElementById("filtroNomeServico").value = "";
+    document.getElementById("filtroPorteServico").value = "";
+    document.getElementById("filtroPelagemServico").value = "";
+    document.getElementById("filtroTipoTosaServico").value = "";
+
+    renderizarServicosAdmin();
+}
+
+
 function renderizarServicosAdmin() {
     const lista = document.getElementById("listaServicosAdmin");
     lista.innerHTML = "";
+
+    const servicosFiltrados = obterServicosAdminFiltrados();
 
     if (servicosAdmin.length === 0) {
         lista.innerHTML = "<p>Nenhum serviço cadastrado ainda.</p>";
         return;
     }
 
-    servicosAdmin.forEach(servico => {
+    if (servicosFiltrados.length === 0) {
+        lista.innerHTML = "<p>Nenhuma regra encontrada para os filtros selecionados.</p>";
+        return;
+    }
+
+    const contador = document.createElement("div");
+    contador.className = "service-filter-count";
+    contador.textContent = `Exibindo ${servicosFiltrados.length} de ${servicosAdmin.length} regras cadastradas.`;
+    lista.appendChild(contador);
+
+    servicosFiltrados.forEach(servico => {
         const div = document.createElement("div");
         div.className = "service-item service-item-pricing";
 
