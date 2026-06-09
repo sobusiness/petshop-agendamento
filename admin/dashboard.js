@@ -311,16 +311,18 @@ function obterResumoPacotesRealizados() {
     return pacotesAdmin.reduce((acc, pacote) => {
         const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
         const realizadas = visitas.filter(visita => visita.status === "Realizado").length;
-        const totalVisitas = visitas.length || Number(pacote.quantidadeTotal || 1) || 1;
-        const valorPorVisita = Number(pacote.valorPacote || 0) / totalVisitas;
 
         acc.quantidade += realizadas;
-        acc.valor += realizadas * valorPorVisita;
+
+        // O valor do pacote deve entrar apenas uma vez no faturamento,
+        // independentemente de quantos banhos do pacote já foram marcados como realizados.
+        if (realizadas > 0) {
+            acc.valor += Number(pacote.valorPacote || 0);
+        }
 
         return acc;
     }, { quantidade: 0, valor: 0 });
 }
-
 
 function atualizarFaturamento() {
     const dados = obterAgendamentosFiltradosFaturamento();
