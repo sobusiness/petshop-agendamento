@@ -188,8 +188,6 @@ function atualizarServicosPorEspecie() {
 
     renderizarServicosDinamicosCliente();
     controlarCamposServico();
-    renderizarServicosDinamicosCliente();
-    await carregarServicosDinamicosCliente();
     atualizarResumoServicos();
 }
 
@@ -660,6 +658,7 @@ async function iniciarPagina() {
     servicoPrincipal.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
     servicoPrincipal.disabled = true;
 
+    await carregarServicosDinamicosCliente();
     atualizarResumoServicos();
 }
 
