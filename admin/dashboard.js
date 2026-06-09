@@ -417,8 +417,49 @@ function renderizarGraficos(dados) {
 }
 
 
+
+function mostrarConfirmacaoAdmin({ titulo, mensagem, icone = "⚠️", textoConfirmar = "Confirmar", textoCancelar = "Cancelar" }) {
+    return new Promise(resolve => {
+        const modal = document.getElementById("modalConfirmacaoAdmin");
+        const tituloEl = document.getElementById("modalConfirmacaoTitulo");
+        const mensagemEl = document.getElementById("modalConfirmacaoMensagem");
+        const iconeEl = document.getElementById("modalConfirmacaoIcone");
+        const btnConfirmar = document.getElementById("btnConfirmarModalAdmin");
+        const btnCancelar = document.getElementById("btnCancelarModalAdmin");
+
+        tituloEl.textContent = titulo;
+        mensagemEl.textContent = mensagem;
+        iconeEl.textContent = icone;
+        btnConfirmar.textContent = textoConfirmar;
+        btnCancelar.textContent = textoCancelar;
+
+        modal.classList.add("ativo");
+
+        const fechar = resultado => {
+            modal.classList.remove("ativo");
+            btnConfirmar.onclick = null;
+            btnCancelar.onclick = null;
+            resolve(resultado);
+        };
+
+        btnConfirmar.onclick = () => fechar(true);
+        btnCancelar.onclick = () => fechar(false);
+
+        modal.onclick = event => {
+            if (event.target === modal) fechar(false);
+        };
+    });
+}
+
+
 async function concluirAgendamento(id) {
-    const confirmar = confirm("Deseja marcar este agendamento como concluído? Ele passará a contar no faturamento.");
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Concluir agendamento",
+        mensagem: "Deseja marcar este agendamento como concluído? Ele passará a contar no faturamento.",
+        icone: "✅",
+        textoConfirmar: "Concluir",
+        textoCancelar: "Voltar"
+    });
 
     if (!confirmar) return;
 
@@ -433,7 +474,13 @@ async function concluirAgendamento(id) {
 }
 
 async function cancelarAgendamento(id) {
-    const confirmar = confirm("Deseja cancelar e excluir este agendamento? Esta ação não poderá ser desfeita.");
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Cancelar agendamento",
+        mensagem: "Deseja cancelar e excluir este agendamento? Esta ação não poderá ser desfeita.",
+        icone: "🗑️",
+        textoConfirmar: "Excluir",
+        textoCancelar: "Voltar"
+    });
 
     if (!confirmar) return;
 

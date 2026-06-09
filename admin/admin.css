@@ -363,3 +363,99 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .chart-card.full-width canvas {
     height: 340px !important;
 }
+
+.admin-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(77, 63, 67, .55);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.admin-modal-overlay.ativo {
+    display: flex;
+}
+
+.admin-modal-card {
+    width: 100%;
+    max-width: 520px;
+    background: rgba(255, 255, 255, .97);
+    border: 1px solid var(--pet-border);
+    border-radius: 26px;
+    padding: 32px;
+    text-align: center;
+    box-shadow: 0 22px 60px rgba(77, 63, 67, .26);
+    animation: aparecerModalAdmin .22s ease;
+}
+
+.admin-modal-icon {
+    width: 62px;
+    height: 62px;
+    margin: 0 auto 14px;
+    border-radius: 50%;
+    background: rgba(255, 240, 244, .96);
+    border: 1px solid #efb9c8;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+}
+
+.admin-modal-card h2 {
+    color: var(--pet-primary-dark);
+    font-size: 26px;
+    margin-bottom: 10px;
+}
+
+.admin-modal-card p {
+    color: var(--pet-text);
+    font-size: 17px;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.admin-modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+.admin-modal-actions button {
+    margin: 0;
+    padding: 14px;
+    border-radius: 15px;
+    font-size: 15px;
+}
+
+.admin-modal-confirm {
+    background: linear-gradient(135deg, var(--pet-primary), var(--pet-primary-dark));
+}
+
+.admin-modal-cancel {
+    background: linear-gradient(135deg, var(--pet-gray), #6f6868);
+}
+
+@keyframes aparecerModalAdmin {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 520px) {
+    .admin-modal-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-modal-card {
+        padding: 26px 22px;
+    }
+}
