@@ -306,11 +306,32 @@ function agruparPorEspecieComPacotes(dados) {
 }
 
 
+
+function obterResumoPacotesRealizados() {
+    return pacotesAdmin.reduce((acc, pacote) => {
+        const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+        const realizadas = visitas.filter(visita => visita.status === "Realizado").length;
+        const totalVisitas = visitas.length || Number(pacote.quantidadeTotal || 1) || 1;
+        const valorPorVisita = Number(pacote.valorPacote || 0) / totalVisitas;
+
+        acc.quantidade += realizadas;
+        acc.valor += realizadas * valorPorVisita;
+
+        return acc;
+    }, { quantidade: 0, valor: 0 });
+}
+
+
 function atualizarFaturamento() {
     const dados = obterAgendamentosFiltradosFaturamento();
 
-    const quantidade = dados.length;
-    const valorTotal = dados.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
+    const resumoPacotesRealizados = obterResumoPacotesRealizados();
+
+    const quantidadeAgendamentos = dados.length;
+    const valorAgendamentos = dados.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
+
+    const quantidade = quantidadeAgendamentos + resumoPacotesRealizados.quantidade;
+    const valorTotal = valorAgendamentos + resumoPacotesRealizados.valor;
     const ticketMedio = quantidade > 0 ? valorTotal / quantidade : 0;
 
     const pacotesAtivos = pacotesAdmin.filter(pacote => pacote.status === "Ativo");
@@ -1072,6 +1093,7 @@ async function alternarStatusVisitaPacote(pacoteId, visitaNumero) {
 
     await carregarPacotesAdmin();
     renderizarPacotes();
+    atualizarFaturamento();
 }
 
 async function enviarRenovacaoPacote(pacoteId) {
