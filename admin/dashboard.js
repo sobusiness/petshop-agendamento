@@ -312,11 +312,12 @@ function obterResumoPacotesRealizados() {
         const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
         const realizadas = visitas.filter(visita => visita.status === "Realizado").length;
 
+        // A quantidade continua refletindo os banhos realmente realizados.
         acc.quantidade += realizadas;
 
-        // O valor do pacote deve entrar apenas uma vez no faturamento,
-        // independentemente de quantos banhos do pacote já foram marcados como realizados.
-        if (realizadas > 0) {
+        // Como pacote normalmente é pago no fechamento, o valor entra no faturamento
+        // uma única vez enquanto o pacote estiver ativo, independentemente dos banhos realizados.
+        if (pacote.status === "Ativo") {
             acc.valor += Number(pacote.valorPacote || 0);
         }
 

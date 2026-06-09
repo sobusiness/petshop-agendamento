@@ -1183,3 +1183,35 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
     left: auto !important;
     transform: none !important;
 }
+
+/* V2.5 - Modal centralizado e pacote ativo no faturamento */
+.admin-modal-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+}
+
+.admin-modal-actions {
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 14px !important;
+}
+
+.admin-modal-actions button,
+#btnConfirmarModalAdmin {
+    min-width: 220px !important;
+    width: auto !important;
+    margin: 0 auto !important;
+}
+
+#btnCancelarModalAdmin[style*="display: none"] + * {
+    margin-left: 0 !important;
+}
+
+.admin-modal-actions:has(#btnCancelarModalAdmin[style*="display: none"]) {
+    grid-template-columns: 1fr !important;
+}
