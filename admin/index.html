@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petlyne - Painel Administrativo</title>
+    <link rel="icon" type="image/png" href="../favicon.png">
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+
+<main class="login-page">
+    <section class="login-card">
+        <img src="../logopetlyne.png" alt="Petlyne - Banho e Tosa" class="login-logo">
+
+        <h1>Petlyne</h1>
+        <p>Painel Administrativo</p>
+
+        <label for="email">E-mail</label>
+        <input type="email" id="email" placeholder="admin@petlyne.com">
+
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" placeholder="Digite sua senha">
+
+        <button onclick="entrar()">Entrar</button>
+
+        <div id="mensagemLogin" class="login-message"></div>
+    </section>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="login.js"></script>
+
+</body>
+</html>

@@ -12,10 +12,7 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
     horariosPadrao.push(`${hora.toString().padStart(2, "0")}:00`);
 }
 
-const agendamentosExistentes = [
-    { data: "2026-06-12", horario: "10:00" },
-    { data: "2026-06-12", horario: "14:00" }
-];
+let agendamentosExistentes = [];
 
 const precosBanhoCaes = {
     "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
@@ -228,7 +225,7 @@ function atualizarResumoServicos() {
     totalAgendamento.textContent = formatarMoeda(resumo.total);
 }
 
-function carregarHorariosDisponiveis() {
+async function carregarHorariosDisponiveis() {
     const dataSelecionada = document.getElementById("data").value;
     const selectHorario = document.getElementById("horario");
 
@@ -245,6 +242,19 @@ function carregarHorariosDisponiveis() {
     if (diasFechados.includes(diaSemana)) {
         selectHorario.innerHTML = "<option>Petshop fechado neste dia</option>";
         return;
+    }
+
+
+    try {
+        if (typeof db !== "undefined") {
+            const snapshot = await db.collection("agendamentos")
+                .where("data", "==", dataSelecionada)
+                .get();
+
+            agendamentosExistentes = snapshot.docs.map(doc => doc.data());
+        }
+    } catch (error) {
+        console.error("Erro ao buscar agendamentos no Firebase:", error);
     }
 
     const horariosOcupados = agendamentosExistentes
@@ -441,10 +451,51 @@ function atualizarBotaoWhatsappAgendamento(dados, protocolo) {
     botao.href = url;
 }
 
-function confirmarAgendamentoFinal() {
+
+async function salvarAgendamentoFirebase(dados, protocolo) {
+    if (typeof db === "undefined") {
+        console.warn("Firebase não encontrado. Agendamento não foi salvo no banco.");
+        return;
+    }
+
+    const servicos = dados.resumo.itens.map(item => ({
+        nome: item.nome,
+        valor: item.valor
+    }));
+
+    await db.collection("agendamentos").add({
+        protocolo: protocolo,
+        cliente: dados.cliente,
+        telefone: dados.telefone,
+        pet: dados.pet,
+        especie: dados.especie,
+        sexo: dados.sexo,
+        raca: dados.raca,
+        porte: dados.porte,
+        observacaoPet: dados.observacaoPet,
+        data: dados.data,
+        dataFormatada: dados.dataFormatada,
+        horario: dados.horario,
+        servicos: servicos,
+        valorTotal: dados.resumo.total,
+        status: "Confirmado",
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+}
+
+
+async async function confirmarAgendamentoFinal() {
     if (!dadosPreAgendamento) return;
 
     const protocolo = gerarProtocolo();
+
+    try {
+        await salvarAgendamentoFirebase(dadosPreAgendamento, protocolo);
+    } catch (error) {
+        console.error("Erro ao salvar agendamento:", error);
+        mostrarAlerta("Não foi possível salvar o agendamento no sistema. Tente novamente.");
+        return;
+    }
 
     agendamentosExistentes.push({
         data: dadosPreAgendamento.data,

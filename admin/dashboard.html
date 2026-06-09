@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petlyne - Dashboard Administrativo</title>
+    <link rel="icon" type="image/png" href="../favicon.png">
+    <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+
+<header class="admin-header">
+    <div class="admin-brand">
+        <img src="../logopetlyne.png" alt="Petlyne" class="admin-logo">
+        <div>
+            <h1>Petlyne - Painel Administrativo</h1>
+            <p>Gestão de agendamentos, faturamento e serviços</p>
+        </div>
+    </div>
+
+    <button class="logout-button" onclick="sair()">Sair</button>
+</header>
+
+<main class="admin-container">
+
+    <nav class="admin-tabs">
+        <button class="tab-button active" onclick="abrirSecao('agendamentos')">Agendamentos</button>
+        <button class="tab-button" onclick="abrirSecao('faturamento')">Faturamento</button>
+        <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
+    </nav>
+
+    <section id="secao-agendamentos" class="admin-section active">
+        <div class="section-title-row">
+            <div>
+                <h2>Agendamentos</h2>
+                <p>Acompanhe os agendamentos por dia e horário.</p>
+            </div>
+
+            <div class="filter-actions">
+                <button onclick="filtrarAgendamentosHoje()">Agendamentos do Dia</button>
+                <button class="secondary-button" onclick="limparFiltroAgendamentos()">Limpar Filtro</button>
+            </div>
+        </div>
+
+        <div id="agendaFiltroInfo" class="filter-info"></div>
+
+        <div class="calendar-wrapper">
+            <div id="calendarioAgenda" class="agenda-grid"></div>
+        </div>
+    </section>
+
+    <section id="secao-faturamento" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Faturamento</h2>
+                <p>Resumo financeiro dos atendimentos realizados.</p>
+            </div>
+        </div>
+
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <span>Atendimentos Realizados</span>
+                <strong id="kpiAtendimentos">0</strong>
+            </div>
+
+            <div class="kpi-card">
+                <span>Valor Total</span>
+                <strong id="kpiValorTotal">R$ 0,00</strong>
+            </div>
+
+            <div class="kpi-card">
+                <span>Ticket Médio</span>
+                <strong id="kpiTicketMedio">R$ 0,00</strong>
+            </div>
+        </div>
+
+        <div class="filtro-faturamento">
+            <button onclick="filtrarFaturamento('hoje')">Hoje</button>
+            <button onclick="filtrarFaturamento('7dias')">Últimos 7 dias</button>
+            <button onclick="filtrarFaturamento('30dias')">Últimos 30 dias</button>
+
+            <input type="date" id="dataInicioFaturamento">
+            <input type="date" id="dataFimFaturamento">
+            <button onclick="filtrarFaturamento('personalizado')">Aplicar</button>
+            <button class="secondary-button" onclick="limparFiltroFaturamento()">Limpar Filtros</button>
+        </div>
+
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h3>Faturamento por Dia</h3>
+                <canvas id="graficoFaturamentoDia"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <h3>Faturamento por Espécie</h3>
+                <canvas id="graficoEspecie"></canvas>
+            </div>
+
+            <div class="chart-card full-width">
+                <h3>Faturamento por Serviço</h3>
+                <canvas id="graficoServico"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <section id="secao-servicos" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Configurações de Produtos / Serviços</h2>
+                <p>Cadastre, edite ou exclua serviços exibidos no sistema.</p>
+            </div>
+        </div>
+
+        <div class="service-form">
+            <input type="text" id="nomeServico" placeholder="Nome do serviço">
+            <input type="number" id="precoServico" placeholder="Preço" step="0.01">
+            <select id="especieServico">
+                <option value="Cão">Cão</option>
+                <option value="Gato">Gato</option>
+                <option value="Ambos">Ambos</option>
+            </select>
+            <button onclick="salvarServico()">Adicionar Serviço</button>
+        </div>
+
+        <div id="listaServicosAdmin" class="service-list"></div>
+    </section>
+
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="dashboard.js"></script>
+
+</body>
+</html>
