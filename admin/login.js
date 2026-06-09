@@ -24,3 +24,10 @@ async function entrar() {
         mensagem.textContent = "E-mail ou senha incorretos.";
     }
 }
+
+
+document.addEventListener("keydown", function(event) {
+    if (event.key === "Enter") {
+        entrar();
+    }
+});
