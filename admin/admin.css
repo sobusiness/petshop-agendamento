@@ -1215,3 +1215,10 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .admin-modal-actions:has(#btnCancelarModalAdmin[style*="display: none"]) {
     grid-template-columns: 1fr !important;
 }
+
+/* V2.6 - Pacote concluído automático */
+.status-concluido {
+    background: #d8f5e3;
+    color: #15803d;
+    border: 1px solid #8ad7aa;
+}

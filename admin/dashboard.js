@@ -316,8 +316,8 @@ function obterResumoPacotesRealizados() {
         acc.quantidade += realizadas;
 
         // Como pacote normalmente é pago no fechamento, o valor entra no faturamento
-        // uma única vez enquanto o pacote estiver ativo, independentemente dos banhos realizados.
-        if (pacote.status === "Ativo") {
+        // quando estiver Ativo ou Concluído. Não entra se estiver Inativo.
+        if (pacote.status === "Ativo" || pacote.status === "Concluído") {
             acc.valor += Number(pacote.valorPacote || 0);
         }
 
@@ -373,7 +373,7 @@ function agruparServicos(dados) {
     });
 
     pacotesAdmin
-        .filter(pacote => pacote.status === "Ativo")
+        .filter(pacote => pacote.status === "Ativo" || pacote.status === "Concluído")
         .forEach(pacote => {
             const nome = `Pacote ${pacote.tipo || ""}`.trim();
             resultado[nome] = (resultado[nome] || 0) + Number(pacote.valorPacote || 0);
@@ -974,7 +974,7 @@ function renderizarPacotes() {
                     <span>${pacote.protocolo || ""}</span>
                 </div>
 
-                <span class="status-badge ${pacote.status === "Ativo" ? "status-confirmado" : "status-inativo"}">${pacote.status || "Ativo"}</span>
+                <span class="status-badge ${pacote.status === "Concluído" ? "status-concluido" : pacote.status === "Ativo" ? "status-confirmado" : "status-inativo"}">${pacote.status || "Ativo"}</span>
             </div>
 
             <div class="pacote-edit-grid pacote-edit-grid-v2">
@@ -1003,6 +1003,7 @@ function renderizarPacotes() {
                     <select id="pacote-status-${pacote.id}">
                         <option value="Ativo" ${pacote.status === "Ativo" ? "selected" : ""}>Ativo</option>
                         <option value="Inativo" ${pacote.status === "Inativo" ? "selected" : ""}>Inativo</option>
+                        <option value="Concluído" ${pacote.status === "Concluído" ? "selected" : ""} disabled>Concluído automaticamente</option>
                     </select>
                 </label>
             </div>
@@ -1050,11 +1051,15 @@ function renderizarPacotes() {
 }
 
 async function atualizarPacote(id) {
+    const pacoteAtual = pacotesAdmin.find(item => item.id === id);
+
     const nomeCliente = document.getElementById(`pacote-nome-${id}`).value.trim();
     const telefone = document.getElementById(`pacote-telefone-${id}`).value.trim();
     const nomePet = document.getElementById(`pacote-pet-${id}`).value.trim();
     const valorPacote = Number(document.getElementById(`pacote-valor-${id}`).value || 0);
-    const status = document.getElementById(`pacote-status-${id}`).value;
+    const statusSelecionado = document.getElementById(`pacote-status-${id}`).value;
+
+    const status = pacoteAtual?.status === "Concluído" ? "Concluído" : statusSelecionado;
 
     await db.collection("pacotes").doc(id).update({
         nomeCliente,
@@ -1086,11 +1091,18 @@ async function alternarStatusVisitaPacote(pacoteId, visitaNumero) {
     });
 
     const realizadas = novasVisitas.filter(v => v.status === "Realizado").length;
+    const pendentes = novasVisitas.length - realizadas;
+
+    const statusAutomatico = novasVisitas.length > 0 && realizadas === novasVisitas.length
+        ? "Concluído"
+        : (pacote.status === "Concluído" && pendentes > 0 ? "Ativo" : pacote.status || "Ativo");
 
     await db.collection("pacotes").doc(pacoteId).update({
         visitas: novasVisitas,
         quantidadeRealizada: realizadas,
-        quantidadePendente: novasVisitas.length - realizadas,
+        quantidadePendente: pendentes,
+        status: statusAutomatico,
+        concluidoEm: statusAutomatico === "Concluído" ? firebase.firestore.FieldValue.serverTimestamp() : null,
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     });
 
