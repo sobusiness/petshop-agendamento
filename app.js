@@ -12,10 +12,7 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
     horariosPadrao.push(`${hora.toString().padStart(2, "0")}:00`);
 }
 
-const agendamentosExistentes = [
-    { data: "2026-06-12", horario: "10:00" },
-    { data: "2026-06-12", horario: "14:00" }
-];
+const agendamentosExistentes = [];
 
 const precosBanhoCaes = {
     "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
