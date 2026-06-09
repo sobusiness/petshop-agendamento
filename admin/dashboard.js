@@ -318,6 +318,7 @@ async function salvarServico() {
     const nome = document.getElementById("nomeServico").value.trim();
     const preco = Number(document.getElementById("precoServico").value);
     const especie = document.getElementById("especieServico").value;
+    const tipoPreco = document.getElementById("tipoPrecoServico").value;
 
     if (!nome || !preco) {
         alert("Preencha nome e preço do serviço.");
@@ -328,6 +329,7 @@ async function salvarServico() {
         nome,
         preco,
         especie,
+        tipoPreco,
         ativo: true,
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     });
