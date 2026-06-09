@@ -75,6 +75,16 @@
                 <span>Ticket Médio</span>
                 <strong id="kpiTicketMedio">R$ 0,00</strong>
             </div>
+
+            <div class="kpi-card">
+                <span>Pacotes Ativos</span>
+                <strong id="kpiPacotesAtivos">0</strong>
+            </div>
+
+            <div class="kpi-card">
+                <span>Valor dos Pacotes</span>
+                <strong id="kpiValorPacotes">R$ 0,00</strong>
+            </div>
         </div>
 
         <div class="faturamento-filter-card">
@@ -138,31 +148,64 @@
             </div>
         </div>
 
-        <div class="pacote-form">
-            <input type="text" id="pacoteNomeCliente" placeholder="Nome do cliente">
-            <input type="text" id="pacoteTelefone" placeholder="(11) 99999-9999" maxlength="15">
+        <div class="pacote-form pacote-form-labeled">
+            <label>
+                <span>Nome do Cliente</span>
+                <input type="text" id="pacoteNomeCliente" placeholder="Nome do cliente">
+            </label>
 
-            <select id="pacoteTipo" onchange="atualizarPreviaPacote()">
-                <option value="Mensal">Mensal - 4 banhos</option>
-                <option value="Quinzenal">Quinzenal - 2 banhos</option>
-            </select>
+            <label>
+                <span>Telefone</span>
+                <input type="text" id="pacoteTelefone" placeholder="(11) 99999-9999" maxlength="15">
+            </label>
 
-            <input type="date" id="pacoteDataInicio" onchange="atualizarPreviaPacote()">
-            <input type="date" id="pacotePrimeiroBanho" onchange="atualizarPreviaPacote()">
+            <label>
+                <span>Nome do Pet</span>
+                <input type="text" id="pacoteNomePet" placeholder="Nome do pet">
+            </label>
 
-            <select id="pacoteHorario" onchange="atualizarPreviaPacote()">
-                <option value="">Horário</option>
-                <option value="09:00">09:00</option>
-                <option value="10:00">10:00</option>
-                <option value="11:00">11:00</option>
-                <option value="13:00">13:00</option>
-                <option value="14:00">14:00</option>
-                <option value="15:00">15:00</option>
-                <option value="16:00">16:00</option>
-                <option value="17:00">17:00</option>
-            </select>
+            <label>
+                <span>Tipo de Pacote</span>
+                <select id="pacoteTipo" onchange="atualizarPreviaPacote()">
+                    <option value="Mensal">Mensal - 4 banhos</option>
+                    <option value="Quinzenal">Quinzenal - 2 banhos</option>
+                </select>
+            </label>
 
-            <input type="text" id="pacoteDataFim" placeholder="Data fim calculada" readonly>
+            <label>
+                <span>Data de Início</span>
+                <input type="date" id="pacoteDataInicio" onchange="atualizarPreviaPacote()">
+            </label>
+
+            <label>
+                <span>Primeiro Banho</span>
+                <input type="date" id="pacotePrimeiroBanho" onchange="atualizarPreviaPacote()">
+            </label>
+
+            <label>
+                <span>Horário</span>
+                <select id="pacoteHorario" onchange="atualizarPreviaPacote()">
+                    <option value="">Horário</option>
+                    <option value="09:00">09:00</option>
+                    <option value="10:00">10:00</option>
+                    <option value="11:00">11:00</option>
+                    <option value="13:00">13:00</option>
+                    <option value="14:00">14:00</option>
+                    <option value="15:00">15:00</option>
+                    <option value="16:00">16:00</option>
+                    <option value="17:00">17:00</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Fim do Pacote</span>
+                <input type="text" id="pacoteDataFim" placeholder="Data fim calculada" readonly>
+            </label>
+
+            <label>
+                <span>Valor do Pacote</span>
+                <input type="number" id="pacoteValor" placeholder="R$" step="0.01">
+            </label>
 
             <button onclick="salvarPacote()">Cadastrar Pacote</button>
         </div>

@@ -268,9 +268,18 @@ function atualizarFaturamento() {
     const valorTotal = dados.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
     const ticketMedio = quantidade > 0 ? valorTotal / quantidade : 0;
 
+    const pacotesAtivos = pacotesAdmin.filter(pacote => pacote.status === "Ativo");
+    const valorPacotes = pacotesAtivos.reduce((acc, pacote) => acc + Number(pacote.valorPacote || 0), 0);
+
     document.getElementById("kpiAtendimentos").textContent = quantidade;
     document.getElementById("kpiValorTotal").textContent = formatarMoeda(valorTotal);
     document.getElementById("kpiTicketMedio").textContent = formatarMoeda(ticketMedio);
+
+    const kpiPacotesAtivos = document.getElementById("kpiPacotesAtivos");
+    const kpiValorPacotes = document.getElementById("kpiValorPacotes");
+
+    if (kpiPacotesAtivos) kpiPacotesAtivos.textContent = pacotesAtivos.length;
+    if (kpiValorPacotes) kpiValorPacotes.textContent = formatarMoeda(valorPacotes);
 
     renderizarGraficos(dados);
 }
@@ -294,10 +303,15 @@ function agruparServicos(dados) {
         });
     });
 
+    pacotesAdmin
+        .filter(pacote => pacote.status === "Ativo")
+        .forEach(pacote => {
+            const nome = `Pacote ${pacote.tipo || ""}`.trim();
+            resultado[nome] = (resultado[nome] || 0) + Number(pacote.valorPacote || 0);
+        });
+
     return resultado;
 }
-
-
 
 
 function criarGradienteBarra(chart, corInicial, corFinal) {
@@ -627,6 +641,35 @@ function renderizarGraficos(dados) {
 }
 
 
+
+function mostrarAvisoAdmin({ titulo, mensagem, icone = "ℹ️", textoConfirmar = "OK" }) {
+    return new Promise(resolve => {
+        const modal = document.getElementById("modalConfirmacaoAdmin");
+        const tituloEl = document.getElementById("modalConfirmacaoTitulo");
+        const mensagemEl = document.getElementById("modalConfirmacaoMensagem");
+        const iconeEl = document.getElementById("modalConfirmacaoIcone");
+        const btnConfirmar = document.getElementById("btnConfirmarModalAdmin");
+        const btnCancelar = document.getElementById("btnCancelarModalAdmin");
+
+        tituloEl.textContent = titulo;
+        mensagemEl.textContent = mensagem;
+        iconeEl.textContent = icone;
+        btnConfirmar.textContent = textoConfirmar;
+
+        btnCancelar.style.display = "none";
+        modal.classList.add("ativo");
+
+        const fechar = () => {
+            modal.classList.remove("ativo");
+            btnCancelar.style.display = "";
+            btnConfirmar.onclick = null;
+            resolve(true);
+        };
+
+        btnConfirmar.onclick = fechar;
+    });
+}
+
 function configurarMascaraTelefonePacote() {
     const input = document.getElementById("pacoteTelefone");
     if (!input) return;
@@ -699,13 +742,19 @@ function existeConflitoPacote(datas, horario) {
 async function salvarPacote() {
     const nomeCliente = document.getElementById("pacoteNomeCliente").value.trim();
     const telefone = document.getElementById("pacoteTelefone").value.trim();
+    const nomePet = document.getElementById("pacoteNomePet").value.trim();
     const tipo = document.getElementById("pacoteTipo").value;
     const dataInicio = document.getElementById("pacoteDataInicio").value;
     const primeiroBanho = document.getElementById("pacotePrimeiroBanho").value;
     const horario = document.getElementById("pacoteHorario").value;
+    const valorPacote = Number(document.getElementById("pacoteValor").value || 0);
 
-    if (!nomeCliente || !telefone || !tipo || !dataInicio || !primeiroBanho || !horario) {
-        alert("Preencha todos os campos do pacote.");
+    if (!nomeCliente || !telefone || !nomePet || !tipo || !dataInicio || !primeiroBanho || !horario || !valorPacote) {
+        await mostrarAvisoAdmin({
+            titulo: "Campos obrigatórios",
+            mensagem: "Preencha todos os campos do pacote antes de cadastrar.",
+            icone: "⚠️"
+        });
         return;
     }
 
@@ -714,11 +763,16 @@ async function salvarPacote() {
 
     if (conflitos.length > 0) {
         const mensagem = conflitos.map(item => `${formatarDataCurta(item.data)} às ${item.horario}`).join(", ");
-        alert(`Não foi possível cadastrar. Já existe agendamento nos horários: ${mensagem}`);
+        await mostrarAvisoAdmin({
+            titulo: "Conflito de agenda",
+            mensagem: `Não foi possível cadastrar. Já existe agendamento nos horários: ${mensagem}`,
+            icone: "⚠️"
+        });
         return;
     }
 
     const protocolo = gerarProtocoloPacote();
+    const valorPorVisita = valorPacote / datas.length;
 
     const visitas = datas.map((data, index) => ({
         numero: index + 1,
@@ -732,7 +786,9 @@ async function salvarPacote() {
         protocolo,
         nomeCliente,
         telefone,
+        nomePet,
         tipo,
+        valorPacote,
         dataInicio,
         primeiroBanho,
         dataFim: datas[datas.length - 1],
@@ -753,7 +809,7 @@ async function salvarPacote() {
             protocolo: `${protocolo}-${visita.numero}`,
             cliente: nomeCliente,
             telefone,
-            pet: "Pacote Petlyne",
+            pet: nomePet,
             especie: "Cão",
             sexo: "",
             raca: "",
@@ -762,8 +818,8 @@ async function salvarPacote() {
             data: visita.data,
             dataFormatada: formatarDataCurta(visita.data),
             horario: visita.horario,
-            servicos: [{ nome: `Banho do Pacote ${tipo}`, valor: 0 }],
-            valorTotal: 0,
+            servicos: [{ nome: `Pacote ${tipo}`, valor: valorPorVisita }],
+            valorTotal: valorPorVisita,
             status: "Pacote",
             origem: "pacote",
             pacoteId: pacoteRef.id,
@@ -781,20 +837,27 @@ async function salvarPacote() {
 
     document.getElementById("pacoteNomeCliente").value = "";
     document.getElementById("pacoteTelefone").value = "";
+    document.getElementById("pacoteNomePet").value = "";
     document.getElementById("pacoteTipo").value = "Mensal";
     document.getElementById("pacoteDataInicio").value = "";
     document.getElementById("pacotePrimeiroBanho").value = "";
     document.getElementById("pacoteHorario").value = "";
     document.getElementById("pacoteDataFim").value = "";
+    document.getElementById("pacoteValor").value = "";
 
     await carregarAgendamentos();
     await carregarPacotesAdmin();
 
     renderizarAgenda();
     renderizarPacotes();
+    atualizarFaturamento();
     atualizarPreviaPacote();
 
-    alert("Pacote cadastrado com sucesso.");
+    await mostrarAvisoAdmin({
+        titulo: "Pacote cadastrado",
+        mensagem: "Pacote cadastrado com sucesso.",
+        icone: "✅"
+    });
 }
 
 function obterPacotesFiltrados() {
@@ -845,13 +908,34 @@ function renderizarPacotes() {
                 <span class="status-badge ${pacote.status === "Ativo" ? "status-confirmado" : "status-inativo"}">${pacote.status || "Ativo"}</span>
             </div>
 
-            <div class="pacote-edit-grid">
-                <input type="text" id="pacote-nome-${pacote.id}" value="${pacote.nomeCliente || ""}">
-                <input type="text" id="pacote-telefone-${pacote.id}" value="${pacote.telefone || ""}">
-                <select id="pacote-status-${pacote.id}">
-                    <option value="Ativo" ${pacote.status === "Ativo" ? "selected" : ""}>Ativo</option>
-                    <option value="Inativo" ${pacote.status === "Inativo" ? "selected" : ""}>Inativo</option>
-                </select>
+            <div class="pacote-edit-grid pacote-edit-grid-v2">
+                <label>
+                    <span>Cliente</span>
+                    <input type="text" id="pacote-nome-${pacote.id}" value="${pacote.nomeCliente || ""}">
+                </label>
+
+                <label>
+                    <span>Telefone</span>
+                    <input type="text" id="pacote-telefone-${pacote.id}" value="${pacote.telefone || ""}">
+                </label>
+
+                <label>
+                    <span>Pet</span>
+                    <input type="text" id="pacote-pet-${pacote.id}" value="${pacote.nomePet || ""}">
+                </label>
+
+                <label>
+                    <span>Valor do Pacote</span>
+                    <input type="number" id="pacote-valor-${pacote.id}" value="${pacote.valorPacote || 0}" step="0.01">
+                </label>
+
+                <label>
+                    <span>Status</span>
+                    <select id="pacote-status-${pacote.id}">
+                        <option value="Ativo" ${pacote.status === "Ativo" ? "selected" : ""}>Ativo</option>
+                        <option value="Inativo" ${pacote.status === "Inativo" ? "selected" : ""}>Inativo</option>
+                    </select>
+                </label>
             </div>
 
             <div class="pacote-info-grid">
@@ -859,6 +943,7 @@ function renderizarPacotes() {
                 <div><span>Início</span><strong>${formatarDataCurta(pacote.dataInicio)}</strong></div>
                 <div><span>Primeiro banho</span><strong>${formatarDataCurta(pacote.primeiroBanho)} às ${pacote.horario}</strong></div>
                 <div><span>Fim</span><strong>${formatarDataCurta(pacote.dataFim)}</strong></div>
+                <div><span>Valor</span><strong>${formatarMoeda(pacote.valorPacote || 0)}</strong></div>
                 <div><span>Realizados</span><strong>${realizadas}</strong></div>
                 <div><span>Pendentes</span><strong>${pendentes}</strong></div>
             </div>
@@ -879,7 +964,8 @@ function renderizarPacotes() {
 
             <div class="pacote-renovacao">
                 <span>Último banho: ${ultimaVisita ? formatarDataCurta(ultimaVisita.data) + " às " + ultimaVisita.horario : "-"}</span>
-                <button onclick="enviarRenovacaoPacote('${pacote.id}')" ${pacote.renovacaoEnviada ? "disabled" : ""}>
+                <button class="whatsapp-renovacao ${pacote.renovacaoEnviada ? "renovacao-enviada" : ""}" onclick="enviarRenovacaoPacote('${pacote.id}')" ${pacote.renovacaoEnviada ? "disabled" : ""}>
+                    <span class="whatsapp-mini-icon">W</span>
                     ${pacote.renovacaoEnviada ? "Renovação já enviada" : "Enviar renovação WhatsApp"}
                 </button>
             </div>
@@ -897,17 +983,22 @@ function renderizarPacotes() {
 async function atualizarPacote(id) {
     const nomeCliente = document.getElementById(`pacote-nome-${id}`).value.trim();
     const telefone = document.getElementById(`pacote-telefone-${id}`).value.trim();
+    const nomePet = document.getElementById(`pacote-pet-${id}`).value.trim();
+    const valorPacote = Number(document.getElementById(`pacote-valor-${id}`).value || 0);
     const status = document.getElementById(`pacote-status-${id}`).value;
 
     await db.collection("pacotes").doc(id).update({
         nomeCliente,
         telefone,
+        nomePet,
+        valorPacote,
         status,
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     await carregarPacotesAdmin();
     renderizarPacotes();
+    atualizarFaturamento();
 }
 
 async function alternarStatusVisitaPacote(pacoteId, visitaNumero) {
@@ -943,7 +1034,8 @@ async function enviarRenovacaoPacote(pacoteId) {
     if (!pacote) return;
 
     const numero = (pacote.telefone || "").replace(/\D/g, "");
-    const mensagem = `Olá, ${pacote.nomeCliente}! Aqui é da Petlyne 🐾%0A%0AEstamos passando para avisar que este é o último banho do pacote ${pacote.tipo}.%0A%0AQuer renovar o pacote para manter os cuidados do seu pet em dia?`;
+    const mensagemTexto = `Olá, ${pacote.nomeCliente}, aqui é da Petlyne, tudo bem?\n\nInformamos que o seu pacote ${pacote.tipo} contratado em ${formatarDataCurta(pacote.dataInicio)}, finalizará em ${formatarDataCurta(pacote.dataFim)}.\n\nAproveite e renove o pacote para manter os cuidados do seu pet em dia!`;
+    const mensagem = encodeURIComponent(mensagemTexto);
 
     await db.collection("pacotes").doc(pacoteId).update({
         renovacaoEnviada: true,

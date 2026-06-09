@@ -1066,3 +1066,76 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         flex-direction: column;
     }
 }
+
+/* V2.1 - Ajustes de Pacotes */
+.pacote-form-labeled {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+    align-items: end;
+}
+
+.pacote-form-labeled label,
+.pacote-edit-grid-v2 label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.pacote-form-labeled label span,
+.pacote-edit-grid-v2 label span {
+    color: var(--pet-primary-dark);
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.pacote-form-labeled button {
+    height: 46px;
+}
+
+.pacote-edit-grid-v2 {
+    grid-template-columns: 1.1fr .9fr .8fr .7fr .6fr;
+}
+
+.whatsapp-renovacao {
+    background: linear-gradient(135deg, #22c55e, #169b78);
+}
+
+.whatsapp-renovacao.renovacao-enviada,
+.whatsapp-renovacao:disabled {
+    background: linear-gradient(135deg, #22c55e, #15803d) !important;
+    opacity: 1 !important;
+    color: white;
+}
+
+.whatsapp-mini-icon {
+    display: inline-flex;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    color: #169b78;
+    font-weight: 900;
+    font-size: 11px;
+    margin-right: 8px;
+}
+
+.kpi-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+@media (max-width: 1250px) {
+    .pacote-form-labeled,
+    .pacote-edit-grid-v2,
+    .kpi-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 720px) {
+    .pacote-form-labeled,
+    .pacote-edit-grid-v2,
+    .kpi-grid {
+        grid-template-columns: 1fr;
+    }
+}
