@@ -121,12 +121,24 @@ function renderizarAgenda() {
                         ? agendamento.servicos.map(s => s.nome).join(", ")
                         : "Serviço não informado";
 
+                    const status = agendamento.status || "Confirmado";
+                    const statusClasse = status === "Concluído" ? "status-concluido" : "status-confirmado";
+
                     cell.innerHTML = `
                         <div class="agenda-event">
-                            <strong>${agendamento.pet || "Pet"}</strong><br>
-                            ${servicos}<br>
-                            ${agendamento.especie || ""}<br>
-                            ${agendamento.observacaoPet || ""}
+                            <div class="agenda-event-header">
+                                <strong>${agendamento.pet || "Pet"}</strong>
+                                <span class="status-badge ${statusClasse}">${status}</span>
+                            </div>
+                            <div class="agenda-event-info">
+                                ${servicos}<br>
+                                ${agendamento.especie || ""}<br>
+                                ${agendamento.observacaoPet || ""}
+                            </div>
+                            <div class="agenda-event-actions">
+                                <button class="mini-button concluir" onclick="concluirAgendamento('${agendamento.id}')">Concluir</button>
+                                <button class="mini-button cancelar" onclick="cancelarAgendamento('${agendamento.id}')">Cancelar</button>
+                            </div>
                         </div>
                     `;
                 }
@@ -160,31 +172,32 @@ function limparFiltroAgendamentos() {
 
 function obterAgendamentosFiltradosFaturamento() {
     const hoje = hojeISO();
+    const realizados = agendamentos.filter(item => item.status === "Concluído");
 
     if (filtroFaturamentoAtual === "hoje") {
-        return agendamentos.filter(item => item.data === hoje);
+        return realizados.filter(item => item.data === hoje);
     }
 
     if (filtroFaturamentoAtual === "7dias") {
         const inicio = adicionarDias(hoje, -6);
-        return agendamentos.filter(item => item.data >= inicio && item.data <= hoje);
+        return realizados.filter(item => item.data >= inicio && item.data <= hoje);
     }
 
     if (filtroFaturamentoAtual === "30dias") {
         const inicio = adicionarDias(hoje, -29);
-        return agendamentos.filter(item => item.data >= inicio && item.data <= hoje);
+        return realizados.filter(item => item.data >= inicio && item.data <= hoje);
     }
 
     if (filtroFaturamentoAtual === "personalizado") {
         const inicio = document.getElementById("dataInicioFaturamento").value;
         const fim = document.getElementById("dataFimFaturamento").value;
 
-        if (!inicio || !fim) return agendamentos;
+        if (!inicio || !fim) return realizados;
 
-        return agendamentos.filter(item => item.data >= inicio && item.data <= fim);
+        return realizados.filter(item => item.data >= inicio && item.data <= fim);
     }
 
-    return agendamentos;
+    return realizados;
 }
 
 function filtrarFaturamento(tipo) {
@@ -271,6 +284,35 @@ function renderizarGraficos(dados) {
         options: { responsive: true, plugins: { legend: { display: false } } }
     });
 }
+
+
+async function concluirAgendamento(id) {
+    const confirmar = confirm("Deseja marcar este agendamento como concluído? Ele passará a contar no faturamento.");
+
+    if (!confirmar) return;
+
+    await db.collection("agendamentos").doc(id).update({
+        status: "Concluído",
+        concluidoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await carregarAgendamentos();
+    renderizarAgenda();
+    atualizarFaturamento();
+}
+
+async function cancelarAgendamento(id) {
+    const confirmar = confirm("Deseja cancelar e excluir este agendamento? Esta ação não poderá ser desfeita.");
+
+    if (!confirmar) return;
+
+    await db.collection("agendamentos").doc(id).delete();
+
+    await carregarAgendamentos();
+    renderizarAgenda();
+    atualizarFaturamento();
+}
+
 
 async function salvarServico() {
     const nome = document.getElementById("nomeServico").value.trim();

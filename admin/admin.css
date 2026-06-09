@@ -232,3 +232,58 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         font-size: 32px;
     }
 }
+
+.agenda-event-header {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-bottom: 6px;
+}
+
+.agenda-event-info {
+    margin-bottom: 8px;
+}
+
+.status-badge {
+    width: fit-content;
+    font-size: 11px;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 999px;
+}
+
+.status-confirmado {
+    background: #fff3cd;
+    color: #8a6400;
+    border: 1px solid #f5d36b;
+}
+
+.status-concluido {
+    background: #d8f5e3;
+    color: #1f7a4d;
+    border: 1px solid #8ad7aa;
+}
+
+.agenda-event-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.mini-button {
+    width: 100%;
+    margin: 0;
+    padding: 7px 8px;
+    border-radius: 9px;
+    font-size: 11px;
+}
+
+.mini-button.concluir {
+    background: linear-gradient(135deg, #25D366, #128C7E);
+}
+
+.mini-button.cancelar {
+    background: linear-gradient(135deg, #d65a7e, #9f2f4f);
+}
+
