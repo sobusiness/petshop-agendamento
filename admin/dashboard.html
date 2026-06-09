@@ -109,24 +109,51 @@
         <div class="section-title-row">
             <div>
                 <h2>Configurações de Produtos / Serviços</h2>
-                <p>Cadastre, edite ou exclua os serviços principais exibidos no seletor de agendamento.</p>
+                <p>Cadastre, edite ou exclua regras de preço por serviço, porte, pelagem e tipo de tosa.</p>
             </div>
         </div>
 
-        <div class="service-form">
-            <input type="text" id="nomeServico" placeholder="Nome do serviço principal">
-            <select id="tipoPrecoServico">
-                <option value="fixo">Preço Fixo</option>
-                <option value="porte_pelagem">Porte + Pelagem</option>
-                <option value="porte_tosa">Porte + Tipo de Tosa</option>
-            </select>
-            <input type="number" id="precoServico" placeholder="Preço" step="0.01">
+        <div class="service-form service-form-pricing">
+            <input type="text" id="nomeServico" placeholder="Serviço principal. Ex: Banho ou Tosa">
+
             <select id="especieServico">
                 <option value="Cão">Cão</option>
                 <option value="Gato">Gato</option>
                 <option value="Ambos">Ambos</option>
             </select>
-            <button onclick="salvarServico()">Adicionar Serviço</button>
+
+            <select id="porteServico">
+                <option value="">Sem porte</option>
+                <option value="Pequeno">Pequeno</option>
+                <option value="Médio">Médio</option>
+                <option value="Grande">Grande</option>
+            </select>
+
+            <select id="pelagemServico">
+                <option value="">Sem pelagem</option>
+                <option value="Curto">Curto</option>
+                <option value="Médio">Médio</option>
+                <option value="Longo">Longo</option>
+            </select>
+
+            <select id="tipoTosaServico">
+                <option value="">Sem tipo de tosa</option>
+                <option value="Geral">Geral</option>
+                <option value="Verão">Verão</option>
+                <option value="Bebê">Bebê</option>
+                <option value="Tesoura">Tesoura</option>
+            </select>
+
+            <input type="number" id="precoServico" placeholder="Preço" step="0.01">
+
+            <button onclick="salvarServico()">Adicionar Regra</button>
+        </div>
+
+        <div class="pricing-help">
+            <strong>Exemplos:</strong><br>
+            Banho &gt; Médio &gt; Curto &gt; R$ 60,00<br>
+            Tosa &gt; Médio &gt; Verão &gt; R$ 95,00<br>
+            Banho a Seco &gt; sem porte/pelagem/tosa &gt; R$ 80,00
         </div>
 
         <div id="listaServicosAdmin" class="service-list"></div>

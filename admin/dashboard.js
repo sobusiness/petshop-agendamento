@@ -318,10 +318,12 @@ async function salvarServico() {
     const nome = document.getElementById("nomeServico").value.trim();
     const preco = Number(document.getElementById("precoServico").value);
     const especie = document.getElementById("especieServico").value;
-    const tipoPreco = document.getElementById("tipoPrecoServico").value;
+    const porte = document.getElementById("porteServico").value;
+    const pelagem = document.getElementById("pelagemServico").value;
+    const tipoTosa = document.getElementById("tipoTosaServico").value;
 
     if (!nome || !preco) {
-        alert("Preencha nome e preço do serviço.");
+        alert("Preencha o nome do serviço e o preço.");
         return;
     }
 
@@ -329,7 +331,9 @@ async function salvarServico() {
         nome,
         preco,
         especie,
-        tipoPreco,
+        porte,
+        pelagem,
+        tipoTosa,
         ativo: true,
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -337,6 +341,9 @@ async function salvarServico() {
     document.getElementById("nomeServico").value = "";
     document.getElementById("precoServico").value = "";
     document.getElementById("especieServico").value = "Cão";
+    document.getElementById("porteServico").value = "";
+    document.getElementById("pelagemServico").value = "";
+    document.getElementById("tipoTosaServico").value = "";
 
     await carregarServicosAdmin();
     renderizarServicosAdmin();
@@ -353,16 +360,41 @@ function renderizarServicosAdmin() {
 
     servicosAdmin.forEach(servico => {
         const div = document.createElement("div");
-        div.className = "service-item";
+        div.className = "service-item service-item-pricing";
 
         div.innerHTML = `
             <input type="text" value="${servico.nome || ""}" id="nome-${servico.id}">
-            <input type="number" value="${servico.preco || 0}" step="0.01" id="preco-${servico.id}">
+
             <select id="especie-${servico.id}">
                 <option value="Cão" ${servico.especie === "Cão" ? "selected" : ""}>Cão</option>
                 <option value="Gato" ${servico.especie === "Gato" ? "selected" : ""}>Gato</option>
                 <option value="Ambos" ${servico.especie === "Ambos" ? "selected" : ""}>Ambos</option>
             </select>
+
+            <select id="porte-${servico.id}">
+                <option value="" ${!servico.porte ? "selected" : ""}>Sem porte</option>
+                <option value="Pequeno" ${servico.porte === "Pequeno" ? "selected" : ""}>Pequeno</option>
+                <option value="Médio" ${servico.porte === "Médio" ? "selected" : ""}>Médio</option>
+                <option value="Grande" ${servico.porte === "Grande" ? "selected" : ""}>Grande</option>
+            </select>
+
+            <select id="pelagem-${servico.id}">
+                <option value="" ${!servico.pelagem ? "selected" : ""}>Sem pelagem</option>
+                <option value="Curto" ${servico.pelagem === "Curto" ? "selected" : ""}>Curto</option>
+                <option value="Médio" ${servico.pelagem === "Médio" ? "selected" : ""}>Médio</option>
+                <option value="Longo" ${servico.pelagem === "Longo" ? "selected" : ""}>Longo</option>
+            </select>
+
+            <select id="tipoTosa-${servico.id}">
+                <option value="" ${!servico.tipoTosa ? "selected" : ""}>Sem tipo</option>
+                <option value="Geral" ${servico.tipoTosa === "Geral" ? "selected" : ""}>Geral</option>
+                <option value="Verão" ${servico.tipoTosa === "Verão" ? "selected" : ""}>Verão</option>
+                <option value="Bebê" ${servico.tipoTosa === "Bebê" ? "selected" : ""}>Bebê</option>
+                <option value="Tesoura" ${servico.tipoTosa === "Tesoura" ? "selected" : ""}>Tesoura</option>
+            </select>
+
+            <input type="number" value="${servico.preco || 0}" step="0.01" id="preco-${servico.id}">
+
             <button onclick="atualizarServico('${servico.id}')">Salvar</button>
             <button class="secondary-button" onclick="excluirServico('${servico.id}')">Excluir</button>
         `;
@@ -375,11 +407,18 @@ async function atualizarServico(id) {
     const nome = document.getElementById(`nome-${id}`).value.trim();
     const preco = Number(document.getElementById(`preco-${id}`).value);
     const especie = document.getElementById(`especie-${id}`).value;
+    const porte = document.getElementById(`porte-${id}`).value;
+    const pelagem = document.getElementById(`pelagem-${id}`).value;
+    const tipoTosa = document.getElementById(`tipoTosa-${id}`).value;
 
     await db.collection("servicos").doc(id).update({
         nome,
         preco,
         especie,
+        porte,
+        pelagem,
+        tipoTosa,
+        ativo: true,
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     });
 

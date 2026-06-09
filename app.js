@@ -109,14 +109,15 @@ function obterServicoPrincipalSelecionado() {
         return null;
     }
 
-    const id = servicoPrincipal.replace("firebase:", "");
-    return servicosPrincipaisCliente.find(servico => servico.id === id) || null;
+    const nome = servicoPrincipal.replace("firebase:", "");
+    return { nome };
 }
 
 function montarOptionsServicosPrincipais(especie) {
     const servicos = obterServicosPrincipaisPorEspecie(especie);
+    const nomesUnicos = [...new Set(servicos.map(servico => servico.nome).filter(Boolean))];
 
-    if (servicos.length === 0) {
+    if (nomesUnicos.length === 0) {
         if (especie === "Cão") {
             return `
                 <option value="">Selecione</option>
@@ -135,12 +136,50 @@ function montarOptionsServicosPrincipais(especie) {
         return `<option value="">Selecione a espécie primeiro</option>`;
     }
 
-    const options = servicos.map(servico => {
-        const preco = Number(servico.preco || 0);
-        return `<option value="firebase:${servico.id}">${servico.nome} — ${formatarMoeda(preco)}</option>`;
-    }).join("");
+    const options = nomesUnicos
+        .map(nome => `<option value="firebase:${nome}">${nome}</option>`)
+        .join("");
 
     return `<option value="">Selecione</option>${options}`;
+}
+
+
+function obterRegraPrecoServico(nomeServico, especie, porte, pelagem, tipoTosa) {
+    const regras = servicosPrincipaisCliente.filter(servico => {
+        const mesmaEspecie = servico.especie === especie || servico.especie === "Ambos";
+        return servico.ativo && servico.nome === nomeServico && mesmaEspecie;
+    });
+
+    if (regras.length === 0) return null;
+
+    const regraExata = regras.find(servico => {
+        const porteOk = (servico.porte || "") === (porte || "");
+        const pelagemOk = (servico.pelagem || "") === (pelagem || "");
+        const tipoTosaOk = (servico.tipoTosa || "") === (tipoTosa || "");
+        return porteOk && pelagemOk && tipoTosaOk;
+    });
+
+    if (regraExata) return regraExata;
+
+    const regraFixa = regras.find(servico => {
+        return !servico.porte && !servico.pelagem && !servico.tipoTosa;
+    });
+
+    return regraFixa || null;
+}
+
+function servicoPrecisaPelagem(nomeServico, especie) {
+    return servicosPrincipaisCliente.some(servico => {
+        const mesmaEspecie = servico.especie === especie || servico.especie === "Ambos";
+        return servico.ativo && servico.nome === nomeServico && mesmaEspecie && !!servico.pelagem;
+    });
+}
+
+function servicoPrecisaTipoTosa(nomeServico, especie) {
+    return servicosPrincipaisCliente.some(servico => {
+        const mesmaEspecie = servico.especie === especie || servico.especie === "Ambos";
+        return servico.ativo && servico.nome === nomeServico && mesmaEspecie && !!servico.tipoTosa;
+    });
 }
 
 
@@ -191,8 +230,20 @@ function controlarCamposServico() {
     const servicoFirebase = obterServicoPrincipalSelecionado();
 
     if (servicoFirebase) {
-        document.getElementById("pelagem").value = "";
-        document.getElementById("tipoTosa").value = "";
+        const nomeServico = servicoFirebase.nome;
+
+        if (servicoPrecisaPelagem(nomeServico, especie)) {
+            document.getElementById("areaPelagem").style.display = "block";
+        } else {
+            document.getElementById("pelagem").value = "";
+        }
+
+        if (servicoPrecisaTipoTosa(nomeServico, especie)) {
+            document.getElementById("areaTipoTosa").style.display = "block";
+        } else {
+            document.getElementById("tipoTosa").value = "";
+        }
+
         atualizarResumoServicos();
         return;
     }
@@ -229,9 +280,23 @@ function calcularServicosSelecionados() {
     const servicoFirebase = obterServicoPrincipalSelecionado();
 
     if (servicoFirebase) {
-        const valor = Number(servicoFirebase.preco || 0);
-        itens.push({ nome: servicoFirebase.nome, valor });
-        total += valor;
+        const regra = obterRegraPrecoServico(servicoFirebase.nome, especie, porte, pelagem, tipoTosa);
+
+        if (regra) {
+            const valor = Number(regra.preco || 0);
+            const detalhes = [];
+
+            if (regra.porte) detalhes.push(regra.porte);
+            if (regra.pelagem) detalhes.push(`Pelo ${regra.pelagem}`);
+            if (regra.tipoTosa) detalhes.push(regra.tipoTosa);
+
+            const nomeResumo = detalhes.length > 0
+                ? `${regra.nome} (${detalhes.join(" / ")})`
+                : regra.nome;
+
+            itens.push({ nome: nomeResumo, valor });
+            total += valor;
+        }
     }
 
     if (!servicoFirebase && especie === "Cão" && servicoPrincipal === "Banho" && porte && pelagem) {
@@ -417,6 +482,27 @@ function validarAgendamento() {
     const horario = document.getElementById("horario").value;
 
     const servicoFirebase = obterServicoPrincipalSelecionado();
+
+    if (servicoFirebase) {
+        const nomeServico = servicoFirebase.nome;
+
+        if (servicoPrecisaPelagem(nomeServico, especie) && pelagem === "") {
+            mostrarAlerta("Selecione o tipo de pelagem.");
+            return false;
+        }
+
+        if (servicoPrecisaTipoTosa(nomeServico, especie) && tipoTosa === "") {
+            mostrarAlerta("Selecione o tipo de tosa.");
+            return false;
+        }
+
+        const regra = obterRegraPrecoServico(nomeServico, especie, porte, pelagem, tipoTosa);
+
+        if (!regra) {
+            mostrarAlerta("Não existe preço cadastrado para esta combinação de serviço, porte, pelagem ou tipo de tosa.");
+            return false;
+        }
+    }
 
     if (!servicoFirebase && especie === "Cão" && servicoPrincipal === "Banho" && pelagem === "") {
         mostrarAlerta("Selecione o tipo de pelagem.");
