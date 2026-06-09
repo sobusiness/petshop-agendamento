@@ -337,9 +337,32 @@ function agendamentoTemServico(agendamento, filtroServico) {
     if (!filtroServico) return true;
     if (!Array.isArray(agendamento.servicos)) return false;
 
-    return agendamento.servicos.some(servico => {
-        return (servico.nome || "").toLowerCase().includes(filtroServico);
-    });
+    const servicos = agendamento.servicos.map(servico => (servico.nome || "").toLowerCase());
+
+    if (filtroServico === "banho") {
+        return servicos.some(nome => nome.includes("banho"));
+    }
+
+    if (filtroServico === "tosa") {
+        return servicos.some(nome => nome.includes("tosa") && !nome.includes("higiênica") && !nome.includes("higienica"));
+    }
+
+    if (filtroServico === "avulsos") {
+        const termosAvulsos = [
+            "hidratação",
+            "hidratacao",
+            "tosa higiênica",
+            "tosa higienica",
+            "tratamento anti-parasitas",
+            "anti-parasitas",
+            "anti parasitas",
+            "corte de unha"
+        ];
+
+        return servicos.some(nome => termosAvulsos.some(termo => nome.includes(termo)));
+    }
+
+    return servicos.some(nome => nome.includes(filtroServico));
 }
 
 function aplicarFiltrosAvancadosFaturamento(dados) {

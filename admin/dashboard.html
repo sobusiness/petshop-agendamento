@@ -98,7 +98,12 @@
                     <option value="Grande">Grande</option>
                 </select>
 
-                <input type="text" id="filtroServicoFaturamento" placeholder="Filtrar serviço" oninput="atualizarFaturamento()">
+                <select id="filtroServicoFaturamento" onchange="atualizarFaturamento()">
+                    <option value="">Todos os serviços</option>
+                    <option value="banho">Banho</option>
+                    <option value="tosa">Tosa</option>
+                    <option value="avulsos">Serviços Avulsos</option>
+                </select>
 
                 <button onclick="filtrarFaturamento('personalizado')">Aplicar</button>
                 <button class="secondary-button" onclick="limparFiltroFaturamento()">Limpar Filtros</button>
