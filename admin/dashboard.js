@@ -261,6 +261,51 @@ function limparFiltroFaturamento() {
     atualizarFaturamento();
 }
 
+
+function obterPacotesAtivosFaturamento() {
+    return pacotesAdmin.filter(pacote => pacote.status === "Ativo");
+}
+
+function distribuirValorPacotePorVisitas(pacote) {
+    const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+    const quantidade = visitas.length || Number(pacote.quantidadeTotal || 1) || 1;
+    const valorPorVisita = Number(pacote.valorPacote || 0) / quantidade;
+
+    return visitas.map(visita => ({
+        data: visita.data,
+        especie: pacote.especie || "Cão",
+        valor: valorPorVisita,
+        servico: `Pacote ${pacote.tipo || ""}`.trim()
+    }));
+}
+
+function obterLancamentosPacotesFaturamento() {
+    return obterPacotesAtivosFaturamento().flatMap(distribuirValorPacotePorVisitas);
+}
+
+function agruparPorDiaComPacotes(dados) {
+    const resultado = agruparPorCampo(dados, "data");
+
+    obterLancamentosPacotesFaturamento().forEach(item => {
+        if (!item.data) return;
+        resultado[item.data] = (resultado[item.data] || 0) + Number(item.valor || 0);
+    });
+
+    return resultado;
+}
+
+function agruparPorEspecieComPacotes(dados) {
+    const resultado = agruparPorCampo(dados, "especie");
+
+    obterLancamentosPacotesFaturamento().forEach(item => {
+        const chave = item.especie || "Não informado";
+        resultado[chave] = (resultado[chave] || 0) + Number(item.valor || 0);
+    });
+
+    return resultado;
+}
+
+
 function atualizarFaturamento() {
     const dados = obterAgendamentosFiltradosFaturamento();
 
@@ -565,8 +610,8 @@ function opcoesGraficoRosca() {
 
 
 function renderizarGraficos(dados) {
-    const porDia = agruparPorCampo(dados, "data");
-    const porEspecie = agruparPorCampo(dados, "especie");
+    const porDia = agruparPorDiaComPacotes(dados);
+    const porEspecie = agruparPorEspecieComPacotes(dados);
     const porServico = agruparServicos(dados);
 
     if (chartFaturamentoDia) chartFaturamentoDia.destroy();
@@ -964,8 +1009,8 @@ function renderizarPacotes() {
 
             <div class="pacote-renovacao">
                 <span>Último banho: ${ultimaVisita ? formatarDataCurta(ultimaVisita.data) + " às " + ultimaVisita.horario : "-"}</span>
-                <button class="whatsapp-renovacao ${pacote.renovacaoEnviada ? "renovacao-enviada" : ""}" onclick="enviarRenovacaoPacote('${pacote.id}')" ${pacote.renovacaoEnviada ? "disabled" : ""}>
-                    <span class="whatsapp-mini-icon">W</span>
+                <button class="whatsapp-renovacao ${pacote.renovacaoEnviada ? "renovacao-enviada" : ""}" onclick="enviarRenovacaoPacote('${pacote.id}')">
+                    <i class="fa-brands fa-whatsapp whatsapp-mini-icon"></i>
                     ${pacote.renovacaoEnviada ? "Renovação já enviada" : "Enviar renovação WhatsApp"}
                 </button>
             </div>
