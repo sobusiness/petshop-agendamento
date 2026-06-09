@@ -89,6 +89,19 @@ function formatarDataCurta(dataISO) {
     });
 }
 
+
+function obterFiltroProtocoloAgenda() {
+    return (document.getElementById("filtroProtocoloAgenda")?.value || "").trim().toLowerCase();
+}
+
+function agendamentoBateFiltroProtocolo(agendamento) {
+    const filtro = obterFiltroProtocoloAgenda();
+    if (!filtro) return true;
+
+    return (agendamento.protocolo || "").toLowerCase().includes(filtro);
+}
+
+
 function renderizarAgenda() {
     const calendario = document.getElementById("calendarioAgenda");
     const filtroInfo = document.getElementById("agendaFiltroInfo");
@@ -114,7 +127,11 @@ function renderizarAgenda() {
             if (hora === "12:00") {
                 cell.innerHTML = `<div class="agenda-event"><strong>Almoço</strong></div>`;
             } else {
-                const agendamento = agendamentos.find(item => item.data === data && item.horario === hora);
+                const agendamento = agendamentos.find(item =>
+                    item.data === data &&
+                    item.horario === hora &&
+                    agendamentoBateFiltroProtocolo(item)
+                );
 
                 if (agendamento) {
                     const servicos = Array.isArray(agendamento.servicos)
@@ -131,6 +148,7 @@ function renderizarAgenda() {
                                 <span class="status-badge ${statusClasse}">${status}</span>
                             </div>
                             <div class="agenda-event-info">
+                                <span class="agenda-protocolo">${agendamento.protocolo || ""}</span><br>
                                 ${servicos}<br>
                                 ${agendamento.especie || ""}<br>
                                 ${agendamento.observacaoPet || ""}
@@ -167,6 +185,10 @@ function filtrarAgendamentosHoje() {
 
 function limparFiltroAgendamentos() {
     filtroAgendaHoje = false;
+
+    const filtroProtocolo = document.getElementById("filtroProtocoloAgenda");
+    if (filtroProtocolo) filtroProtocolo.value = "";
+
     renderizarAgenda();
 }
 
@@ -209,11 +231,18 @@ function filtrarFaturamento(tipo) {
 
 function limparFiltroFaturamento() {
     filtroFaturamentoAtual = "todos";
+
     document.getElementById("dataInicioFaturamento").value = "";
     document.getElementById("dataFimFaturamento").value = "";
-    document.getElementById("filtroEspecieFaturamento").value = "";
-    document.getElementById("filtroPorteFaturamento").value = "";
-    document.getElementById("filtroServicoFaturamento").value = "";
+
+    const especie = document.getElementById("filtroEspecieFaturamento");
+    const porte = document.getElementById("filtroPorteFaturamento");
+    const servico = document.getElementById("filtroServicoFaturamento");
+
+    if (especie) especie.value = "";
+    if (porte) porte.value = "";
+    if (servico) servico.value = "";
+
     atualizarFaturamento();
 }
 

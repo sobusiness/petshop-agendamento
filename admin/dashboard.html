@@ -38,10 +38,16 @@
                 <p>Acompanhe os agendamentos por dia e horário.</p>
             </div>
 
-            <div class="filter-actions">
+            <div class="filter-actions agenda-filter-actions">
+                <input type="text" id="filtroProtocoloAgenda" placeholder="Pesquisar protocolo. Ex: LYNE-12345" oninput="renderizarAgenda()">
                 <button onclick="filtrarAgendamentosHoje()">Agendamentos do Dia</button>
                 <button class="secondary-button" onclick="limparFiltroAgendamentos()">Limpar Filtro</button>
             </div>
+        </div>
+
+
+        <div class="agenda-protocolo-filter-box">
+            <input type="text" id="filtroProtocoloAgenda" placeholder="Pesquisar por protocolo. Ex: LYNE-12345" oninput="renderizarAgenda()">
         </div>
 
         <div id="agendaFiltroInfo" class="filter-info"></div>
@@ -76,31 +82,33 @@
             </div>
         </div>
 
-        <div class="filtro-faturamento filtro-faturamento-avancado">
-            <button onclick="filtrarFaturamento('hoje')">Hoje</button>
-            <button onclick="filtrarFaturamento('7dias')">Últimos 7 dias</button>
-            <button onclick="filtrarFaturamento('30dias')">Últimos 30 dias</button>
+        <div class="faturamento-filter-card">
+            <div class="faturamento-filter-row">
+                <button onclick="filtrarFaturamento('hoje')">Hoje</button>
+                <button onclick="filtrarFaturamento('7dias')">Últimos 7 dias</button>
+                <button onclick="filtrarFaturamento('30dias')">Últimos 30 dias</button>
 
-            <input type="date" id="dataInicioFaturamento">
-            <input type="date" id="dataFimFaturamento">
+                <input type="date" id="dataInicioFaturamento">
+                <input type="date" id="dataFimFaturamento">
 
-            <select id="filtroEspecieFaturamento" onchange="atualizarFaturamento()">
-                <option value="">Todas as espécies</option>
-                <option value="Cão">Cão</option>
-                <option value="Gato">Gato</option>
-            </select>
+                <select id="filtroEspecieFaturamento" onchange="atualizarFaturamento()">
+                    <option value="">Todas as espécies</option>
+                    <option value="Cão">Cão</option>
+                    <option value="Gato">Gato</option>
+                </select>
 
-            <select id="filtroPorteFaturamento" onchange="atualizarFaturamento()">
-                <option value="">Todos os portes</option>
-                <option value="Pequeno">Pequeno</option>
-                <option value="Médio">Médio</option>
-                <option value="Grande">Grande</option>
-            </select>
+                <select id="filtroPorteFaturamento" onchange="atualizarFaturamento()">
+                    <option value="">Todos os portes</option>
+                    <option value="Pequeno">Pequeno</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Grande">Grande</option>
+                </select>
 
-            <input type="text" id="filtroServicoFaturamento" placeholder="Filtrar serviço" oninput="atualizarFaturamento()">
+                <input type="text" id="filtroServicoFaturamento" placeholder="Filtrar serviço" oninput="atualizarFaturamento()">
 
-            <button onclick="filtrarFaturamento('personalizado')">Aplicar</button>
-            <button class="secondary-button" onclick="limparFiltroFaturamento()">Limpar Filtros</button>
+                <button onclick="filtrarFaturamento('personalizado')">Aplicar</button>
+                <button class="secondary-button" onclick="limparFiltroFaturamento()">Limpar Filtros</button>
+            </div>
         </div>
 
         <div class="charts-grid">
