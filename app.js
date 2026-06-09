@@ -13,6 +13,7 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
 }
 
 let agendamentosExistentes = [];
+let servicosDinamicosCliente = [];
 
 const precosBanhoCaes = {
     "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
@@ -72,6 +73,79 @@ document.getElementById("adicionalTosaHigienica").addEventListener("change", atu
 document.getElementById("adicionalCorteUnha").addEventListener("change", atualizarResumoServicos);
 document.getElementById("data").addEventListener("change", carregarHorariosDisponiveis);
 
+
+async function carregarServicosDinamicosCliente() {
+    try {
+        if (typeof db === "undefined") {
+            servicosDinamicosCliente = [];
+            return;
+        }
+
+        const snapshot = await db.collection("servicos")
+            .where("ativo", "==", true)
+            .get();
+
+        servicosDinamicosCliente = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+
+        renderizarServicosDinamicosCliente();
+    } catch (error) {
+        console.error("Erro ao carregar serviços dinâmicos:", error);
+        servicosDinamicosCliente = [];
+    }
+}
+
+function renderizarServicosDinamicosCliente() {
+    const container = document.getElementById("servicosDinamicosCliente");
+    if (!container) return;
+
+    const especieSelecionada = document.getElementById("especie").value;
+
+    const servicosFiltrados = servicosDinamicosCliente.filter(servico => {
+        if (!servico.ativo) return false;
+        if (!especieSelecionada) return false;
+
+        return servico.especie === especieSelecionada || servico.especie === "Ambos";
+    });
+
+    container.innerHTML = "";
+
+    if (servicosFiltrados.length === 0) {
+        return;
+    }
+
+    const titulo = document.createElement("h4");
+    titulo.className = "servicos-dinamicos-titulo";
+    titulo.textContent = "Produtos / Serviços cadastrados";
+    container.appendChild(titulo);
+
+    servicosFiltrados.forEach(servico => {
+        const label = document.createElement("label");
+        label.className = "checkbox-line servico-dinamico-item";
+
+        const preco = Number(servico.preco || 0);
+
+        label.innerHTML = `
+            <input
+                type="checkbox"
+                class="servico-dinamico-checkbox"
+                data-id="${servico.id}"
+                data-nome="${servico.nome || ""}"
+                data-preco="${preco}">
+            <span>${servico.nome || "Serviço"} — ${formatarMoeda(preco)}</span>
+        `;
+
+        container.appendChild(label);
+    });
+
+    document.querySelectorAll(".servico-dinamico-checkbox").forEach(checkbox => {
+        checkbox.addEventListener("change", atualizarResumoServicos);
+    });
+}
+
+
 function atualizarServicosPorEspecie() {
     const especie = document.getElementById("especie").value;
     const servicoPrincipal = document.getElementById("servicoPrincipal");
@@ -112,7 +186,10 @@ function atualizarServicosPorEspecie() {
         adicionalHidratacao.closest(".checkbox-line").style.display = "none";
     }
 
+    renderizarServicosDinamicosCliente();
     controlarCamposServico();
+    renderizarServicosDinamicosCliente();
+    await carregarServicosDinamicosCliente();
     atualizarResumoServicos();
 }
 
@@ -187,6 +264,19 @@ function calcularServicosSelecionados() {
         itens.push({ nome: "Tratamento Anti-Parasitas", valor: precoTratamentoAntiParasitas });
         total += precoTratamentoAntiParasitas;
     }
+
+
+    document.querySelectorAll(".servico-dinamico-checkbox:checked").forEach(checkbox => {
+        const nome = checkbox.dataset.nome || "Serviço adicional";
+        const valor = Number(checkbox.dataset.preco || 0);
+
+        itens.push({
+            nome,
+            valor
+        });
+
+        total += valor;
+    });
 
     return { itens, total };
 }
@@ -565,7 +655,7 @@ function limparFormulario() {
     atualizarResumoServicos();
 }
 
-function iniciarPagina() {
+async function iniciarPagina() {
     const servicoPrincipal = document.getElementById("servicoPrincipal");
     servicoPrincipal.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
     servicoPrincipal.disabled = true;
