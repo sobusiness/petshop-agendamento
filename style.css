@@ -4,28 +4,112 @@
     box-sizing: border-box;
 }
 
+:root {
+    --pet-bg: #fff1f3;
+    --pet-bg-soft: #fff8f9;
+    --pet-primary: #d65a7e;
+    --pet-primary-dark: #b94a6a;
+    --pet-primary-light: #e987a2;
+    --pet-brown: #ad8b78;
+    --pet-gray: #8a8383;
+    --pet-text: #4d3f43;
+    --pet-border: #f1c7d2;
+    --pet-card: #ffffff;
+    --pet-shadow: rgba(182, 99, 122, .18);
+    --whatsapp: #25D366;
+    --whatsapp-dark: #128C7E;
+}
+
 body {
     font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #eaf6f8, #f7fbfc);
-    color: #24343a;
+    background-color: var(--pet-bg);
+    background-image:
+        linear-gradient(135deg, rgba(255, 241, 243, .78), rgba(255, 248, 249, .82)),
+        url('background-petlyne.png');
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    color: var(--pet-text);
+    min-height: 100vh;
+    position: relative;
+    overflow-x: hidden;
 }
 
-header {
-    background: linear-gradient(135deg, #1f7a8c, #155b68);
-    color: white;
+/* Elementos decorativos laterais premium */
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    top: 190px;
+    width: 260px;
+    height: 520px;
+    pointer-events: none;
+    z-index: -1;
+    opacity: .30;
+    filter: blur(.1px);
+}
+
+body::before {
+    left: 0;
+    background:
+        radial-gradient(circle at 18% 18%, rgba(214, 90, 126, .20) 0 24px, transparent 25px),
+        radial-gradient(circle at 40% 36%, rgba(255, 255, 255, .65) 0 38px, transparent 39px),
+        radial-gradient(circle at 18% 68%, rgba(233, 135, 162, .24) 0 58px, transparent 59px),
+        radial-gradient(circle at 58% 86%, rgba(173, 139, 120, .16) 0 42px, transparent 43px);
+    border-radius: 0 260px 260px 0;
+}
+
+body::after {
+    right: 0;
+    background:
+        radial-gradient(circle at 82% 18%, rgba(214, 90, 126, .20) 0 24px, transparent 25px),
+        radial-gradient(circle at 60% 36%, rgba(255, 255, 255, .65) 0 38px, transparent 39px),
+        radial-gradient(circle at 82% 68%, rgba(233, 135, 162, .24) 0 58px, transparent 59px),
+        radial-gradient(circle at 42% 86%, rgba(173, 139, 120, .16) 0 42px, transparent 43px);
+    border-radius: 260px 0 0 260px;
+}
+
+.site-header {
+    background: linear-gradient(135deg, rgba(255, 247, 248, .88), rgba(247, 213, 222, .92));
+    color: var(--pet-text);
     text-align: center;
-    padding: 28px 20px;
-    box-shadow: 0 4px 18px rgba(0,0,0,.15);
+    padding: 24px 20px;
+    box-shadow: 0 4px 22px rgba(214,90,126,.18);
+    border-bottom: 1px solid rgba(214,90,126,.18);
+    backdrop-filter: blur(8px);
 }
 
-header h1 {
+.header-content {
+    max-width: 1050px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+}
+
+.logo-petlyne {
+    width: 92px;
+    height: 92px;
+    object-fit: contain;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(214,90,126,.18);
+}
+
+.header-text h1 {
     font-size: 34px;
     margin-bottom: 5px;
+    color: var(--pet-primary-dark);
+    letter-spacing: .2px;
 }
 
-header p {
+.header-text p {
     font-size: 15px;
-    opacity: .95;
+    opacity: .9;
+    color: var(--pet-brown);
+    font-weight: bold;
 }
 
 .container {
@@ -35,18 +119,19 @@ header p {
 }
 
 .card {
-    background: white;
-    border-radius: 22px;
+    background: rgba(255,255,255,.90);
+    border-radius: 24px;
     padding: 28px;
-    box-shadow: 0 12px 35px rgba(0,0,0,.12);
-    border: 1px solid rgba(31,122,140,.12);
+    box-shadow: 0 18px 46px rgba(182, 99, 122, .20);
+    border: 1px solid rgba(241, 199, 210, .88);
     margin-bottom: 24px;
+    backdrop-filter: blur(10px);
 }
 
 .card h2 {
     margin-bottom: 22px;
     font-size: 26px;
-    color: #1f7a8c;
+    color: var(--pet-primary-dark);
 }
 
 .form-grid {
@@ -60,49 +145,58 @@ label {
     margin-bottom: 7px;
     font-weight: bold;
     font-size: 14px;
-    color: #33464d;
+    color: var(--pet-text);
 }
 
 input,
 select {
     width: 100%;
     padding: 13px 14px;
-    border: 1px solid #cfdde1;
-    border-radius: 12px;
+    border: 1px solid var(--pet-border);
+    border-radius: 14px;
     font-size: 15px;
-    background: #fbfefe;
+    background: rgba(255, 253, 253, .94);
+    color: var(--pet-text);
     outline: none;
     transition: .2s;
 }
 
+input::placeholder {
+    color: #9b8d91;
+}
+
 input:focus,
 select:focus {
-    border-color: #1f7a8c;
-    box-shadow: 0 0 0 3px rgba(31,122,140,.12);
+    border-color: var(--pet-primary);
+    box-shadow: 0 0 0 3px rgba(214,90,126,.16);
+    background: #fff;
 }
 
 button,
 .whatsapp-button {
     width: 100%;
     margin-top: 22px;
-    background: linear-gradient(135deg, #1f7a8c, #16606f);
+    background: linear-gradient(135deg, var(--pet-primary), var(--pet-primary-dark));
     color: white;
     border: none;
     padding: 15px;
-    border-radius: 14px;
+    border-radius: 16px;
     cursor: pointer;
     font-size: 16px;
     font-weight: bold;
     transition: .2s;
     text-align: center;
     text-decoration: none;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
 }
 
 button:hover,
 .whatsapp-button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 8px 20px rgba(31,122,140,.28);
+    box-shadow: 0 8px 22px rgba(214,90,126,.3);
 }
 
 .conditional-field {
@@ -113,22 +207,22 @@ button:hover,
 .resumo-box {
     margin-top: 20px;
     padding: 18px;
-    border-radius: 16px;
+    border-radius: 18px;
 }
 
 .adicionais-box {
-    background: #f7fbfc;
-    border: 1px solid #d7e8ec;
+    background: rgba(255, 246, 248, .84);
+    border: 1px solid var(--pet-border);
 }
 
 .resumo-box {
-    background: #eef8fa;
-    border: 1px solid #cfe5ea;
+    background: rgba(255, 240, 244, .88);
+    border: 1px solid #efb9c8;
 }
 
 .adicionais-box h3,
 .resumo-box h3 {
-    color: #1f7a8c;
+    color: var(--pet-primary-dark);
     font-size: 18px;
     margin-bottom: 12px;
 }
@@ -144,10 +238,11 @@ button:hover,
 
 .checkbox-line input {
     width: auto;
+    accent-color: var(--pet-primary);
 }
 
 .resumo-box p {
-    color: #60747c;
+    color: #8b737b;
     line-height: 1.5;
 }
 
@@ -156,21 +251,21 @@ button:hover,
     justify-content: space-between;
     gap: 15px;
     padding: 9px 0;
-    border-bottom: 1px solid #d5e7eb;
+    border-bottom: 1px solid #efc5cf;
     font-size: 15px;
 }
 
 .total-line {
     margin-top: 14px;
     padding-top: 14px;
-    border-top: 2px solid #1f7a8c;
+    border-top: 2px solid var(--pet-primary);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .total-line strong {
-    color: #1f7a8c;
+    color: var(--pet-primary-dark);
     font-size: 21px;
 }
 
@@ -180,15 +275,27 @@ button:hover,
 }
 
 .pacotes-card {
-    background: linear-gradient(135deg, #ffffff, #eef8fa);
+    background: linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,240,244,.90));
 }
 
 .pacotes-card p {
     line-height: 1.6;
+    color: var(--pet-text);
 }
 
 .whatsapp-button {
-    background: linear-gradient(135deg, #25D366, #128C7E);
+    background: linear-gradient(135deg, var(--whatsapp), var(--whatsapp-dark));
+}
+
+.whatsapp-button:hover {
+    box-shadow: 0 8px 22px rgba(37,211,102,.28);
+}
+
+.whatsapp-icon {
+    width: 22px;
+    height: 22px;
+    fill: currentColor;
+    flex-shrink: 0;
 }
 
 .popup-whatsapp {
@@ -200,7 +307,7 @@ button:hover,
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, .55);
+    background: rgba(77, 63, 67, .55);
     align-items: center;
     justify-content: center;
     padding: 20px;
@@ -212,16 +319,17 @@ button:hover,
 }
 
 .popup-card {
-    background: white;
+    background: rgba(255,255,255,.96);
     max-width: 520px;
     width: 100%;
-    border-radius: 22px;
+    border-radius: 24px;
     padding: 30px;
     text-align: center;
-    box-shadow: 0 14px 45px rgba(0,0,0,.28);
+    box-shadow: 0 14px 45px rgba(77,63,67,.28);
     animation: aparecer .25s ease;
     max-height: 90vh;
     overflow-y: auto;
+    border: 1px solid var(--pet-border);
 }
 
 .popup-icon {
@@ -231,7 +339,7 @@ button:hover,
 
 .popup-card h2 {
     margin-bottom: 15px;
-    color: #1f7a8c;
+    color: var(--pet-primary-dark);
 }
 
 .popup-card p {
@@ -246,7 +354,7 @@ button:hover,
 }
 
 .btn-secondary {
-    background: #6d7f86;
+    background: linear-gradient(135deg, var(--pet-gray), #6f6868);
 }
 
 @keyframes aparecer {
@@ -261,7 +369,19 @@ button:hover,
     }
 }
 
+@media (max-width: 1180px) {
+    body::before,
+    body::after {
+        display: none;
+    }
+}
+
 @media (max-width: 750px) {
+    body {
+        background-attachment: scroll;
+        background-size: auto 100%;
+    }
+
     .container {
         max-width: 760px;
     }
@@ -272,5 +392,19 @@ button:hover,
 
     .popup-actions {
         grid-template-columns: 1fr;
+    }
+
+    .header-content {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .logo-petlyne {
+        width: 86px;
+        height: 86px;
+    }
+
+    .header-text h1 {
+        font-size: 28px;
     }
 }

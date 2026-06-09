@@ -12,7 +12,10 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
     horariosPadrao.push(`${hora.toString().padStart(2, "0")}:00`);
 }
 
-const agendamentosExistentes = [];
+const agendamentosExistentes = [
+    { data: "2026-06-12", horario: "10:00" },
+    { data: "2026-06-12", horario: "14:00" }
+];
 
 const precosBanhoCaes = {
     "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
@@ -33,7 +36,7 @@ const precosHidratacaoCaes = {
 };
 
 const precoTosaHigienicaAvulsa = 12;
-const precoCorteUnhaAvulso = 12;
+const precoTratamentoAntiParasitas = 25;
 const precoBanhoSecoGato = 80;
 
 function formatarMoeda(valor) {
@@ -184,8 +187,8 @@ function calcularServicosSelecionados() {
     }
 
     if (document.getElementById("adicionalCorteUnha").checked) {
-        itens.push({ nome: "Corte de Unha Avulso", valor: precoCorteUnhaAvulso });
-        total += precoCorteUnhaAvulso;
+        itens.push({ nome: "Tratamento Anti-Parasitas", valor: precoTratamentoAntiParasitas });
+        total += precoTratamentoAntiParasitas;
     }
 
     return { itens, total };
