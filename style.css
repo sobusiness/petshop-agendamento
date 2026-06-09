@@ -369,6 +369,16 @@ button:hover,
     }
 }
 
+
+.popup-alerta-card .popup-icon {
+    color: var(--pet-primary-dark);
+}
+
+.popup-alerta-card button {
+    margin-top: 10px;
+}
+
+
 @media (max-width: 1180px) {
     body::before,
     body::after {

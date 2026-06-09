@@ -300,13 +300,13 @@ function validarAgendamento() {
 
     for (const campo of camposObrigatorios) {
         if (document.getElementById(campo).value.trim() === "") {
-            alert("Preencha todos os dados obrigatórios.");
+            mostrarAlerta("Preencha todos os dados obrigatórios.");
             return false;
         }
     }
 
     if (telefoneNumeros.length !== 11) {
-        alert("Digite um telefone celular válido com DDD. Exemplo: (11) 99999-9999");
+        mostrarAlerta("Digite um telefone celular válido com DDD. Exemplo: (11) 99999-9999");
         return false;
     }
 
@@ -318,22 +318,22 @@ function validarAgendamento() {
     const horario = document.getElementById("horario").value;
 
     if (especie === "Cão" && servicoPrincipal === "Banho" && pelagem === "") {
-        alert("Selecione o tipo de pelagem.");
+        mostrarAlerta("Selecione o tipo de pelagem.");
         return false;
     }
 
     if (especie === "Cão" && servicoPrincipal === "Tosa" && tipoTosa === "") {
-        alert("Selecione o tipo de tosa.");
+        mostrarAlerta("Selecione o tipo de tosa.");
         return false;
     }
 
     if (especie === "Cão" && servicoPrincipal === "Tosa" && porte === "Grande" && tipoTosa === "Bebê") {
-        alert("Tosa Bebê não está disponível para porte Grande.");
+        mostrarAlerta("Tosa Bebê não está disponível para porte Grande.");
         return false;
     }
 
     if (resumo.itens.length === 0 || resumo.total <= 0) {
-        alert("Selecione pelo menos um serviço válido.");
+        mostrarAlerta("Selecione pelo menos um serviço válido.");
         return false;
     }
 
@@ -343,11 +343,21 @@ function validarAgendamento() {
         horario === "Todos os horários estão indisponíveis" ||
         horario === "Selecione uma data primeiro"
     ) {
-        alert("Selecione um horário disponível.");
+        mostrarAlerta("Selecione um horário disponível.");
         return false;
     }
 
     return true;
+}
+
+
+function mostrarAlerta(mensagem) {
+    document.getElementById("mensagemAlerta").textContent = mensagem;
+    document.getElementById("popupAlerta").classList.add("ativo");
+}
+
+function fecharAlerta() {
+    document.getElementById("popupAlerta").classList.remove("ativo");
 }
 
 function abrirPreviaAgendamento() {
