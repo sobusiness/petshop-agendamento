@@ -459,3 +459,129 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         padding: 26px 22px;
     }
 }
+
+.filtro-faturamento {
+    display: grid;
+    grid-template-columns: repeat(3, auto) minmax(145px, 1fr) minmax(145px, 1fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(170px, 1.2fr) auto auto;
+    align-items: center;
+}
+
+.filtro-faturamento input,
+.filtro-faturamento select {
+    min-width: 0;
+}
+
+.charts-grid {
+    align-items: stretch;
+}
+
+.chart-card {
+    overflow: hidden;
+    min-width: 0;
+}
+
+.chart-card canvas {
+    max-width: 100%;
+}
+
+@media (max-width: 1250px) {
+    .filtro-faturamento {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .filtro-faturamento button,
+    .filtro-faturamento input,
+    .filtro-faturamento select {
+        width: 100%;
+    }
+}
+
+@media (max-width: 900px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card,
+    .chart-card.full-width {
+        min-height: 360px;
+    }
+
+    .chart-card canvas,
+    .chart-card.full-width canvas {
+        height: 300px !important;
+    }
+}
+
+@media (max-width: 620px) {
+    .filtro-faturamento {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* Faturamento V22 */
+.filtro-faturamento-avancado {
+    display: grid !important;
+    grid-template-columns: repeat(3, auto) minmax(145px, 1fr) minmax(145px, 1fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(170px, 1.2fr) auto auto !important;
+    align-items: center;
+    gap: 10px;
+}
+
+.filtro-faturamento-avancado input,
+.filtro-faturamento-avancado select,
+.filtro-faturamento-avancado button {
+    width: 100%;
+    min-width: 0;
+}
+
+.charts-grid {
+    align-items: stretch;
+}
+
+.chart-card {
+    overflow: hidden;
+    min-width: 0;
+    min-height: 400px;
+}
+
+.chart-card canvas {
+    width: 100% !important;
+    height: 315px !important;
+    max-width: 100%;
+}
+
+.chart-card.full-width {
+    min-height: 480px;
+}
+
+.chart-card.full-width canvas {
+    height: 390px !important;
+}
+
+@media (max-width: 1250px) {
+    .filtro-faturamento-avancado {
+        grid-template-columns: repeat(2, 1fr) !important;
+    }
+}
+
+@media (max-width: 900px) {
+    .charts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-card,
+    .chart-card.full-width {
+        min-height: 370px;
+    }
+
+    .chart-card canvas,
+    .chart-card.full-width canvas {
+        height: 310px !important;
+    }
+}
+
+@media (max-width: 620px) {
+    .filtro-faturamento-avancado {
+        grid-template-columns: 1fr !important;
+    }
+}

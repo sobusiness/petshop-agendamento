@@ -174,30 +174,32 @@ function obterAgendamentosFiltradosFaturamento() {
     const hoje = hojeISO();
     const realizados = agendamentos.filter(item => item.status === "Concluído");
 
+    let resultado = realizados;
+
     if (filtroFaturamentoAtual === "hoje") {
-        return realizados.filter(item => item.data === hoje);
+        resultado = realizados.filter(item => item.data === hoje);
     }
 
     if (filtroFaturamentoAtual === "7dias") {
         const inicio = adicionarDias(hoje, -6);
-        return realizados.filter(item => item.data >= inicio && item.data <= hoje);
+        resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
     }
 
     if (filtroFaturamentoAtual === "30dias") {
         const inicio = adicionarDias(hoje, -29);
-        return realizados.filter(item => item.data >= inicio && item.data <= hoje);
+        resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
     }
 
     if (filtroFaturamentoAtual === "personalizado") {
         const inicio = document.getElementById("dataInicioFaturamento").value;
         const fim = document.getElementById("dataFimFaturamento").value;
 
-        if (!inicio || !fim) return realizados;
-
-        return realizados.filter(item => item.data >= inicio && item.data <= fim);
+        if (inicio && fim) {
+            resultado = realizados.filter(item => item.data >= inicio && item.data <= fim);
+        }
     }
 
-    return realizados;
+    return aplicarFiltrosAvancadosFaturamento(resultado);
 }
 
 function filtrarFaturamento(tipo) {
@@ -209,6 +211,9 @@ function limparFiltroFaturamento() {
     filtroFaturamentoAtual = "todos";
     document.getElementById("dataInicioFaturamento").value = "";
     document.getElementById("dataFimFaturamento").value = "";
+    document.getElementById("filtroEspecieFaturamento").value = "";
+    document.getElementById("filtroPorteFaturamento").value = "";
+    document.getElementById("filtroServicoFaturamento").value = "";
     atualizarFaturamento();
 }
 
@@ -249,10 +254,74 @@ function agruparServicos(dados) {
 }
 
 
+
+
+function criarGradienteBarra(chart, corInicial, corFinal) {
+    const { ctx, chartArea } = chart;
+
+    if (!chartArea) return corInicial;
+
+    const gradiente = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+    gradiente.addColorStop(0, corInicial);
+    gradiente.addColorStop(1, corFinal);
+
+    return gradiente;
+}
+
 function formatarMoedaGrafico(valor) {
     return Number(valor || 0).toLocaleString("pt-BR", {
         style: "currency",
         currency: "BRL"
+    });
+}
+
+function quebrarRotuloGrafico(label, limite = 18) {
+    if (!label || label.length <= limite) return label;
+
+    const palavras = String(label).split(" ");
+    const linhas = [];
+    let linhaAtual = "";
+
+    palavras.forEach(palavra => {
+        if ((linhaAtual + " " + palavra).trim().length > limite) {
+            if (linhaAtual) linhas.push(linhaAtual);
+            linhaAtual = palavra;
+        } else {
+            linhaAtual = `${linhaAtual} ${palavra}`.trim();
+        }
+    });
+
+    if (linhaAtual) linhas.push(linhaAtual);
+
+    return linhas.slice(0, 3);
+}
+
+function obterFiltrosFaturamentoAvancados() {
+    return {
+        especie: document.getElementById("filtroEspecieFaturamento")?.value || "",
+        porte: document.getElementById("filtroPorteFaturamento")?.value || "",
+        servico: (document.getElementById("filtroServicoFaturamento")?.value || "").trim().toLowerCase()
+    };
+}
+
+function agendamentoTemServico(agendamento, filtroServico) {
+    if (!filtroServico) return true;
+    if (!Array.isArray(agendamento.servicos)) return false;
+
+    return agendamento.servicos.some(servico => {
+        return (servico.nome || "").toLowerCase().includes(filtroServico);
+    });
+}
+
+function aplicarFiltrosAvancadosFaturamento(dados) {
+    const filtros = obterFiltrosFaturamentoAvancados();
+
+    return dados.filter(item => {
+        const especieOk = !filtros.especie || item.especie === filtros.especie;
+        const porteOk = !filtros.porte || item.porte === filtros.porte;
+        const servicoOk = agendamentoTemServico(item, filtros.servico);
+
+        return especieOk && porteOk && servicoOk;
     });
 }
 
@@ -263,27 +332,36 @@ const pluginRotulosValores = {
 
         ctx.save();
         ctx.font = "bold 12px Arial";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "bottom";
         ctx.fillStyle = "#4d3f43";
 
         chart.data.datasets.forEach((dataset, datasetIndex) => {
             const meta = chart.getDatasetMeta(datasetIndex);
 
             meta.data.forEach((element, index) => {
-                const valor = dataset.data[index];
-
-                if (!valor || valor <= 0) return;
+                const valor = Number(dataset.data[index] || 0);
+                if (valor <= 0) return;
 
                 const posicao = element.tooltipPosition();
-                const texto = formatarMoedaGrafico(valor);
 
                 if (chart.config.type === "doughnut") {
                     const total = dataset.data.reduce((acc, item) => acc + Number(item || 0), 0);
                     const percentual = total > 0 ? ((valor / total) * 100).toFixed(1).replace(".", ",") : "0,0";
+
+                    ctx.textAlign = "center";
                     ctx.textBaseline = "middle";
                     ctx.fillText(`${percentual}%`, posicao.x, posicao.y);
+                    return;
+                }
+
+                const texto = formatarMoedaGrafico(valor);
+
+                if (chart.options.indexAxis === "y") {
+                    ctx.textAlign = "left";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(texto, posicao.x + 8, posicao.y);
                 } else {
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "bottom";
                     ctx.fillText(texto, posicao.x, posicao.y - 8);
                 }
             });
@@ -293,22 +371,52 @@ const pluginRotulosValores = {
     }
 };
 
-function opcoesGraficoBarras(tituloEixo = "Faturamento") {
+function opcoesGraficoBarras(tituloEixo = "Faturamento", horizontal = false) {
+    if (horizontal) {
+        return {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 16, right: 90, bottom: 8, left: 8 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            return `${context.dataset.label || tituloEixo}: ${formatarMoedaGrafico(context.raw)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { color: "rgba(214, 90, 126, .14)" },
+                    ticks: {
+                        color: "#8a737b",
+                        callback(value) { return formatarMoedaGrafico(value); }
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: {
+                        color: "#4d3f43",
+                        font: { weight: "bold", size: 11 },
+                        callback(value) {
+                            return quebrarRotuloGrafico(this.getLabelForValue(value), 26);
+                        }
+                    }
+                }
+            }
+        };
+    }
+
     return {
         responsive: true,
         maintainAspectRatio: false,
-        layout: {
-            padding: {
-                top: 28,
-                right: 18,
-                bottom: 8,
-                left: 8
-            }
-        },
+        layout: { padding: { top: 34, right: 18, bottom: 14, left: 8 } },
         plugins: {
-            legend: {
-                display: false
-            },
+            legend: { display: false },
             tooltip: {
                 callbacks: {
                     label(context) {
@@ -319,26 +427,24 @@ function opcoesGraficoBarras(tituloEixo = "Faturamento") {
         },
         scales: {
             x: {
-                grid: {
-                    display: false
-                },
+                grid: { display: false },
                 ticks: {
                     color: "#4d3f43",
-                    font: {
-                        weight: "bold"
+                    font: { weight: "bold", size: 11 },
+                    maxRotation: 0,
+                    minRotation: 0,
+                    autoSkip: false,
+                    callback(value) {
+                        return quebrarRotuloGrafico(this.getLabelForValue(value), 16);
                     }
                 }
             },
             y: {
                 beginAtZero: true,
-                grid: {
-                    color: "rgba(214, 90, 126, .14)"
-                },
+                grid: { color: "rgba(214, 90, 126, .14)" },
                 ticks: {
                     color: "#8a737b",
-                    callback(value) {
-                        return formatarMoedaGrafico(value);
-                    }
+                    callback(value) { return formatarMoedaGrafico(value); }
                 }
             }
         }
@@ -349,19 +455,17 @@ function opcoesGraficoRosca() {
     return {
         responsive: true,
         maintainAspectRatio: false,
-        cutout: "58%",
-        layout: {
-            padding: 22
-        },
+        cutout: "62%",
+        layout: { padding: 18 },
         plugins: {
             legend: {
                 position: "bottom",
                 labels: {
                     color: "#4d3f43",
-                    font: {
-                        weight: "bold"
-                    },
-                    padding: 18
+                    font: { weight: "bold" },
+                    padding: 18,
+                    usePointStyle: true,
+                    pointStyle: "circle"
                 }
             },
             tooltip: {
@@ -392,31 +496,68 @@ function renderizarGraficos(dados) {
         type: "bar",
         data: {
             labels: Object.keys(porDia).map(formatarDataCurta),
-            datasets: [{ label: "Faturamento", data: Object.values(porDia), backgroundColor: "#d65a7e" }]
+            datasets: [{
+                label: "Faturamento",
+                data: Object.values(porDia),
+                backgroundColor(context) {
+                    return criarGradienteBarra(context.chart, "rgba(248, 191, 207, .94)", "rgba(185, 74, 106, .96)");
+                },
+                borderColor: "#b94a6a",
+                borderWidth: 1,
+                borderRadius: 16,
+                borderSkipped: false,
+                maxBarThickness: 54
+            }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: opcoesGraficoBarras("Faturamento"),
+        plugins: [pluginRotulosValores]
     });
 
     chartEspecie = new Chart(document.getElementById("graficoEspecie"), {
         type: "doughnut",
         data: {
             labels: Object.keys(porEspecie),
-            datasets: [{ data: Object.values(porEspecie), backgroundColor: ["#d65a7e", "#ad8b78", "#8a8383", "#e987a2"] }]
+            datasets: [{
+                data: Object.values(porEspecie),
+                backgroundColor: [
+                    "rgba(214, 90, 126, .92)",
+                    "rgba(248, 191, 207, .94)",
+                    "rgba(173, 139, 120, .82)",
+                    "rgba(138, 131, 131, .82)"
+                ],
+                borderColor: "#fff",
+                borderWidth: 5,
+                hoverOffset: 8
+            }]
         },
-        options: { responsive: true }
+        options: opcoesGraficoRosca(),
+        plugins: [pluginRotulosValores]
     });
+
+    const servicosOrdenados = Object.entries(porServico).sort((a, b) => b[1] - a[1]);
+    const usarHorizontal = servicosOrdenados.length >= 4;
 
     chartServico = new Chart(document.getElementById("graficoServico"), {
         type: "bar",
         data: {
-            labels: Object.keys(porServico),
-            datasets: [{ label: "Valor", data: Object.values(porServico), backgroundColor: "#b94a6a" }]
+            labels: servicosOrdenados.map(item => item[0]),
+            datasets: [{
+                label: "Valor",
+                data: servicosOrdenados.map(item => item[1]),
+                backgroundColor(context) {
+                    return criarGradienteBarra(context.chart, "rgba(248, 191, 207, .92)", "rgba(150, 54, 83, .95)");
+                },
+                borderColor: "#963653",
+                borderWidth: 1,
+                borderRadius: 16,
+                borderSkipped: false,
+                maxBarThickness: 46
+            }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } } }
+        options: opcoesGraficoBarras("Valor", usarHorizontal),
+        plugins: [pluginRotulosValores]
     });
 }
-
-
 
 function mostrarConfirmacaoAdmin({ titulo, mensagem, icone = "⚠️", textoConfirmar = "Confirmar", textoCancelar = "Cancelar" }) {
     return new Promise(resolve => {
