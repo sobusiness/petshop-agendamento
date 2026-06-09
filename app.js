@@ -225,6 +225,24 @@ function atualizarResumoServicos() {
     totalAgendamento.textContent = formatarMoeda(resumo.total);
 }
 
+
+async function buscarAgendamentosPorDataFirebase(dataSelecionada) {
+    try {
+        if (typeof db === "undefined") {
+            return [];
+        }
+
+        const snapshot = await db.collection("agendamentos")
+            .where("data", "==", dataSelecionada)
+            .get();
+
+        return snapshot.docs.map(doc => doc.data());
+    } catch (error) {
+        console.error("Erro ao buscar agendamentos no Firebase:", error);
+        return [];
+    }
+}
+
 async function carregarHorariosDisponiveis() {
     const dataSelecionada = document.getElementById("data").value;
     const selectHorario = document.getElementById("horario");
@@ -244,18 +262,7 @@ async function carregarHorariosDisponiveis() {
         return;
     }
 
-
-    try {
-        if (typeof db !== "undefined") {
-            const snapshot = await db.collection("agendamentos")
-                .where("data", "==", dataSelecionada)
-                .get();
-
-            agendamentosExistentes = snapshot.docs.map(doc => doc.data());
-        }
-    } catch (error) {
-        console.error("Erro ao buscar agendamentos no Firebase:", error);
-    }
+    agendamentosExistentes = await buscarAgendamentosPorDataFirebase(dataSelecionada);
 
     const horariosOcupados = agendamentosExistentes
         .filter(agendamento => agendamento.data === dataSelecionada)
@@ -483,8 +490,7 @@ async function salvarAgendamentoFirebase(dados, protocolo) {
     });
 }
 
-
-async async function confirmarAgendamentoFinal() {
+async function confirmarAgendamentoFinal() {
     if (!dadosPreAgendamento) return;
 
     const protocolo = gerarProtocolo();
@@ -492,8 +498,8 @@ async async function confirmarAgendamentoFinal() {
     try {
         await salvarAgendamentoFirebase(dadosPreAgendamento, protocolo);
     } catch (error) {
-        console.error("Erro ao salvar agendamento:", error);
-        mostrarAlerta("Não foi possível salvar o agendamento no sistema. Tente novamente.");
+        console.error("Erro ao salvar agendamento no Firebase:", error);
+        mostrarAlerta("Não foi possível salvar o agendamento. Tente novamente.");
         return;
     }
 
