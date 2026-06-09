@@ -13,7 +13,7 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
 }
 
 let agendamentosExistentes = [];
-let servicosDinamicosCliente = [];
+let servicosPrincipaisCliente = [];
 
 const precosBanhoCaes = {
     "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
@@ -74,10 +74,10 @@ document.getElementById("adicionalCorteUnha").addEventListener("change", atualiz
 document.getElementById("data").addEventListener("change", carregarHorariosDisponiveis);
 
 
-async function carregarServicosDinamicosCliente() {
+async function carregarServicosPrincipaisCliente() {
     try {
         if (typeof db === "undefined") {
-            servicosDinamicosCliente = [];
+            servicosPrincipaisCliente = [];
             return;
         }
 
@@ -85,64 +85,62 @@ async function carregarServicosDinamicosCliente() {
             .where("ativo", "==", true)
             .get();
 
-        servicosDinamicosCliente = snapshot.docs.map(doc => ({
+        servicosPrincipaisCliente = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
         }));
-
-        renderizarServicosDinamicosCliente();
     } catch (error) {
-        console.error("Erro ao carregar serviços dinâmicos:", error);
-        servicosDinamicosCliente = [];
+        console.error("Erro ao carregar serviços principais:", error);
+        servicosPrincipaisCliente = [];
     }
 }
 
-function renderizarServicosDinamicosCliente() {
-    const container = document.getElementById("servicosDinamicosCliente");
-    if (!container) return;
-
-    const especieSelecionada = document.getElementById("especie").value;
-
-    const servicosFiltrados = servicosDinamicosCliente.filter(servico => {
+function obterServicosPrincipaisPorEspecie(especie) {
+    return servicosPrincipaisCliente.filter(servico => {
         if (!servico.ativo) return false;
-        if (!especieSelecionada) return false;
-
-        return servico.especie === especieSelecionada || servico.especie === "Ambos";
+        return servico.especie === especie || servico.especie === "Ambos";
     });
+}
 
-    container.innerHTML = "";
+function obterServicoPrincipalSelecionado() {
+    const servicoPrincipal = document.getElementById("servicoPrincipal").value;
 
-    if (servicosFiltrados.length === 0) {
-        return;
+    if (!servicoPrincipal.startsWith("firebase:")) {
+        return null;
     }
 
-    const titulo = document.createElement("h4");
-    titulo.className = "servicos-dinamicos-titulo";
-    titulo.textContent = "Produtos / Serviços cadastrados";
-    container.appendChild(titulo);
+    const id = servicoPrincipal.replace("firebase:", "");
+    return servicosPrincipaisCliente.find(servico => servico.id === id) || null;
+}
 
-    servicosFiltrados.forEach(servico => {
-        const label = document.createElement("label");
-        label.className = "checkbox-line servico-dinamico-item";
+function montarOptionsServicosPrincipais(especie) {
+    const servicos = obterServicosPrincipaisPorEspecie(especie);
 
+    if (servicos.length === 0) {
+        if (especie === "Cão") {
+            return `
+                <option value="">Selecione</option>
+                <option value="Banho">Banho</option>
+                <option value="Tosa">Tosa</option>
+            `;
+        }
+
+        if (especie === "Gato") {
+            return `
+                <option value="">Selecione</option>
+                <option value="Banho a Seco">Banho a Seco</option>
+            `;
+        }
+
+        return `<option value="">Selecione a espécie primeiro</option>`;
+    }
+
+    const options = servicos.map(servico => {
         const preco = Number(servico.preco || 0);
+        return `<option value="firebase:${servico.id}">${servico.nome} — ${formatarMoeda(preco)}</option>`;
+    }).join("");
 
-        label.innerHTML = `
-            <input
-                type="checkbox"
-                class="servico-dinamico-checkbox"
-                data-id="${servico.id}"
-                data-nome="${servico.nome || ""}"
-                data-preco="${preco}">
-            <span>${servico.nome || "Serviço"} — ${formatarMoeda(preco)}</span>
-        `;
-
-        container.appendChild(label);
-    });
-
-    document.querySelectorAll(".servico-dinamico-checkbox").forEach(checkbox => {
-        checkbox.addEventListener("change", atualizarResumoServicos);
-    });
+    return `<option value="">Selecione</option>${options}`;
 }
 
 
@@ -169,24 +167,16 @@ function atualizarServicosPorEspecie() {
 
     if (especie === "Cão") {
         servicoPrincipal.disabled = false;
-        servicoPrincipal.innerHTML = `
-            <option value="">Selecione</option>
-            <option value="Banho">Banho</option>
-            <option value="Tosa">Tosa</option>
-        `;
+        servicoPrincipal.innerHTML = montarOptionsServicosPrincipais("Cão");
     }
 
     if (especie === "Gato") {
         servicoPrincipal.disabled = false;
-        servicoPrincipal.innerHTML = `
-            <option value="">Selecione</option>
-            <option value="Banho a Seco">Banho a Seco</option>
-        `;
+        servicoPrincipal.innerHTML = montarOptionsServicosPrincipais("Gato");
 
         adicionalHidratacao.closest(".checkbox-line").style.display = "none";
     }
 
-    renderizarServicosDinamicosCliente();
     controlarCamposServico();
     atualizarResumoServicos();
 }
@@ -197,6 +187,15 @@ function controlarCamposServico() {
 
     document.getElementById("areaPelagem").style.display = "none";
     document.getElementById("areaTipoTosa").style.display = "none";
+
+    const servicoFirebase = obterServicoPrincipalSelecionado();
+
+    if (servicoFirebase) {
+        document.getElementById("pelagem").value = "";
+        document.getElementById("tipoTosa").value = "";
+        atualizarResumoServicos();
+        return;
+    }
 
     if (servicoPrincipal !== "Banho") {
         document.getElementById("pelagem").value = "";
@@ -227,13 +226,21 @@ function calcularServicosSelecionados() {
     const itens = [];
     let total = 0;
 
-    if (especie === "Cão" && servicoPrincipal === "Banho" && porte && pelagem) {
+    const servicoFirebase = obterServicoPrincipalSelecionado();
+
+    if (servicoFirebase) {
+        const valor = Number(servicoFirebase.preco || 0);
+        itens.push({ nome: servicoFirebase.nome, valor });
+        total += valor;
+    }
+
+    if (!servicoFirebase && especie === "Cão" && servicoPrincipal === "Banho" && porte && pelagem) {
         const valor = precosBanhoCaes[porte][pelagem];
         itens.push({ nome: `Banho (${porte} / Pelo ${pelagem})`, valor });
         total += valor;
     }
 
-    if (especie === "Cão" && servicoPrincipal === "Tosa" && porte && tipoTosa) {
+    if (!servicoFirebase && especie === "Cão" && servicoPrincipal === "Tosa" && porte && tipoTosa) {
         const valor = precosTosaCaes[porte][tipoTosa];
 
         if (valor !== null) {
@@ -242,7 +249,7 @@ function calcularServicosSelecionados() {
         }
     }
 
-    if (especie === "Gato" && servicoPrincipal === "Banho a Seco") {
+    if (!servicoFirebase && especie === "Gato" && servicoPrincipal === "Banho a Seco") {
         itens.push({ nome: "Banho a Seco para Gato", valor: precoBanhoSecoGato });
         total += precoBanhoSecoGato;
     }
@@ -262,19 +269,6 @@ function calcularServicosSelecionados() {
         itens.push({ nome: "Tratamento Anti-Parasitas", valor: precoTratamentoAntiParasitas });
         total += precoTratamentoAntiParasitas;
     }
-
-
-    document.querySelectorAll(".servico-dinamico-checkbox:checked").forEach(checkbox => {
-        const nome = checkbox.dataset.nome || "Serviço adicional";
-        const valor = Number(checkbox.dataset.preco || 0);
-
-        itens.push({
-            nome,
-            valor
-        });
-
-        total += valor;
-    });
 
     return { itens, total };
 }
@@ -422,17 +416,19 @@ function validarAgendamento() {
     const tipoTosa = document.getElementById("tipoTosa").value;
     const horario = document.getElementById("horario").value;
 
-    if (especie === "Cão" && servicoPrincipal === "Banho" && pelagem === "") {
+    const servicoFirebase = obterServicoPrincipalSelecionado();
+
+    if (!servicoFirebase && especie === "Cão" && servicoPrincipal === "Banho" && pelagem === "") {
         mostrarAlerta("Selecione o tipo de pelagem.");
         return false;
     }
 
-    if (especie === "Cão" && servicoPrincipal === "Tosa" && tipoTosa === "") {
+    if (!servicoFirebase && especie === "Cão" && servicoPrincipal === "Tosa" && tipoTosa === "") {
         mostrarAlerta("Selecione o tipo de tosa.");
         return false;
     }
 
-    if (especie === "Cão" && servicoPrincipal === "Tosa" && porte === "Grande" && tipoTosa === "Bebê") {
+    if (!servicoFirebase && especie === "Cão" && servicoPrincipal === "Tosa" && porte === "Grande" && tipoTosa === "Bebê") {
         mostrarAlerta("Tosa Bebê não está disponível para porte Grande.");
         return false;
     }
@@ -658,7 +654,7 @@ async function iniciarPagina() {
     servicoPrincipal.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
     servicoPrincipal.disabled = true;
 
-    await carregarServicosDinamicosCliente();
+    await carregarServicosPrincipaisCliente();
     atualizarResumoServicos();
 }
 
