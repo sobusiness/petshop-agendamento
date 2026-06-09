@@ -28,6 +28,7 @@
     <nav class="admin-tabs">
         <button class="tab-button active" onclick="abrirSecao('agendamentos')">Agendamentos</button>
         <button class="tab-button" onclick="abrirSecao('faturamento')">Faturamento</button>
+        <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
     </nav>
 
@@ -127,6 +128,63 @@
             </div>
         </div>
     </section>
+
+
+    <section id="secao-pacotes" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Gestão de Pacotes</h2>
+                <p>Cadastre pacotes mensais ou quinzenais e acompanhe os banhos realizados.</p>
+            </div>
+        </div>
+
+        <div class="pacote-form">
+            <input type="text" id="pacoteNomeCliente" placeholder="Nome do cliente">
+            <input type="text" id="pacoteTelefone" placeholder="(11) 99999-9999" maxlength="15">
+
+            <select id="pacoteTipo" onchange="atualizarPreviaPacote()">
+                <option value="Mensal">Mensal - 4 banhos</option>
+                <option value="Quinzenal">Quinzenal - 2 banhos</option>
+            </select>
+
+            <input type="date" id="pacoteDataInicio" onchange="atualizarPreviaPacote()">
+            <input type="date" id="pacotePrimeiroBanho" onchange="atualizarPreviaPacote()">
+
+            <select id="pacoteHorario" onchange="atualizarPreviaPacote()">
+                <option value="">Horário</option>
+                <option value="09:00">09:00</option>
+                <option value="10:00">10:00</option>
+                <option value="11:00">11:00</option>
+                <option value="13:00">13:00</option>
+                <option value="14:00">14:00</option>
+                <option value="15:00">15:00</option>
+                <option value="16:00">16:00</option>
+                <option value="17:00">17:00</option>
+            </select>
+
+            <input type="text" id="pacoteDataFim" placeholder="Data fim calculada" readonly>
+
+            <button onclick="salvarPacote()">Cadastrar Pacote</button>
+        </div>
+
+        <div class="pacote-preview">
+            <strong>Próximos banhos calculados:</strong>
+            <div id="pacotePreviaDatas">Preencha o tipo, data do primeiro banho e horário.</div>
+        </div>
+
+        <div class="pacote-filters">
+            <input type="text" id="filtroPacoteCliente" placeholder="Filtrar cliente, telefone ou protocolo" oninput="renderizarPacotes()">
+            <select id="filtroPacoteStatus" onchange="renderizarPacotes()">
+                <option value="">Todos os status</option>
+                <option value="Ativo">Ativo</option>
+                <option value="Inativo">Inativo</option>
+            </select>
+            <button class="secondary-button" onclick="limparFiltrosPacotes()">Limpar Filtros</button>
+        </div>
+
+        <div id="listaPacotesAdmin" class="pacote-list"></div>
+    </section>
+
 
     <section id="secao-servicos" class="admin-section">
         <div class="section-title-row">

@@ -1,5 +1,6 @@
 let agendamentos = [];
 let servicosAdmin = [];
+let pacotesAdmin = [];
 let filtroAgendaHoje = false;
 let filtroFaturamentoAtual = "todos";
 
@@ -21,9 +22,13 @@ auth.onAuthStateChanged(user => {
 async function iniciarDashboard() {
     await carregarAgendamentos();
     await carregarServicosAdmin();
+    await carregarPacotesAdmin();
     renderizarAgenda();
     atualizarFaturamento();
     renderizarServicosAdmin();
+    renderizarPacotes();
+    configurarMascaraTelefonePacote();
+    atualizarPreviaPacote();
 }
 
 function sair() {
@@ -39,7 +44,8 @@ function abrirSecao(secao) {
     const botoes = document.querySelectorAll(".tab-button");
     if (secao === "agendamentos") botoes[0].classList.add("active");
     if (secao === "faturamento") botoes[1].classList.add("active");
-    if (secao === "servicos") botoes[2].classList.add("active");
+    if (secao === "pacotes") botoes[2].classList.add("active");
+    if (secao === "servicos") botoes[3].classList.add("active");
 }
 
 async function carregarAgendamentos() {
@@ -54,6 +60,15 @@ async function carregarServicosAdmin() {
     const snapshot = await db.collection("servicos").orderBy("nome", "asc").get();
 
     servicosAdmin = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    }));
+}
+
+async function carregarPacotesAdmin() {
+    const snapshot = await db.collection("pacotes").orderBy("criadoEm", "desc").get();
+
+    pacotesAdmin = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
     }));
@@ -610,6 +625,373 @@ function renderizarGraficos(dados) {
         plugins: [pluginRotulosValores]
     });
 }
+
+
+function configurarMascaraTelefonePacote() {
+    const input = document.getElementById("pacoteTelefone");
+    if (!input) return;
+
+    input.addEventListener("input", () => {
+        input.value = formatarTelefonePacote(input.value);
+    });
+}
+
+function formatarTelefonePacote(valor) {
+    const numeros = valor.replace(/\D/g, "").slice(0, 11);
+
+    if (numeros.length <= 2) return numeros;
+    if (numeros.length <= 7) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
+}
+
+function gerarProtocoloPacote() {
+    return `PACK-${Math.floor(10000 + Math.random() * 90000)}`;
+}
+
+function calcularDatasPacote(tipo, primeiroBanho) {
+    if (!tipo || !primeiroBanho) return [];
+
+    const quantidade = tipo === "Mensal" ? 4 : 2;
+    const intervaloDias = tipo === "Mensal" ? 7 : 14;
+    const datas = [];
+
+    for (let i = 0; i < quantidade; i++) {
+        datas.push(adicionarDias(primeiroBanho, i * intervaloDias));
+    }
+
+    return datas;
+}
+
+function atualizarPreviaPacote() {
+    const tipo = document.getElementById("pacoteTipo")?.value || "Mensal";
+    const primeiroBanho = document.getElementById("pacotePrimeiroBanho")?.value || "";
+    const horario = document.getElementById("pacoteHorario")?.value || "";
+    const dataFimInput = document.getElementById("pacoteDataFim");
+    const previa = document.getElementById("pacotePreviaDatas");
+
+    if (!previa || !dataFimInput) return;
+
+    const datas = calcularDatasPacote(tipo, primeiroBanho);
+
+    if (datas.length === 0) {
+        dataFimInput.value = "";
+        previa.textContent = "Preencha o tipo, data do primeiro banho e horário.";
+        return;
+    }
+
+    dataFimInput.value = formatarDataCurta(datas[datas.length - 1]);
+
+    previa.innerHTML = datas.map((data, index) => {
+        return `<span>${index + 1}º banho: ${formatarDataCurta(data)} ${horario ? "às " + horario : ""}</span>`;
+    }).join("");
+}
+
+function existeConflitoPacote(datas, horario) {
+    return datas
+        .map(data => {
+            const agendamento = agendamentos.find(item => item.data === data && item.horario === horario);
+            return agendamento ? { data, horario, agendamento } : null;
+        })
+        .filter(Boolean);
+}
+
+async function salvarPacote() {
+    const nomeCliente = document.getElementById("pacoteNomeCliente").value.trim();
+    const telefone = document.getElementById("pacoteTelefone").value.trim();
+    const tipo = document.getElementById("pacoteTipo").value;
+    const dataInicio = document.getElementById("pacoteDataInicio").value;
+    const primeiroBanho = document.getElementById("pacotePrimeiroBanho").value;
+    const horario = document.getElementById("pacoteHorario").value;
+
+    if (!nomeCliente || !telefone || !tipo || !dataInicio || !primeiroBanho || !horario) {
+        alert("Preencha todos os campos do pacote.");
+        return;
+    }
+
+    const datas = calcularDatasPacote(tipo, primeiroBanho);
+    const conflitos = existeConflitoPacote(datas, horario);
+
+    if (conflitos.length > 0) {
+        const mensagem = conflitos.map(item => `${formatarDataCurta(item.data)} às ${item.horario}`).join(", ");
+        alert(`Não foi possível cadastrar. Já existe agendamento nos horários: ${mensagem}`);
+        return;
+    }
+
+    const protocolo = gerarProtocoloPacote();
+
+    const visitas = datas.map((data, index) => ({
+        numero: index + 1,
+        data,
+        horario,
+        status: "Pendente",
+        agendamentoId: null
+    }));
+
+    const pacoteRef = await db.collection("pacotes").add({
+        protocolo,
+        nomeCliente,
+        telefone,
+        tipo,
+        dataInicio,
+        primeiroBanho,
+        dataFim: datas[datas.length - 1],
+        horario,
+        quantidadeTotal: visitas.length,
+        quantidadeRealizada: 0,
+        quantidadePendente: visitas.length,
+        status: "Ativo",
+        renovacaoEnviada: false,
+        visitas,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const visitasAtualizadas = [];
+
+    for (const visita of visitas) {
+        const agendamentoRef = await db.collection("agendamentos").add({
+            protocolo: `${protocolo}-${visita.numero}`,
+            cliente: nomeCliente,
+            telefone,
+            pet: "Pacote Petlyne",
+            especie: "Cão",
+            sexo: "",
+            raca: "",
+            porte: "",
+            observacaoPet: `Banho ${visita.numero}/${visitas.length} do pacote ${protocolo}`,
+            data: visita.data,
+            dataFormatada: formatarDataCurta(visita.data),
+            horario: visita.horario,
+            servicos: [{ nome: `Banho do Pacote ${tipo}`, valor: 0 }],
+            valorTotal: 0,
+            status: "Pacote",
+            origem: "pacote",
+            pacoteId: pacoteRef.id,
+            visitaNumero: visita.numero,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        visitasAtualizadas.push({
+            ...visita,
+            agendamentoId: agendamentoRef.id
+        });
+    }
+
+    await pacoteRef.update({ visitas: visitasAtualizadas });
+
+    document.getElementById("pacoteNomeCliente").value = "";
+    document.getElementById("pacoteTelefone").value = "";
+    document.getElementById("pacoteTipo").value = "Mensal";
+    document.getElementById("pacoteDataInicio").value = "";
+    document.getElementById("pacotePrimeiroBanho").value = "";
+    document.getElementById("pacoteHorario").value = "";
+    document.getElementById("pacoteDataFim").value = "";
+
+    await carregarAgendamentos();
+    await carregarPacotesAdmin();
+
+    renderizarAgenda();
+    renderizarPacotes();
+    atualizarPreviaPacote();
+
+    alert("Pacote cadastrado com sucesso.");
+}
+
+function obterPacotesFiltrados() {
+    const busca = (document.getElementById("filtroPacoteCliente")?.value || "").trim().toLowerCase();
+    const status = document.getElementById("filtroPacoteStatus")?.value || "";
+
+    return pacotesAdmin.filter(pacote => {
+        const buscaOk = !busca ||
+            (pacote.nomeCliente || "").toLowerCase().includes(busca) ||
+            (pacote.telefone || "").toLowerCase().includes(busca) ||
+            (pacote.protocolo || "").toLowerCase().includes(busca);
+
+        const statusOk = !status || pacote.status === status;
+
+        return buscaOk && statusOk;
+    });
+}
+
+function renderizarPacotes() {
+    const lista = document.getElementById("listaPacotesAdmin");
+    if (!lista) return;
+
+    const pacotes = obterPacotesFiltrados();
+
+    lista.innerHTML = "";
+
+    if (pacotes.length === 0) {
+        lista.innerHTML = `<p class="empty-state">Nenhum pacote encontrado.</p>`;
+        return;
+    }
+
+    pacotes.forEach(pacote => {
+        const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+        const realizadas = visitas.filter(v => v.status === "Realizado").length;
+        const pendentes = visitas.length - realizadas;
+        const ultimaVisita = visitas[visitas.length - 1];
+
+        const div = document.createElement("div");
+        div.className = "pacote-card";
+
+        div.innerHTML = `
+            <div class="pacote-card-header">
+                <div>
+                    <strong>${pacote.nomeCliente || "Cliente"}</strong>
+                    <span>${pacote.protocolo || ""}</span>
+                </div>
+
+                <span class="status-badge ${pacote.status === "Ativo" ? "status-confirmado" : "status-inativo"}">${pacote.status || "Ativo"}</span>
+            </div>
+
+            <div class="pacote-edit-grid">
+                <input type="text" id="pacote-nome-${pacote.id}" value="${pacote.nomeCliente || ""}">
+                <input type="text" id="pacote-telefone-${pacote.id}" value="${pacote.telefone || ""}">
+                <select id="pacote-status-${pacote.id}">
+                    <option value="Ativo" ${pacote.status === "Ativo" ? "selected" : ""}>Ativo</option>
+                    <option value="Inativo" ${pacote.status === "Inativo" ? "selected" : ""}>Inativo</option>
+                </select>
+            </div>
+
+            <div class="pacote-info-grid">
+                <div><span>Tipo</span><strong>${pacote.tipo}</strong></div>
+                <div><span>Início</span><strong>${formatarDataCurta(pacote.dataInicio)}</strong></div>
+                <div><span>Primeiro banho</span><strong>${formatarDataCurta(pacote.primeiroBanho)} às ${pacote.horario}</strong></div>
+                <div><span>Fim</span><strong>${formatarDataCurta(pacote.dataFim)}</strong></div>
+                <div><span>Realizados</span><strong>${realizadas}</strong></div>
+                <div><span>Pendentes</span><strong>${pendentes}</strong></div>
+            </div>
+
+            <div class="pacote-visitas">
+                ${visitas.map(visita => `
+                    <div class="pacote-visita ${visita.status === "Realizado" ? "realizada" : ""}">
+                        <div>
+                            <strong>${visita.numero}º banho</strong>
+                            <span>${formatarDataCurta(visita.data)} às ${visita.horario}</span>
+                        </div>
+                        <button onclick="alternarStatusVisitaPacote('${pacote.id}', ${visita.numero})">
+                            ${visita.status === "Realizado" ? "Marcar Pendente" : "Marcar Realizado"}
+                        </button>
+                    </div>
+                `).join("")}
+            </div>
+
+            <div class="pacote-renovacao">
+                <span>Último banho: ${ultimaVisita ? formatarDataCurta(ultimaVisita.data) + " às " + ultimaVisita.horario : "-"}</span>
+                <button onclick="enviarRenovacaoPacote('${pacote.id}')" ${pacote.renovacaoEnviada ? "disabled" : ""}>
+                    ${pacote.renovacaoEnviada ? "Renovação já enviada" : "Enviar renovação WhatsApp"}
+                </button>
+            </div>
+
+            <div class="pacote-actions">
+                <button onclick="atualizarPacote('${pacote.id}')">Salvar Alterações</button>
+                <button class="secondary-button" onclick="excluirPacote('${pacote.id}')">Excluir Pacote</button>
+            </div>
+        `;
+
+        lista.appendChild(div);
+    });
+}
+
+async function atualizarPacote(id) {
+    const nomeCliente = document.getElementById(`pacote-nome-${id}`).value.trim();
+    const telefone = document.getElementById(`pacote-telefone-${id}`).value.trim();
+    const status = document.getElementById(`pacote-status-${id}`).value;
+
+    await db.collection("pacotes").doc(id).update({
+        nomeCliente,
+        telefone,
+        status,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await carregarPacotesAdmin();
+    renderizarPacotes();
+}
+
+async function alternarStatusVisitaPacote(pacoteId, visitaNumero) {
+    const pacote = pacotesAdmin.find(item => item.id === pacoteId);
+    if (!pacote) return;
+
+    const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+
+    const novasVisitas = visitas.map(visita => {
+        if (visita.numero !== visitaNumero) return visita;
+
+        return {
+            ...visita,
+            status: visita.status === "Realizado" ? "Pendente" : "Realizado"
+        };
+    });
+
+    const realizadas = novasVisitas.filter(v => v.status === "Realizado").length;
+
+    await db.collection("pacotes").doc(pacoteId).update({
+        visitas: novasVisitas,
+        quantidadeRealizada: realizadas,
+        quantidadePendente: novasVisitas.length - realizadas,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await carregarPacotesAdmin();
+    renderizarPacotes();
+}
+
+async function enviarRenovacaoPacote(pacoteId) {
+    const pacote = pacotesAdmin.find(item => item.id === pacoteId);
+    if (!pacote) return;
+
+    const numero = (pacote.telefone || "").replace(/\D/g, "");
+    const mensagem = `Olá, ${pacote.nomeCliente}! Aqui é da Petlyne 🐾%0A%0AEstamos passando para avisar que este é o último banho do pacote ${pacote.tipo}.%0A%0AQuer renovar o pacote para manter os cuidados do seu pet em dia?`;
+
+    await db.collection("pacotes").doc(pacoteId).update({
+        renovacaoEnviada: true,
+        renovacaoEnviadaEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await carregarPacotesAdmin();
+    renderizarPacotes();
+
+    window.open(`https://wa.me/55${numero}?text=${mensagem}`, "_blank");
+}
+
+async function excluirPacote(id) {
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Excluir pacote",
+        mensagem: "Deseja excluir este pacote e liberar os horários vinculados a ele?",
+        icone: "🗑️",
+        textoConfirmar: "Excluir",
+        textoCancelar: "Voltar"
+    });
+
+    if (!confirmar) return;
+
+    const pacote = pacotesAdmin.find(item => item.id === id);
+    const visitas = pacote && Array.isArray(pacote.visitas) ? pacote.visitas : [];
+
+    for (const visita of visitas) {
+        if (visita.agendamentoId) {
+            await db.collection("agendamentos").doc(visita.agendamentoId).delete();
+        }
+    }
+
+    await db.collection("pacotes").doc(id).delete();
+
+    await carregarAgendamentos();
+    await carregarPacotesAdmin();
+
+    renderizarAgenda();
+    renderizarPacotes();
+    atualizarFaturamento();
+}
+
+function limparFiltrosPacotes() {
+    document.getElementById("filtroPacoteCliente").value = "";
+    document.getElementById("filtroPacoteStatus").value = "";
+    renderizarPacotes();
+}
+
 
 function mostrarConfirmacaoAdmin({ titulo, mensagem, icone = "⚠️", textoConfirmar = "Confirmar", textoCancelar = "Cancelar" }) {
     return new Promise(resolve => {

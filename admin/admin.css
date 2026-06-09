@@ -846,3 +846,223 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         grid-template-columns: 1fr !important;
     }
 }
+
+/* V2 - Gestão de Pacotes */
+.pacote-form {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr .9fr .9fr .9fr .7fr .8fr auto;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.pacote-form input,
+.pacote-form select,
+.pacote-edit-grid input,
+.pacote-edit-grid select,
+.pacote-filters input,
+.pacote-filters select {
+    height: 46px;
+    border-radius: 14px;
+    border: 1px solid var(--pet-border);
+    padding: 0 14px;
+    background: rgba(255,255,255,.95);
+    color: var(--pet-text);
+}
+
+.pacote-preview {
+    margin: 14px 0 18px;
+    padding: 16px;
+    border-radius: 18px;
+    background: rgba(255, 246, 248, .9);
+    border: 1px solid var(--pet-border);
+    color: var(--pet-text);
+}
+
+.pacote-preview strong {
+    color: var(--pet-primary-dark);
+}
+
+#pacotePreviaDatas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+#pacotePreviaDatas span {
+    background: rgba(214,90,126,.12);
+    border: 1px solid var(--pet-border);
+    color: var(--pet-primary-dark);
+    border-radius: 999px;
+    padding: 7px 10px;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.pacote-filters {
+    display: grid;
+    grid-template-columns: 1fr .4fr auto;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.pacote-list {
+    display: grid;
+    gap: 16px;
+}
+
+.pacote-card {
+    border: 1px solid var(--pet-border);
+    background: rgba(255, 246, 248, .88);
+    border-radius: 20px;
+    padding: 18px;
+}
+
+.pacote-card-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.pacote-card-header strong {
+    display: block;
+    color: var(--pet-primary-dark);
+    font-size: 19px;
+}
+
+.pacote-card-header span {
+    font-weight: bold;
+}
+
+.status-inativo {
+    background: #eee;
+    color: #6f6868;
+    border: 1px solid #d5d5d5;
+}
+
+.pacote-edit-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr .5fr;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.pacote-info-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.pacote-info-grid div {
+    border: 1px solid var(--pet-border);
+    border-radius: 15px;
+    padding: 12px;
+    background: rgba(255,255,255,.72);
+}
+
+.pacote-info-grid span {
+    display: block;
+    color: var(--pet-brown);
+    font-weight: bold;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.pacote-info-grid strong {
+    color: var(--pet-primary-dark);
+}
+
+.pacote-visitas {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.pacote-visita {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid var(--pet-border);
+    border-radius: 15px;
+    padding: 12px;
+    background: rgba(255,255,255,.72);
+}
+
+.pacote-visita.realizada {
+    background: rgba(216,245,227,.78);
+    border-color: #8ad7aa;
+}
+
+.pacote-visita strong {
+    color: var(--pet-primary-dark);
+}
+
+.pacote-visita span {
+    display: block;
+    margin-top: 4px;
+}
+
+.pacote-renovacao {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 14px;
+    padding: 12px;
+    border-radius: 15px;
+    background: rgba(255,255,255,.72);
+    border: 1px solid var(--pet-border);
+}
+
+.pacote-renovacao span {
+    font-weight: bold;
+    color: var(--pet-primary-dark);
+}
+
+.pacote-renovacao button:disabled {
+    opacity: .62;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.pacote-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.empty-state {
+    padding: 18px;
+    border: 1px dashed var(--pet-border);
+    border-radius: 16px;
+    color: var(--pet-brown);
+}
+
+@media (max-width: 1250px) {
+    .pacote-form,
+    .pacote-info-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .pacote-filters,
+    .pacote-edit-grid,
+    .pacote-renovacao,
+    .pacote-visita {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .pacote-form,
+    .pacote-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .pacote-actions {
+        flex-direction: column;
+    }
+}
