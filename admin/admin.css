@@ -1428,3 +1428,46 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         flex-direction: column;
     }
 }
+
+/* V3.1 - multi seleção de dias */
+.bloqueio-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
+}
+
+.bloqueio-dia-todo-btn {
+    height: 46px;
+}
+
+.bloqueio-selecionados-box {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    border: 1px solid var(--pet-border);
+    background: rgba(255, 246, 248, .9);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 16px;
+}
+
+.bloqueio-selecionados-box strong {
+    color: var(--pet-primary-dark);
+}
+
+.bloqueio-selecionados-box span {
+    color: var(--pet-text);
+    line-height: 1.4;
+}
+
+.bloqueio-dia.selecionado {
+    outline: 3px solid rgba(34, 197, 94, .28);
+    border-color: #22c55e;
+    background: rgba(220, 252, 231, .8);
+}
+
+@media (max-width: 1000px) {
+    .bloqueio-form,
+    .bloqueio-selecionados-box {
+        grid-template-columns: 1fr;
+    }
+}

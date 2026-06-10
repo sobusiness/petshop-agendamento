@@ -154,7 +154,7 @@
         <div class="bloqueio-form">
             <label>
                 <span>Data do Bloqueio</span>
-                <input type="date" id="bloqueioData" onchange="renderizarCalendarioBloqueios()">
+                <input type="date" id="bloqueioData" onchange="selecionarDataManualBloqueio()">
             </label>
 
             <label>
@@ -173,6 +173,13 @@
             </label>
 
             <button onclick="salvarBloqueioAgenda()">Bloquear Horário</button>
+            <button type="button" class="secondary-button bloqueio-dia-todo-btn" onclick="bloquearDiasSelecionadosDiaTodo()">Bloquear Dia Todo</button>
+        </div>
+
+        <div class="bloqueio-selecionados-box">
+            <strong>Dias selecionados:</strong>
+            <span id="diasSelecionadosBloqueio">Nenhum dia selecionado.</span>
+            <button type="button" class="secondary-button" onclick="limparSelecaoDiasBloqueio()">Limpar Seleção</button>
         </div>
 
         <div class="bloqueio-alerta">

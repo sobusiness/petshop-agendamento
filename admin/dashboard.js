@@ -3,6 +3,7 @@ let servicosAdmin = [];
 let pacotesAdmin = [];
 let bloqueiosAgenda = [];
 let mesBloqueioReferencia = new Date();
+let diasSelecionadosBloqueio = [];
 let filtroAgendaHoje = false;
 let filtroFaturamentoAtual = "todos";
 
@@ -40,6 +41,7 @@ async function iniciarDashboard() {
     renderizarPacotes();
     preencherHorariosBloqueio();
     renderizarCalendarioBloqueios();
+    atualizarTextoDiasSelecionados();
     renderizarBloqueiosAgenda();
     configurarMascaraTelefonePacote();
     preencherHorariosPacote();
@@ -919,8 +921,54 @@ function mudarMesBloqueio(delta) {
     renderizarCalendarioBloqueios();
 }
 
+function atualizarTextoDiasSelecionados() {
+    const texto = document.getElementById("diasSelecionadosBloqueio");
+    if (!texto) return;
+
+    if (diasSelecionadosBloqueio.length === 0) {
+        texto.textContent = "Nenhum dia selecionado.";
+        return;
+    }
+
+    const datasFormatadas = [...diasSelecionadosBloqueio]
+        .sort()
+        .map(data => formatarDataCurta(data));
+
+    texto.textContent = datasFormatadas.join(", ");
+}
+
 function selecionarDataBloqueio(dataISO) {
-    document.getElementById("bloqueioData").value = dataISO;
+    const input = document.getElementById("bloqueioData");
+    if (input) input.value = dataISO;
+
+    if (diasSelecionadosBloqueio.includes(dataISO)) {
+        diasSelecionadosBloqueio = diasSelecionadosBloqueio.filter(data => data !== dataISO);
+    } else {
+        diasSelecionadosBloqueio.push(dataISO);
+    }
+
+    atualizarTextoDiasSelecionados();
+    renderizarCalendarioBloqueios();
+}
+
+function selecionarDataManualBloqueio() {
+    const dataISO = document.getElementById("bloqueioData").value;
+    if (!dataISO) return;
+
+    if (!diasSelecionadosBloqueio.includes(dataISO)) {
+        diasSelecionadosBloqueio.push(dataISO);
+    }
+
+    atualizarTextoDiasSelecionados();
+    renderizarCalendarioBloqueios();
+}
+
+function limparSelecaoDiasBloqueio() {
+    diasSelecionadosBloqueio = [];
+    const input = document.getElementById("bloqueioData");
+    if (input) input.value = "";
+
+    atualizarTextoDiasSelecionados();
     renderizarCalendarioBloqueios();
 }
 
@@ -960,7 +1008,7 @@ function renderizarCalendarioBloqueios() {
 
         const celula = document.createElement("button");
         celula.type = "button";
-        celula.className = `bloqueio-dia ${selecionada === dataISO ? "selecionado" : ""} ${bloqueiosDia.length ? "com-bloqueio" : ""}`;
+        celula.className = `bloqueio-dia ${(selecionada === dataISO || diasSelecionadosBloqueio.includes(dataISO)) ? "selecionado" : ""} ${bloqueiosDia.length ? "com-bloqueio" : ""}`;
         celula.onclick = () => selecionarDataBloqueio(dataISO);
 
         celula.innerHTML = `
@@ -973,20 +1021,42 @@ function renderizarCalendarioBloqueios() {
 }
 
 async function salvarBloqueioAgenda() {
-    const data = document.getElementById("bloqueioData").value;
+    const dataCampo = document.getElementById("bloqueioData").value;
+    const datas = diasSelecionadosBloqueio.length > 0 ? [...diasSelecionadosBloqueio] : [dataCampo].filter(Boolean);
     const inicio = document.getElementById("bloqueioInicio").value;
     const fim = document.getElementById("bloqueioFim").value;
     const motivo = document.getElementById("bloqueioMotivo").value.trim() || "Ausência Temporária";
 
-    if (!data || !inicio || !fim) {
+    if (datas.length === 0 || !inicio || !fim) {
         await mostrarAvisoAdmin({
             titulo: "Campos obrigatórios",
-            mensagem: "Informe a data, o horário inicial e o horário final do bloqueio.",
+            mensagem: "Selecione pelo menos um dia, o horário inicial e o horário final do bloqueio.",
             icone: "⚠️"
         });
         return;
     }
 
+    await criarBloqueiosAgenda(datas, inicio, fim, motivo);
+}
+
+async function bloquearDiasSelecionadosDiaTodo() {
+    const dataCampo = document.getElementById("bloqueioData").value;
+    const datas = diasSelecionadosBloqueio.length > 0 ? [...diasSelecionadosBloqueio] : [dataCampo].filter(Boolean);
+    const motivo = document.getElementById("bloqueioMotivo").value.trim() || "Ausência Temporária";
+
+    if (datas.length === 0) {
+        await mostrarAvisoAdmin({
+            titulo: "Nenhum dia selecionado",
+            mensagem: "Selecione um ou mais dias no calendário antes de bloquear o dia todo.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    await criarBloqueiosAgenda(datas, "09:00", "17:30", motivo, true);
+}
+
+async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false) {
     const duracao = horarioParaMinutos(fim) - horarioParaMinutos(inicio);
 
     if (duracao <= 0) {
@@ -998,34 +1068,60 @@ async function salvarBloqueioAgenda() {
         return;
     }
 
-    if (existeConflitoHorario(data, inicio, duracao)) {
-        await mostrarAvisoAdmin({
-            titulo: "Bloqueio não permitido",
-            mensagem: "Já existe agendamento avulso ou pacote nesse período. Cancele ou remaneje o atendimento antes de bloquear.",
-            icone: "⚠️"
-        });
-        return;
-    }
+    const conflitos = [];
 
-    if (existeBloqueioHorario(data, inicio, duracao)) {
-        await mostrarAvisoAdmin({
-            titulo: "Bloqueio duplicado",
-            mensagem: "Já existe uma ausência temporária cadastrada nesse período.",
-            icone: "⚠️"
-        });
-        return;
-    }
-
-    await db.collection("bloqueiosAgenda").add({
-        data,
-        inicio,
-        fim,
-        motivo,
-        status: "Ativo",
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    datas.forEach(data => {
+        if (existeConflitoHorario(data, inicio, duracao)) {
+            conflitos.push(formatarDataCurta(data));
+        }
     });
 
+    if (conflitos.length > 0) {
+        await mostrarAvisoAdmin({
+            titulo: "Bloqueio não permitido",
+            mensagem: `Existem agendamentos avulsos ou pacotes nos seguintes dias/horários: ${conflitos.join(", ")}. Cancele ou remaneje antes de bloquear.`,
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const duplicados = [];
+
+    datas.forEach(data => {
+        if (existeBloqueioHorario(data, inicio, duracao)) {
+            duplicados.push(formatarDataCurta(data));
+        }
+    });
+
+    if (duplicados.length > 0) {
+        await mostrarAvisoAdmin({
+            titulo: "Bloqueio duplicado",
+            mensagem: `Já existe ausência temporária cadastrada nesse período para: ${duplicados.join(", ")}.`,
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const batch = db.batch();
+
+    datas.forEach(data => {
+        const ref = db.collection("bloqueiosAgenda").doc();
+
+        batch.set(ref, {
+            data,
+            inicio,
+            fim,
+            motivo,
+            diaTodo,
+            status: "Ativo",
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    });
+
+    await batch.commit();
+
     document.getElementById("bloqueioMotivo").value = "";
+    limparSelecaoDiasBloqueio();
 
     await carregarBloqueiosAgenda();
 
@@ -1036,7 +1132,9 @@ async function salvarBloqueioAgenda() {
 
     await mostrarAvisoAdmin({
         titulo: "Agenda bloqueada",
-        mensagem: "O período foi bloqueado com sucesso e já não ficará disponível para clientes.",
+        mensagem: datas.length === 1
+            ? "O período foi bloqueado com sucesso."
+            : `${datas.length} dias/períodos foram bloqueados com sucesso.`,
         icone: "✅"
     });
 }
@@ -1058,7 +1156,7 @@ function renderizarBloqueiosAgenda() {
         <div class="bloqueio-card">
             <div>
                 <strong>${formatarDataCurta(bloqueio.data)} — ${bloqueio.inicio} até ${bloqueio.fim}</strong>
-                <span>${bloqueio.motivo || "Ausência Temporária"}</span>
+                <span>${bloqueio.diaTodo ? "Dia todo — " : ""}${bloqueio.motivo || "Ausência Temporária"}</span>
             </div>
             <button class="secondary-button" onclick="excluirBloqueioAgenda('${bloqueio.id}')">Desbloquear</button>
         </div>
