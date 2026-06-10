@@ -29,6 +29,7 @@
     <nav class="admin-tabs">
         <button class="tab-button active" onclick="abrirSecao('agendamentos')">Agendamentos</button>
         <button class="tab-button" onclick="abrirSecao('faturamento')">Faturamento</button>
+        <button class="tab-button" onclick="abrirSecao('dias-horarios')">Dias e Horários</button>
         <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
     </nav>
@@ -138,6 +139,56 @@
                 <canvas id="graficoServico"></canvas>
             </div>
         </div>
+    </section>
+
+
+
+    <section id="secao-dias-horarios" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Dias e Horários</h2>
+                <p>Bloqueie períodos específicos da agenda para compromissos, folgas ou ausências temporárias.</p>
+            </div>
+        </div>
+
+        <div class="bloqueio-form">
+            <label>
+                <span>Data do Bloqueio</span>
+                <input type="date" id="bloqueioData" onchange="renderizarCalendarioBloqueios()">
+            </label>
+
+            <label>
+                <span>Horário Inicial</span>
+                <select id="bloqueioInicio"></select>
+            </label>
+
+            <label>
+                <span>Horário Final</span>
+                <select id="bloqueioFim"></select>
+            </label>
+
+            <label>
+                <span>Motivo</span>
+                <input type="text" id="bloqueioMotivo" placeholder="Ex: Ausência Temporária">
+            </label>
+
+            <button onclick="salvarBloqueioAgenda()">Bloquear Horário</button>
+        </div>
+
+        <div class="bloqueio-alerta">
+            <strong>Regra:</strong> não é possível bloquear horários que já possuem agendamento avulso ou pacote marcado.
+        </div>
+
+        <div class="bloqueio-calendario-header">
+            <button class="secondary-button" onclick="mudarMesBloqueio(-1)">Mês Anterior</button>
+            <strong id="tituloMesBloqueio"></strong>
+            <button class="secondary-button" onclick="mudarMesBloqueio(1)">Próximo Mês</button>
+        </div>
+
+        <div id="calendarioBloqueios" class="bloqueio-calendario"></div>
+
+        <h3 class="subtitulo-bloqueio">Bloqueios cadastrados</h3>
+        <div id="listaBloqueiosAgenda" class="bloqueio-list"></div>
     </section>
 
 

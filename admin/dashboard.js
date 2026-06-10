@@ -1,6 +1,8 @@
 let agendamentos = [];
 let servicosAdmin = [];
 let pacotesAdmin = [];
+let bloqueiosAgenda = [];
+let mesBloqueioReferencia = new Date();
 let filtroAgendaHoje = false;
 let filtroFaturamentoAtual = "todos";
 
@@ -31,10 +33,14 @@ async function iniciarDashboard() {
     await carregarAgendamentos();
     await carregarServicosAdmin();
     await carregarPacotesAdmin();
+    await carregarBloqueiosAgenda();
     renderizarAgenda();
     atualizarFaturamento();
     renderizarServicosAdmin();
     renderizarPacotes();
+    preencherHorariosBloqueio();
+    renderizarCalendarioBloqueios();
+    renderizarBloqueiosAgenda();
     configurarMascaraTelefonePacote();
     preencherHorariosPacote();
     atualizarPreviaPacote();
@@ -53,8 +59,9 @@ function abrirSecao(secao) {
     const botoes = document.querySelectorAll(".tab-button");
     if (secao === "agendamentos") botoes[0].classList.add("active");
     if (secao === "faturamento") botoes[1].classList.add("active");
-    if (secao === "pacotes") botoes[2].classList.add("active");
-    if (secao === "servicos") botoes[3].classList.add("active");
+    if (secao === "dias-horarios") botoes[2].classList.add("active");
+    if (secao === "pacotes") botoes[3].classList.add("active");
+    if (secao === "servicos") botoes[4].classList.add("active");
 }
 
 async function carregarAgendamentos() {
@@ -78,6 +85,15 @@ async function carregarPacotesAdmin() {
     const snapshot = await db.collection("pacotes").orderBy("criadoEm", "desc").get();
 
     pacotesAdmin = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    }));
+}
+
+async function carregarBloqueiosAgenda() {
+    const snapshot = await db.collection("bloqueiosAgenda").orderBy("data", "asc").get();
+
+    bloqueiosAgenda = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
     }));
@@ -143,6 +159,35 @@ function existeConflitoHorario(data, horario, duracaoMinutos = 60, ignorarAgenda
         return horariosSobrepostos(horario, duracaoMinutos, item.horario, Number(item.duracaoMinutos || 60));
     });
 }
+
+
+function existeBloqueioHorario(data, horario, duracaoMinutos = 60, ignorarBloqueioId = null) {
+    return bloqueiosAgenda.some(bloqueio => {
+        if (bloqueio.id === ignorarBloqueioId) return false;
+        if (bloqueio.status !== "Ativo") return false;
+        if (bloqueio.data !== data) return false;
+
+        const duracaoBloqueio = horarioParaMinutos(bloqueio.fim) - horarioParaMinutos(bloqueio.inicio);
+
+        return horariosSobrepostos(horario, duracaoMinutos, bloqueio.inicio, duracaoBloqueio);
+    });
+}
+
+function obterBloqueioHorario(data, horario) {
+    return bloqueiosAgenda.find(bloqueio => {
+        if (bloqueio.status !== "Ativo") return false;
+        if (bloqueio.data !== data) return false;
+
+        const duracaoBloqueio = horarioParaMinutos(bloqueio.fim) - horarioParaMinutos(bloqueio.inicio);
+
+        return horariosSobrepostos(horario, 30, bloqueio.inicio, duracaoBloqueio);
+    });
+}
+
+function existeConflitoAgendaOuBloqueio(data, horario, duracaoMinutos = 60) {
+    return existeConflitoHorario(data, horario, duracaoMinutos) || existeBloqueioHorario(data, horario, duracaoMinutos);
+}
+
 
 function obterOpcoesHorarioPacote() {
     return horasAgenda.filter(horario => horario !== "12:00" && horario !== "12:30");
@@ -278,6 +323,24 @@ function renderizarAgenda() {
                             ` : ""}
                         </div>
                     `;
+                } else {
+                    const bloqueio = obterBloqueioHorario(data, hora);
+
+                    if (bloqueio) {
+                        const ehInicioBloqueio = bloqueio.inicio === hora;
+
+                        cell.innerHTML = `
+                            <div class="agenda-event agenda-event-bloqueio-temporario">
+                                <div class="agenda-event-header">
+                                    <strong>${ehInicioBloqueio ? "Ausência Temporária" : "Horário bloqueado"}</strong>
+                                    <span class="status-badge status-inativo">Bloqueado</span>
+                                </div>
+                                <div class="agenda-event-info">
+                                    ${ehInicioBloqueio ? `${bloqueio.inicio} até ${bloqueio.fim}<br>${bloqueio.motivo || "Ausência Temporária"}` : `Continuação até ${bloqueio.fim}`}
+                                </div>
+                            </div>
+                        `;
+                    }
                 }
             }
 
@@ -813,6 +876,216 @@ function renderizarGraficos(dados) {
 
 
 
+
+function preencherHorariosBloqueio() {
+    const inicio = document.getElementById("bloqueioInicio");
+    const fim = document.getElementById("bloqueioFim");
+
+    if (!inicio || !fim) return;
+
+    inicio.innerHTML = "";
+    fim.innerHTML = "";
+
+    obterOpcoesHorarioPacote().forEach(horario => {
+        const optInicio = document.createElement("option");
+        optInicio.value = horario;
+        optInicio.textContent = horario;
+        inicio.appendChild(optInicio);
+    });
+
+    horasAgenda
+        .filter(horario => horario !== "12:00" && horario !== "12:30")
+        .forEach(horario => {
+            const optFim = document.createElement("option");
+            optFim.value = horario;
+            optFim.textContent = horario;
+            fim.appendChild(optFim);
+        });
+
+    inicio.value = "09:00";
+    fim.value = "12:00";
+}
+
+function obterNomeMes(data) {
+    return data.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+}
+
+function dataISOAnoMesDia(ano, mes, dia) {
+    return `${ano}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+}
+
+function mudarMesBloqueio(delta) {
+    mesBloqueioReferencia.setMonth(mesBloqueioReferencia.getMonth() + delta);
+    renderizarCalendarioBloqueios();
+}
+
+function selecionarDataBloqueio(dataISO) {
+    document.getElementById("bloqueioData").value = dataISO;
+    renderizarCalendarioBloqueios();
+}
+
+function renderizarCalendarioBloqueios() {
+    const container = document.getElementById("calendarioBloqueios");
+    const titulo = document.getElementById("tituloMesBloqueio");
+
+    if (!container || !titulo) return;
+
+    const ano = mesBloqueioReferencia.getFullYear();
+    const mes = mesBloqueioReferencia.getMonth();
+    const selecionada = document.getElementById("bloqueioData")?.value || "";
+
+    titulo.textContent = obterNomeMes(mesBloqueioReferencia);
+
+    container.innerHTML = "";
+
+    ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].forEach(dia => {
+        const header = document.createElement("div");
+        header.className = "bloqueio-dia-header";
+        header.textContent = dia;
+        container.appendChild(header);
+    });
+
+    const primeiroDia = new Date(ano, mes, 1).getDay();
+    const totalDias = new Date(ano, mes + 1, 0).getDate();
+
+    for (let i = 0; i < primeiroDia; i++) {
+        const vazio = document.createElement("div");
+        vazio.className = "bloqueio-dia vazio";
+        container.appendChild(vazio);
+    }
+
+    for (let dia = 1; dia <= totalDias; dia++) {
+        const dataISO = dataISOAnoMesDia(ano, mes, dia);
+        const bloqueiosDia = bloqueiosAgenda.filter(b => b.status === "Ativo" && b.data === dataISO);
+
+        const celula = document.createElement("button");
+        celula.type = "button";
+        celula.className = `bloqueio-dia ${selecionada === dataISO ? "selecionado" : ""} ${bloqueiosDia.length ? "com-bloqueio" : ""}`;
+        celula.onclick = () => selecionarDataBloqueio(dataISO);
+
+        celula.innerHTML = `
+            <strong>${dia}</strong>
+            ${bloqueiosDia.length ? `<span>${bloqueiosDia.length} bloqueio(s)</span>` : ""}
+        `;
+
+        container.appendChild(celula);
+    }
+}
+
+async function salvarBloqueioAgenda() {
+    const data = document.getElementById("bloqueioData").value;
+    const inicio = document.getElementById("bloqueioInicio").value;
+    const fim = document.getElementById("bloqueioFim").value;
+    const motivo = document.getElementById("bloqueioMotivo").value.trim() || "Ausência Temporária";
+
+    if (!data || !inicio || !fim) {
+        await mostrarAvisoAdmin({
+            titulo: "Campos obrigatórios",
+            mensagem: "Informe a data, o horário inicial e o horário final do bloqueio.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const duracao = horarioParaMinutos(fim) - horarioParaMinutos(inicio);
+
+    if (duracao <= 0) {
+        await mostrarAvisoAdmin({
+            titulo: "Horário inválido",
+            mensagem: "O horário final precisa ser maior que o horário inicial.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    if (existeConflitoHorario(data, inicio, duracao)) {
+        await mostrarAvisoAdmin({
+            titulo: "Bloqueio não permitido",
+            mensagem: "Já existe agendamento avulso ou pacote nesse período. Cancele ou remaneje o atendimento antes de bloquear.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    if (existeBloqueioHorario(data, inicio, duracao)) {
+        await mostrarAvisoAdmin({
+            titulo: "Bloqueio duplicado",
+            mensagem: "Já existe uma ausência temporária cadastrada nesse período.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    await db.collection("bloqueiosAgenda").add({
+        data,
+        inicio,
+        fim,
+        motivo,
+        status: "Ativo",
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    document.getElementById("bloqueioMotivo").value = "";
+
+    await carregarBloqueiosAgenda();
+
+    renderizarAgenda();
+    renderizarBloqueiosAgenda();
+    renderizarCalendarioBloqueios();
+    preencherHorariosPacote();
+
+    await mostrarAvisoAdmin({
+        titulo: "Agenda bloqueada",
+        mensagem: "O período foi bloqueado com sucesso e já não ficará disponível para clientes.",
+        icone: "✅"
+    });
+}
+
+function renderizarBloqueiosAgenda() {
+    const lista = document.getElementById("listaBloqueiosAgenda");
+    if (!lista) return;
+
+    const bloqueios = bloqueiosAgenda
+        .filter(b => b.status === "Ativo")
+        .sort((a, b) => `${a.data} ${a.inicio}`.localeCompare(`${b.data} ${b.inicio}`));
+
+    if (bloqueios.length === 0) {
+        lista.innerHTML = `<p class="empty-state">Nenhum bloqueio cadastrado.</p>`;
+        return;
+    }
+
+    lista.innerHTML = bloqueios.map(bloqueio => `
+        <div class="bloqueio-card">
+            <div>
+                <strong>${formatarDataCurta(bloqueio.data)} — ${bloqueio.inicio} até ${bloqueio.fim}</strong>
+                <span>${bloqueio.motivo || "Ausência Temporária"}</span>
+            </div>
+            <button class="secondary-button" onclick="excluirBloqueioAgenda('${bloqueio.id}')">Desbloquear</button>
+        </div>
+    `).join("");
+}
+
+async function excluirBloqueioAgenda(id) {
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Desbloquear horário",
+        mensagem: "Deseja remover este bloqueio e liberar novamente esse período para agendamentos?",
+        icone: "🔓",
+        textoConfirmar: "Desbloquear",
+        textoCancelar: "Voltar"
+    });
+
+    if (!confirmar) return;
+
+    await db.collection("bloqueiosAgenda").doc(id).delete();
+    await carregarBloqueiosAgenda();
+
+    renderizarAgenda();
+    renderizarBloqueiosAgenda();
+    renderizarCalendarioBloqueios();
+    preencherHorariosPacote();
+}
+
+
 function mostrarAvisoAdmin({ titulo, mensagem, icone = "ℹ️", textoConfirmar = "OK" }) {
     return new Promise(resolve => {
         const modal = document.getElementById("modalConfirmacaoAdmin");
@@ -909,12 +1182,21 @@ function atualizarPreviaPacote() {
 function existeConflitoPacote(datas, horario) {
     return datas
         .map(data => {
-            const conflito = agendamentos.find(item => {
+            const agendamento = agendamentos.find(item => {
                 if (item.data !== data) return false;
                 return horariosSobrepostos(horario, 60, item.horario, Number(item.duracaoMinutos || 60));
             });
 
-            return conflito ? { data, horario, agendamento: conflito } : null;
+            if (agendamento) return { data, horario, agendamento };
+
+            const bloqueio = bloqueiosAgenda.find(item => {
+                if (item.status !== "Ativo") return false;
+                if (item.data !== data) return false;
+                const duracaoBloqueio = horarioParaMinutos(item.fim) - horarioParaMinutos(item.inicio);
+                return horariosSobrepostos(horario, 60, item.inicio, duracaoBloqueio);
+            });
+
+            return bloqueio ? { data, horario, bloqueio } : null;
         })
         .filter(Boolean);
 }
@@ -1321,7 +1603,7 @@ async function atualizarDuracaoAgendamento(id, novaDuracao) {
 
     const duracao = Number(novaDuracao || 60);
 
-    if (existeConflitoHorario(agendamento.data, agendamento.horario, duracao, id)) {
+    if (existeConflitoHorario(agendamento.data, agendamento.horario, duracao, id) || existeBloqueioHorario(agendamento.data, agendamento.horario, duracao)) {
         await mostrarAvisoAdmin({
             titulo: "Conflito de agenda",
             mensagem: "Não foi possível estender este atendimento, pois o novo período conflita com outro agendamento.",

@@ -108,6 +108,18 @@ function horarioEstaOcupadoPorPeriodo(horario, agendamentos) {
     });
 }
 
+function horarioBloqueadoPorAusencia(horario, bloqueios) {
+    const inicio = horarioParaMinutos(horario);
+    const fim = inicio + calcularDuracaoAgendamentoMinutos();
+
+    return bloqueios.some(bloqueio => {
+        const inicioBloqueio = horarioParaMinutos(bloqueio.inicio);
+        const fimBloqueio = horarioParaMinutos(bloqueio.fim);
+
+        return inicio < fimBloqueio && fim > inicioBloqueio;
+    });
+}
+
 
 function formatarTelefoneCelular(valor) {
     valor = valor.replace(/\D/g, "");
@@ -452,6 +464,24 @@ async function buscarAgendamentosPorDataFirebase(dataSelecionada) {
     }
 }
 
+async function buscarBloqueiosPorDataFirebase(dataSelecionada) {
+    try {
+        if (typeof db === "undefined") {
+            return [];
+        }
+
+        const snapshot = await db.collection("bloqueiosAgenda")
+            .where("data", "==", dataSelecionada)
+            .where("status", "==", "Ativo")
+            .get();
+
+        return snapshot.docs.map(doc => doc.data());
+    } catch (error) {
+        console.error("Erro ao buscar bloqueios no Firebase:", error);
+        return [];
+    }
+}
+
 async function carregarHorariosDisponiveis() {
     const dataSelecionada = document.getElementById("data").value;
     const selectHorario = document.getElementById("horario");
@@ -472,6 +502,7 @@ async function carregarHorariosDisponiveis() {
     }
 
     agendamentosExistentes = await buscarAgendamentosPorDataFirebase(dataSelecionada);
+    const bloqueiosTemporarios = await buscarBloqueiosPorDataFirebase(dataSelecionada);
 
     let existeHorarioLivre = false;
     const duracaoSelecionada = calcularDuracaoAgendamentoMinutos();
@@ -498,10 +529,15 @@ async function carregarHorariosDisponiveis() {
         }
 
         const ocupado = horarioEstaOcupadoPorPeriodo(horario, agendamentosExistentes);
+        const ausenciaTemporaria = horarioBloqueadoPorAusencia(horario, bloqueiosTemporarios);
 
         option.value = horario;
-        option.textContent = ocupado ? `${horario} - Indisponível` : `${horario} - Disponível`;
-        option.disabled = ocupado;
+        option.textContent = ausenciaTemporaria
+            ? `${horario} - Ausência Temporária`
+            : ocupado
+                ? `${horario} - Indisponível`
+                : `${horario} - Disponível`;
+        option.disabled = ocupado || ausenciaTemporaria;
 
         if (!ocupado) existeHorarioLivre = true;
 
