@@ -180,12 +180,12 @@
 
             <label>
                 <span>Primeiro Banho</span>
-                <input type="date" id="pacotePrimeiroBanho" onchange="atualizarHorariosPacoteDisponiveis()">
+                <input type="date" id="pacotePrimeiroBanho" onchange="atualizarHorariosPacoteDisponiveis()" oninput="atualizarHorariosPacoteDisponiveis()">
             </label>
 
             <label>
                 <span>Horário</span>
-                <select id="pacoteHorario" onchange="atualizarPreviaPacote()">
+                <select id="pacoteHorario" onmousedown="preencherHorariosPacote()" onfocus="preencherHorariosPacote()" onchange="atualizarPreviaPacote()">
                     <option value="">Horário</option>
                 </select>
             </label>

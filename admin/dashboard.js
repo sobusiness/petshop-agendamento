@@ -150,7 +150,10 @@ function obterOpcoesHorarioPacote() {
 
 function datasPacoteParaValidacao() {
     const tipo = document.getElementById("pacoteTipo")?.value || "Mensal";
-    const primeiroBanho = document.getElementById("pacotePrimeiroBanho")?.value || "";
+    const primeiroBanhoInput = document.getElementById("pacotePrimeiroBanho");
+    const primeiroBanho = primeiroBanhoInput?.value || primeiroBanhoInput?.getAttribute("value") || "";
+
+    if (!primeiroBanho) return [];
 
     return calcularDatasPacote(tipo, primeiroBanho);
 }
@@ -161,6 +164,7 @@ function preencherHorariosPacote() {
 
     const valorAtual = select.value;
     const datas = datasPacoteParaValidacao();
+    const temDatas = datas.length > 0;
 
     select.innerHTML = `<option value="">Horário</option>`;
 
@@ -168,7 +172,7 @@ function preencherHorariosPacote() {
         const option = document.createElement("option");
         option.value = horario;
 
-        if (datas.length === 0) {
+        if (!temDatas) {
             option.textContent = `${horario} - Selecione o primeiro banho`;
             option.disabled = true;
         } else {
@@ -183,9 +187,7 @@ function preencherHorariosPacote() {
     });
 
     const opcaoAtual = Array.from(select.options).find(option => option.value === valorAtual && !option.disabled);
-    if (opcaoAtual) {
-        select.value = valorAtual;
-    }
+    select.value = opcaoAtual ? valorAtual : "";
 }
 
 function atualizarHorariosPacoteDisponiveis() {
@@ -881,6 +883,11 @@ function atualizarPreviaPacote() {
     const horario = document.getElementById("pacoteHorario")?.value || "";
     const dataFimInput = document.getElementById("pacoteDataFim");
     const previa = document.getElementById("pacotePreviaDatas");
+    const selectHorarioPacote = document.getElementById("pacoteHorario");
+
+    if (primeiroBanho && selectHorarioPacote && Array.from(selectHorarioPacote.options).some(option => option.textContent.includes("Selecione o primeiro banho"))) {
+        preencherHorariosPacote();
+    }
 
     if (!previa || !dataFimInput) return;
 
