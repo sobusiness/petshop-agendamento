@@ -148,23 +148,50 @@ function obterOpcoesHorarioPacote() {
     return horasAgenda.filter(horario => horario !== "12:00" && horario !== "12:30");
 }
 
+function datasPacoteParaValidacao() {
+    const tipo = document.getElementById("pacoteTipo")?.value || "Mensal";
+    const primeiroBanho = document.getElementById("pacotePrimeiroBanho")?.value || "";
+
+    return calcularDatasPacote(tipo, primeiroBanho);
+}
+
 function preencherHorariosPacote() {
     const select = document.getElementById("pacoteHorario");
     if (!select) return;
 
     const valorAtual = select.value;
+    const datas = datasPacoteParaValidacao();
+
     select.innerHTML = `<option value="">Horário</option>`;
 
     obterOpcoesHorarioPacote().forEach(horario => {
         const option = document.createElement("option");
         option.value = horario;
-        option.textContent = horario;
+
+        if (datas.length === 0) {
+            option.textContent = `${horario} - Selecione o primeiro banho`;
+            option.disabled = true;
+        } else {
+            const conflito = existeConflitoPacote(datas, horario);
+            const ocupado = conflito.length > 0;
+
+            option.textContent = ocupado ? `${horario} - Indisponível` : `${horario} - Disponível`;
+            option.disabled = ocupado;
+        }
+
         select.appendChild(option);
     });
 
-    if (valorAtual) select.value = valorAtual;
+    const opcaoAtual = Array.from(select.options).find(option => option.value === valorAtual && !option.disabled);
+    if (opcaoAtual) {
+        select.value = valorAtual;
+    }
 }
 
+function atualizarHorariosPacoteDisponiveis() {
+    preencherHorariosPacote();
+    atualizarPreviaPacote();
+}
 
 function obterFiltroProtocoloAgenda() {
     return (document.getElementById("filtroProtocoloAgenda")?.value || "").trim().toLowerCase();
@@ -910,10 +937,11 @@ async function salvarPacote() {
     if (conflitos.length > 0) {
         const mensagem = conflitos.map(item => `${formatarDataCurta(item.data)} às ${item.horario}`).join(", ");
         await mostrarAvisoAdmin({
-            titulo: "Conflito de agenda",
-            mensagem: `Não foi possível cadastrar. Já existe agendamento nos horários: ${mensagem}`,
+            titulo: "Horário indisponível",
+            mensagem: `Não foi possível cadastrar o pacote. Já existe agendamento nos horários: ${mensagem}`,
             icone: "⚠️"
         });
+        preencherHorariosPacote();
         return;
     }
 
@@ -1303,6 +1331,7 @@ async function atualizarDuracaoAgendamento(id, novaDuracao) {
 
     await carregarAgendamentos();
     renderizarAgenda();
+    preencherHorariosPacote();
 }
 
 
