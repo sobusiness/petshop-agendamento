@@ -1222,3 +1222,31 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
     color: #15803d;
     border: 1px solid #8ad7aa;
 }
+
+/* V2.7 - intra-hora e bloqueio de duração */
+.agenda-event-bloqueio {
+    opacity: .72;
+    background: rgba(214, 90, 126, .10);
+    border-style: dashed;
+}
+
+.agenda-duration-control {
+    display: grid;
+    gap: 4px;
+    margin: 8px 0;
+}
+
+.agenda-duration-control label {
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--pet-primary-dark);
+}
+
+.agenda-duration-control select {
+    width: 100%;
+    height: 30px;
+    border-radius: 8px;
+    border: 1px solid var(--pet-border);
+    background: rgba(255,255,255,.95);
+    font-size: 12px;
+}

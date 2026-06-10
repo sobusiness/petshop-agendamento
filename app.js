@@ -10,6 +10,10 @@ const horariosPadrao = [];
 
 for (let hora = horaInicio; hora <= horaFim; hora++) {
     horariosPadrao.push(`${hora.toString().padStart(2, "0")}:00`);
+
+    if (hora < horaFim) {
+        horariosPadrao.push(`${hora.toString().padStart(2, "0")}:30`);
+    }
 }
 
 let agendamentosExistentes = [];
@@ -49,6 +53,62 @@ function gerarProtocolo() {
     return `LYNE-${numero}`;
 }
 
+
+function horarioParaMinutos(horario) {
+    const [hora, minuto] = horario.split(":").map(Number);
+    return hora * 60 + minuto;
+}
+
+function minutosParaHorario(minutos) {
+    const hora = Math.floor(minutos / 60);
+    const minuto = minutos % 60;
+    return `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")}`;
+}
+
+function obterSlotsBloqueadosPorPeriodo(horarioInicio, duracaoMinutos = 60) {
+    const inicio = horarioParaMinutos(horarioInicio);
+    const fim = inicio + Number(duracaoMinutos || 60);
+    const slots = [];
+
+    for (let minuto = inicio; minuto < fim; minuto += 30) {
+        slots.push(minutosParaHorario(minuto));
+    }
+
+    return slots;
+}
+
+function calcularDuracaoAgendamentoMinutos() {
+    const especie = document.getElementById("especie")?.value || "";
+    const raca = (document.getElementById("raca")?.value || "").toLowerCase();
+    const servicoPrincipal = document.getElementById("servicoPrincipal")?.value || "";
+    const servicoFirebase = obterServicoPrincipalSelecionado();
+    const nomeServico = (servicoFirebase?.nome || servicoPrincipal || "").toLowerCase();
+
+    const ehGolden = raca.includes("golden");
+    const ehBanhoGolden = ehGolden && nomeServico.includes("banho");
+    const ehTrimmingGolden = ehGolden && nomeServico.includes("trimming");
+
+    if (especie === "Cão" && (ehBanhoGolden || ehTrimmingGolden)) {
+        return 120;
+    }
+
+    return 60;
+}
+
+function horarioEstaOcupadoPorPeriodo(horario, agendamentos) {
+    const inicio = horarioParaMinutos(horario);
+    const fim = inicio + calcularDuracaoAgendamentoMinutos();
+
+    return agendamentos.some(agendamento => {
+        const inicioExistente = horarioParaMinutos(agendamento.horario);
+        const duracaoExistente = Number(agendamento.duracaoMinutos || 60);
+        const fimExistente = inicioExistente + duracaoExistente;
+
+        return inicio < fimExistente && fim > inicioExistente;
+    });
+}
+
+
 function formatarTelefoneCelular(valor) {
     valor = valor.replace(/\D/g, "");
 
@@ -72,6 +132,8 @@ document.getElementById("adicionalHidratacao").addEventListener("change", atuali
 document.getElementById("adicionalTosaHigienica").addEventListener("change", atualizarResumoServicos);
 document.getElementById("adicionalCorteUnha").addEventListener("change", atualizarResumoServicos);
 document.getElementById("data").addEventListener("change", carregarHorariosDisponiveis);
+document.getElementById("raca").addEventListener("input", carregarHorariosDisponiveis);
+document.getElementById("servicoPrincipal").addEventListener("change", carregarHorariosDisponiveis);
 
 
 async function carregarServicosPrincipaisCliente() {
@@ -411,16 +473,13 @@ async function carregarHorariosDisponiveis() {
 
     agendamentosExistentes = await buscarAgendamentosPorDataFirebase(dataSelecionada);
 
-    const horariosOcupados = agendamentosExistentes
-        .filter(agendamento => agendamento.data === dataSelecionada)
-        .map(agendamento => agendamento.horario);
-
     let existeHorarioLivre = false;
+    const duracaoSelecionada = calcularDuracaoAgendamentoMinutos();
 
     horariosPadrao.forEach(horario => {
         const option = document.createElement("option");
 
-        if (horario === horarioAlmoco) {
+        if (horario === horarioAlmoco || horario === "12:30") {
             option.value = horario;
             option.textContent = `${horario} - Almoço`;
             option.disabled = true;
@@ -428,7 +487,17 @@ async function carregarHorariosDisponiveis() {
             return;
         }
 
-        const ocupado = horariosOcupados.includes(horario);
+        const fimPrevisto = horarioParaMinutos(horario) + duracaoSelecionada;
+
+        if (fimPrevisto > horarioParaMinutos(`${horaFim.toString().padStart(2, "0")}:00`)) {
+            option.value = horario;
+            option.textContent = `${horario} - Indisponível`;
+            option.disabled = true;
+            selectHorario.appendChild(option);
+            return;
+        }
+
+        const ocupado = horarioEstaOcupadoPorPeriodo(horario, agendamentosExistentes);
 
         option.value = horario;
         option.textContent = ocupado ? `${horario} - Indisponível` : `${horario} - Disponível`;
@@ -566,6 +635,7 @@ function abrirPreviaAgendamento() {
         data,
         dataFormatada,
         horario: document.getElementById("horario").value,
+        duracaoMinutos: calcularDuracaoAgendamentoMinutos(),
         resumo
     };
 
@@ -653,6 +723,7 @@ async function salvarAgendamentoFirebase(dados, protocolo) {
         data: dados.data,
         dataFormatada: dados.dataFormatada,
         horario: dados.horario,
+        duracaoMinutos: dados.duracaoMinutos || calcularDuracaoAgendamentoMinutos(),
         servicos: servicos,
         valorTotal: dados.resumo.total,
         status: "Confirmado",
@@ -676,6 +747,7 @@ async function confirmarAgendamentoFinal() {
     agendamentosExistentes.push({
         data: dadosPreAgendamento.data,
         horario: dadosPreAgendamento.horario,
+        duracaoMinutos: dadosPreAgendamento.duracaoMinutos || calcularDuracaoAgendamentoMinutos(),
         protocolo
     });
 

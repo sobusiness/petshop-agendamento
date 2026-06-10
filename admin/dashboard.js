@@ -8,7 +8,15 @@ let chartFaturamentoDia = null;
 let chartEspecie = null;
 let chartServico = null;
 
-const horasAgenda = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
+const horasAgenda = [];
+
+for (let hora = 9; hora <= 17; hora++) {
+    horasAgenda.push(`${hora.toString().padStart(2, "0")}:00`);
+
+    if (hora < 17) {
+        horasAgenda.push(`${hora.toString().padStart(2, "0")}:30`);
+    }
+}
 
 auth.onAuthStateChanged(user => {
     if (!user) {
@@ -28,6 +36,7 @@ async function iniciarDashboard() {
     renderizarServicosAdmin();
     renderizarPacotes();
     configurarMascaraTelefonePacote();
+    preencherHorariosPacote();
     atualizarPreviaPacote();
 }
 
@@ -105,6 +114,58 @@ function formatarDataCurta(dataISO) {
 }
 
 
+
+function horarioParaMinutos(horario) {
+    const [hora, minuto] = horario.split(":").map(Number);
+    return hora * 60 + minuto;
+}
+
+function minutosParaHorario(minutos) {
+    const hora = Math.floor(minutos / 60);
+    const minuto = minutos % 60;
+    return `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")}`;
+}
+
+function horariosSobrepostos(inicioA, duracaoA, inicioB, duracaoB) {
+    const aInicio = horarioParaMinutos(inicioA);
+    const aFim = aInicio + Number(duracaoA || 60);
+    const bInicio = horarioParaMinutos(inicioB);
+    const bFim = bInicio + Number(duracaoB || 60);
+
+    return aInicio < bFim && aFim > bInicio;
+}
+
+function existeConflitoHorario(data, horario, duracaoMinutos = 60, ignorarAgendamentoId = null) {
+    return agendamentos.some(item => {
+        if (item.id === ignorarAgendamentoId) return false;
+        if (item.data !== data) return false;
+
+        return horariosSobrepostos(horario, duracaoMinutos, item.horario, Number(item.duracaoMinutos || 60));
+    });
+}
+
+function obterOpcoesHorarioPacote() {
+    return horasAgenda.filter(horario => horario !== "12:00" && horario !== "12:30");
+}
+
+function preencherHorariosPacote() {
+    const select = document.getElementById("pacoteHorario");
+    if (!select) return;
+
+    const valorAtual = select.value;
+    select.innerHTML = `<option value="">Horário</option>`;
+
+    obterOpcoesHorarioPacote().forEach(horario => {
+        const option = document.createElement("option");
+        option.value = horario;
+        option.textContent = horario;
+        select.appendChild(option);
+    });
+
+    if (valorAtual) select.value = valorAtual;
+}
+
+
 function obterFiltroProtocoloAgenda() {
     return (document.getElementById("filtroProtocoloAgenda")?.value || "").trim().toLowerCase();
 }
@@ -125,7 +186,7 @@ function renderizarAgenda() {
 
     const datas = filtroAgendaHoje ? [hojeISO()] : obterSemanaReferencia();
 
-    calendario.style.gridTemplateColumns = `90px repeat(${datas.length}, minmax(160px, 1fr))`;
+    calendario.style.gridTemplateColumns = `90px repeat(${datas.length}, minmax(170px, 1fr))`;
 
     calendario.appendChild(criarCelula("Hora", "agenda-cell agenda-header"));
 
@@ -139,13 +200,13 @@ function renderizarAgenda() {
         datas.forEach(data => {
             const cell = criarCelula("", "agenda-cell");
 
-            if (hora === "12:00") {
+            if (hora === "12:00" || hora === "12:30") {
                 cell.innerHTML = `<div class="agenda-event"><strong>Almoço</strong></div>`;
             } else {
                 const agendamento = agendamentos.find(item =>
                     item.data === data &&
-                    item.horario === hora &&
-                    agendamentoBateFiltroProtocolo(item)
+                    agendamentoBateFiltroProtocolo(item) &&
+                    horariosSobrepostos(hora, 30, item.horario, Number(item.duracaoMinutos || 60))
                 );
 
                 if (agendamento) {
@@ -155,23 +216,37 @@ function renderizarAgenda() {
 
                     const status = agendamento.status || "Confirmado";
                     const statusClasse = status === "Concluído" ? "status-concluido" : "status-confirmado";
+                    const ehInicio = agendamento.horario === hora;
 
                     cell.innerHTML = `
-                        <div class="agenda-event">
+                        <div class="agenda-event ${!ehInicio ? "agenda-event-bloqueio" : ""}">
                             <div class="agenda-event-header">
-                                <strong>${agendamento.pet || "Pet"}</strong>
-                                <span class="status-badge ${statusClasse}">${status}</span>
+                                <strong>${ehInicio ? (agendamento.pet || "Pet") : "Horário bloqueado"}</strong>
+                                <span class="status-badge ${statusClasse}">${ehInicio ? status : "Bloqueado"}</span>
                             </div>
                             <div class="agenda-event-info">
-                                <span class="agenda-protocolo">${agendamento.protocolo || ""}</span><br>
-                                ${servicos}<br>
-                                ${agendamento.especie || ""}<br>
-                                ${agendamento.observacaoPet || ""}
+                                ${ehInicio ? `<span class="agenda-protocolo">${agendamento.protocolo || ""}</span><br>` : ""}
+                                ${ehInicio ? servicos + "<br>" : `Continuação de ${agendamento.horario}<br>`}
+                                ${ehInicio ? (agendamento.especie || "") + "<br>" : ""}
+                                ${ehInicio ? (agendamento.observacaoPet || "") : ""}
                             </div>
-                            <div class="agenda-event-actions">
-                                <button class="mini-button concluir" onclick="concluirAgendamento('${agendamento.id}')">Concluir</button>
-                                <button class="mini-button cancelar" onclick="cancelarAgendamento('${agendamento.id}')">Cancelar</button>
-                            </div>
+                            ${ehInicio ? `
+                                <div class="agenda-duration-control">
+                                    <label>Duração</label>
+                                    <select onchange="atualizarDuracaoAgendamento('${agendamento.id}', this.value)">
+                                        <option value="30" ${Number(agendamento.duracaoMinutos || 60) === 30 ? "selected" : ""}>30 min</option>
+                                        <option value="60" ${Number(agendamento.duracaoMinutos || 60) === 60 ? "selected" : ""}>1h</option>
+                                        <option value="90" ${Number(agendamento.duracaoMinutos || 60) === 90 ? "selected" : ""}>1h30</option>
+                                        <option value="120" ${Number(agendamento.duracaoMinutos || 60) === 120 ? "selected" : ""}>2h</option>
+                                        <option value="150" ${Number(agendamento.duracaoMinutos || 60) === 150 ? "selected" : ""}>2h30</option>
+                                        <option value="180" ${Number(agendamento.duracaoMinutos || 60) === 180 ? "selected" : ""}>3h</option>
+                                    </select>
+                                </div>
+                                <div class="agenda-event-actions">
+                                    <button onclick="concluirAgendamento('${agendamento.id}')">Concluir</button>
+                                    <button class="secondary-button" onclick="cancelarAgendamento('${agendamento.id}')">Cancelar</button>
+                                </div>
+                            ` : ""}
                         </div>
                     `;
                 }
@@ -181,9 +256,7 @@ function renderizarAgenda() {
         });
     });
 
-    filtroInfo.textContent = filtroAgendaHoje
-        ? `Exibindo agendamentos de hoje (${formatarDataCurta(hojeISO())})`
-        : "Exibindo próximos 7 dias.";
+    filtroInfo.textContent = filtroAgendaHoje ? "Exibindo agendamentos de hoje." : "Exibindo próximos 7 dias.";
 }
 
 function criarCelula(conteudo, classe) {
@@ -802,8 +875,12 @@ function atualizarPreviaPacote() {
 function existeConflitoPacote(datas, horario) {
     return datas
         .map(data => {
-            const agendamento = agendamentos.find(item => item.data === data && item.horario === horario);
-            return agendamento ? { data, horario, agendamento } : null;
+            const conflito = agendamentos.find(item => {
+                if (item.data !== data) return false;
+                return horariosSobrepostos(horario, 60, item.horario, Number(item.duracaoMinutos || 60));
+            });
+
+            return conflito ? { data, horario, agendamento: conflito } : null;
         })
         .filter(Boolean);
 }
@@ -887,6 +964,7 @@ async function salvarPacote() {
             data: visita.data,
             dataFormatada: formatarDataCurta(visita.data),
             horario: visita.horario,
+            duracaoMinutos: 60,
             servicos: [{ nome: `Pacote ${tipo}`, valor: valorPorVisita }],
             valorTotal: valorPorVisita,
             status: "Pacote",
@@ -1198,6 +1276,33 @@ function mostrarConfirmacaoAdmin({ titulo, mensagem, icone = "⚠️", textoConf
             if (event.target === modal) fechar(false);
         };
     });
+}
+
+
+
+async function atualizarDuracaoAgendamento(id, novaDuracao) {
+    const agendamento = agendamentos.find(item => item.id === id);
+    if (!agendamento) return;
+
+    const duracao = Number(novaDuracao || 60);
+
+    if (existeConflitoHorario(agendamento.data, agendamento.horario, duracao, id)) {
+        await mostrarAvisoAdmin({
+            titulo: "Conflito de agenda",
+            mensagem: "Não foi possível estender este atendimento, pois o novo período conflita com outro agendamento.",
+            icone: "⚠️"
+        });
+        renderizarAgenda();
+        return;
+    }
+
+    await db.collection("agendamentos").doc(id).update({
+        duracaoMinutos: duracao,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await carregarAgendamentos();
+    renderizarAgenda();
 }
 
 
