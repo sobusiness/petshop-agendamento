@@ -1558,3 +1558,31 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .calendar-wrapper::-webkit-scrollbar-thumb:hover {
     background: var(--pet-primary-dark);
 }
+
+/* V3.5 - Correção do scroll superior sincronizado */
+.calendar-wrapper {
+    overflow-x: auto !important;
+    overflow-y: visible;
+}
+
+.calendar-scroll-top {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    width: 100% !important;
+    height: 20px !important;
+    margin-bottom: 10px !important;
+    cursor: grab;
+}
+
+.calendar-scroll-top:active {
+    cursor: grabbing;
+}
+
+#agendaScrollTopContent {
+    min-width: 100%;
+    height: 1px;
+}
+
+.agenda-grid {
+    width: max-content;
+}

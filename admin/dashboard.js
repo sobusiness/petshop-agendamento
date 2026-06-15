@@ -292,28 +292,55 @@ function agendamentoBateFiltroProtocolo(agendamento) {
 
 
 
-function sincronizarScrollAgenda(origem) {
+let sincronizandoScrollAgenda = false;
+let scrollAgendaConfigurado = false;
+
+function configurarScrollSuperiorAgenda() {
+    if (scrollAgendaConfigurado) return;
+
     const scrollTop = document.getElementById("agendaScrollTop");
     const scrollBottom = document.getElementById("agendaScrollBottom");
 
     if (!scrollTop || !scrollBottom) return;
 
-    if (origem === "top") {
-        scrollBottom.scrollLeft = scrollTop.scrollLeft;
-    }
+    scrollTop.addEventListener("scroll", () => {
+        if (sincronizandoScrollAgenda) return;
 
-    if (origem === "bottom") {
+        sincronizandoScrollAgenda = true;
+        scrollBottom.scrollLeft = scrollTop.scrollLeft;
+        requestAnimationFrame(() => sincronizandoScrollAgenda = false);
+    });
+
+    scrollBottom.addEventListener("scroll", () => {
+        if (sincronizandoScrollAgenda) return;
+
+        sincronizandoScrollAgenda = true;
         scrollTop.scrollLeft = scrollBottom.scrollLeft;
-    }
+        requestAnimationFrame(() => sincronizandoScrollAgenda = false);
+    });
+
+    scrollAgendaConfigurado = true;
 }
 
 function atualizarScrollSuperiorAgenda() {
     const calendario = document.getElementById("calendarioAgenda");
+    const scrollTop = document.getElementById("agendaScrollTop");
+    const scrollBottom = document.getElementById("agendaScrollBottom");
     const scrollContent = document.getElementById("agendaScrollTopContent");
 
-    if (!calendario || !scrollContent) return;
+    if (!calendario || !scrollTop || !scrollBottom || !scrollContent) return;
 
-    scrollContent.style.width = `${calendario.scrollWidth}px`;
+    configurarScrollSuperiorAgenda();
+
+    const larguraReal = Math.max(
+        calendario.scrollWidth,
+        calendario.offsetWidth,
+        scrollBottom.scrollWidth
+    );
+
+    scrollContent.style.width = `${larguraReal}px`;
+
+    scrollTop.scrollLeft = scrollBottom.scrollLeft;
 }
 
 function renderizarAgenda() {
