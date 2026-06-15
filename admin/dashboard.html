@@ -43,7 +43,9 @@
 
             <div class="filter-actions agenda-filter-actions">
                 <input type="text" id="filtroProtocoloAgenda" placeholder="Pesquisar protocolo. Ex: LYNE-12345" oninput="renderizarAgenda()">
-                <button onclick="filtrarAgendamentosHoje()">Agendamentos do Dia</button>
+                <button onclick="filtrarAgendamentosHoje()">Hoje</button>
+                <button onclick="filtrarAgendaPeriodo('ultimos7')">Últimos 7 dias</button>
+                <button onclick="filtrarAgendaPeriodo('ultimos15')">Últimos 15 dias</button>
                 <button class="secondary-button" onclick="limparFiltroAgendamentos()">Limpar Filtro</button>
             </div>
         </div>

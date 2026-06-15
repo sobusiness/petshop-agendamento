@@ -4,7 +4,7 @@ let pacotesAdmin = [];
 let bloqueiosAgenda = [];
 let mesBloqueioReferencia = new Date();
 let diasSelecionadosBloqueio = [];
-let filtroAgendaHoje = false;
+let filtroAgendaPeriodo = "todos";
 let filtroFaturamentoAtual = "todos";
 
 let chartFaturamentoDia = null;
@@ -119,9 +119,46 @@ function adicionarDias(dataBase, dias) {
     return data.toISOString().slice(0, 10);
 }
 
-function obterSemanaReferencia() {
+function obterDatasAgendaAberta() {
+    const datas = new Set();
+
+    agendamentos.forEach(item => {
+        if (item.data && agendamentoBateFiltroProtocolo(item)) {
+            datas.add(item.data);
+        }
+    });
+
+    bloqueiosAgenda.forEach(item => {
+        if (item.status === "Ativo" && item.data) {
+            datas.add(item.data);
+        }
+    });
+
+    if (datas.size === 0) {
+        datas.add(hojeISO());
+    }
+
+    return Array.from(datas).sort();
+}
+
+function obterDatasAgendaPorPeriodo() {
     const hoje = hojeISO();
-    return Array.from({ length: 7 }, (_, index) => adicionarDias(hoje, index));
+
+    if (filtroAgendaPeriodo === "hoje") {
+        return [hoje];
+    }
+
+    if (filtroAgendaPeriodo === "ultimos7") {
+        const inicio = adicionarDias(hoje, -6);
+        return Array.from({ length: 7 }, (_, index) => adicionarDias(inicio, index));
+    }
+
+    if (filtroAgendaPeriodo === "ultimos15") {
+        const inicio = adicionarDias(hoje, -14);
+        return Array.from({ length: 15 }, (_, index) => adicionarDias(inicio, index));
+    }
+
+    return obterDatasAgendaAberta();
 }
 
 function formatarDataCurta(dataISO) {
@@ -260,7 +297,7 @@ function renderizarAgenda() {
 
     calendario.innerHTML = "";
 
-    const datas = filtroAgendaHoje ? [hojeISO()] : obterSemanaReferencia();
+    const datas = obterDatasAgendaPorPeriodo();
 
     calendario.style.gridTemplateColumns = `90px repeat(${datas.length}, minmax(170px, 1fr))`;
 
@@ -350,7 +387,14 @@ function renderizarAgenda() {
         });
     });
 
-    filtroInfo.textContent = filtroAgendaHoje ? "Exibindo agendamentos de hoje." : "Exibindo próximos 7 dias.";
+    const textosPeriodo = {
+        todos: "Exibindo agenda aberta com todas as datas cadastradas.",
+        hoje: "Exibindo agendamentos de hoje.",
+        ultimos7: "Exibindo últimos 7 dias.",
+        ultimos15: "Exibindo últimos 15 dias."
+    };
+
+    filtroInfo.textContent = textosPeriodo[filtroAgendaPeriodo] || textosPeriodo.todos;
 }
 
 function criarCelula(conteudo, classe) {
@@ -361,12 +405,17 @@ function criarCelula(conteudo, classe) {
 }
 
 function filtrarAgendamentosHoje() {
-    filtroAgendaHoje = true;
+    filtroAgendaPeriodo = "hoje";
+    renderizarAgenda();
+}
+
+function filtrarAgendaPeriodo(periodo) {
+    filtroAgendaPeriodo = periodo;
     renderizarAgenda();
 }
 
 function limparFiltroAgendamentos() {
-    filtroAgendaHoje = false;
+    filtroAgendaPeriodo = "todos";
 
     const filtroProtocolo = document.getElementById("filtroProtocoloAgenda");
     if (filtroProtocolo) filtroProtocolo.value = "";
