@@ -1495,3 +1495,29 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         grid-template-columns: 1fr !important;
     }
 }
+
+
+/* V3.3 - correção definitiva agenda aberta */
+#secao-agendamentos .agenda-filter-actions {
+    display: grid !important;
+    grid-template-columns: minmax(240px, 1fr) auto auto auto auto !important;
+    gap: 10px !important;
+    align-items: center !important;
+}
+
+#secao-agendamentos .agenda-filter-actions button {
+    white-space: nowrap !important;
+    height: 42px !important;
+}
+
+@media (max-width: 1150px) {
+    #secao-agendamentos .agenda-filter-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 680px) {
+    #secao-agendamentos .agenda-filter-actions {
+        grid-template-columns: 1fr !important;
+    }
+}
