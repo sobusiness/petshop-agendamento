@@ -18,6 +18,7 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
 
 let agendamentosExistentes = [];
 let servicosPrincipaisCliente = [];
+let timeoutBuscaCadastroTelefone = null;
 
 const precosBanhoCaes = {
     "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
@@ -121,6 +122,76 @@ function horarioBloqueadoPorAusencia(horario, bloqueios) {
 }
 
 
+
+function normalizarTelefone(valor) {
+    return (valor || "").replace(/\D/g, "");
+}
+
+function preencherCampoSeVazioOuDiferente(id, valor) {
+    const campo = document.getElementById(id);
+    if (!campo || valor === undefined || valor === null || valor === "") return;
+
+    campo.value = valor;
+}
+
+async function buscarCadastroPorTelefoneFirebase(telefoneDigitado) {
+    try {
+        if (typeof db === "undefined") return null;
+
+        const telefoneNumeros = normalizarTelefone(telefoneDigitado);
+
+        if (telefoneNumeros.length !== 11) return null;
+
+        const snapshot = await db.collection("agendamentos").get();
+
+        const registros = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(item => normalizarTelefone(item.telefone) === telefoneNumeros)
+            .sort((a, b) => {
+                const dataA = `${a.data || ""} ${a.horario || ""}`;
+                const dataB = `${b.data || ""} ${b.horario || ""}`;
+                return dataB.localeCompare(dataA);
+            });
+
+        return registros[0] || null;
+    } catch (error) {
+        console.error("Erro ao buscar cadastro por telefone:", error);
+        return null;
+    }
+}
+
+async function preencherCadastroPorTelefone() {
+    const telefone = document.getElementById("telefone").value;
+    const telefoneNumeros = normalizarTelefone(telefone);
+
+    if (telefoneNumeros.length !== 11) return;
+
+    const cadastro = await buscarCadastroPorTelefoneFirebase(telefone);
+
+    if (!cadastro) return;
+
+    preencherCampoSeVazioOuDiferente("cliente", cadastro.cliente);
+    preencherCampoSeVazioOuDiferente("pet", cadastro.pet);
+    preencherCampoSeVazioOuDiferente("especie", cadastro.especie);
+    preencherCampoSeVazioOuDiferente("sexo", cadastro.sexo);
+    preencherCampoSeVazioOuDiferente("raca", cadastro.raca);
+    preencherCampoSeVazioOuDiferente("porte", cadastro.porte);
+    preencherCampoSeVazioOuDiferente("observacaoPet", cadastro.observacaoPet);
+
+    atualizarServicosPorEspecie();
+    atualizarResumoServicos();
+    carregarHorariosDisponiveis();
+}
+
+function buscarCadastroTelefoneComDelay() {
+    clearTimeout(timeoutBuscaCadastroTelefone);
+
+    timeoutBuscaCadastroTelefone = setTimeout(() => {
+        preencherCadastroPorTelefone();
+    }, 450);
+}
+
+
 function formatarTelefoneCelular(valor) {
     valor = valor.replace(/\D/g, "");
 
@@ -133,6 +204,7 @@ function formatarTelefoneCelular(valor) {
 
 document.getElementById("telefone").addEventListener("input", function () {
     this.value = formatarTelefoneCelular(this.value);
+    buscarCadastroTelefoneComDelay();
 });
 
 document.getElementById("especie").addEventListener("change", atualizarServicosPorEspecie);

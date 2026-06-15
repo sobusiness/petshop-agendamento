@@ -1653,3 +1653,55 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
     border-radius: 999px !important;
     border: 2px solid rgba(255, 232, 238, .98) !important;
 }
+
+/* V3.7 - edição individual de visitas do pacote */
+.pacote-visita-edicao {
+    display: grid;
+    grid-template-columns: 180px 140px;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.pacote-visita-edicao label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.pacote-visita-edicao label span {
+    color: var(--pet-primary-dark);
+    font-weight: bold;
+    font-size: 12px;
+}
+
+.pacote-visita-edicao input,
+.pacote-visita-edicao select {
+    height: 38px;
+    border-radius: 10px;
+    border: 1px solid var(--pet-border);
+    padding: 0 10px;
+    background: rgba(255,255,255,.95);
+    color: var(--pet-text);
+}
+
+.pacote-visita-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 720px) {
+    .pacote-visita-edicao {
+        grid-template-columns: 1fr;
+    }
+
+    .pacote-visita-actions {
+        justify-content: stretch;
+    }
+
+    .pacote-visita-actions button {
+        width: 100%;
+    }
+}

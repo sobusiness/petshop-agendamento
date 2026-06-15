@@ -1561,6 +1561,14 @@ function obterPacotesFiltrados() {
     });
 }
 
+
+function gerarOptionsHorarioVisitaPacote(horarioAtual) {
+    return obterOpcoesHorarioPacote()
+        .map(horario => `<option value="${horario}" ${horario === horarioAtual ? "selected" : ""}>${horario}</option>`)
+        .join("");
+}
+
+
 function renderizarPacotes() {
     const lista = document.getElementById("listaPacotesAdmin");
     if (!lista) return;
@@ -1639,11 +1647,25 @@ function renderizarPacotes() {
                     <div class="pacote-visita ${visita.status === "Realizado" ? "realizada" : ""}">
                         <div>
                             <strong>${visita.numero}º banho</strong>
-                            <span>${formatarDataCurta(visita.data)} às ${visita.horario}</span>
+                            <div class="pacote-visita-edicao">
+                                <label>
+                                    <span>Data</span>
+                                    <input type="date" id="visita-data-${pacote.id}-${visita.numero}" value="${visita.data || ""}">
+                                </label>
+                                <label>
+                                    <span>Horário</span>
+                                    <select id="visita-horario-${pacote.id}-${visita.numero}">
+                                        ${gerarOptionsHorarioVisitaPacote(visita.horario)}
+                                    </select>
+                                </label>
+                            </div>
                         </div>
-                        <button onclick="alternarStatusVisitaPacote('${pacote.id}', ${visita.numero})">
-                            ${visita.status === "Realizado" ? "Marcar Pendente" : "Marcar Realizado"}
-                        </button>
+                        <div class="pacote-visita-actions">
+                            <button onclick="atualizarVisitaPacote('${pacote.id}', ${visita.numero})">Salvar Data</button>
+                            <button onclick="alternarStatusVisitaPacote('${pacote.id}', ${visita.numero})">
+                                ${visita.status === "Realizado" ? "Marcar Pendente" : "Marcar Realizado"}
+                            </button>
+                        </div>
                     </div>
                 `).join("")}
             </div>
@@ -1690,6 +1712,86 @@ async function atualizarPacote(id) {
     renderizarPacotes();
     atualizarFaturamento();
 }
+
+
+async function atualizarVisitaPacote(pacoteId, visitaNumero) {
+    const pacote = pacotesAdmin.find(item => item.id === pacoteId);
+    if (!pacote) return;
+
+    const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+    const visitaAtual = visitas.find(visita => visita.numero === visitaNumero);
+
+    if (!visitaAtual) return;
+
+    const novaData = document.getElementById(`visita-data-${pacoteId}-${visitaNumero}`).value;
+    const novoHorario = document.getElementById(`visita-horario-${pacoteId}-${visitaNumero}`).value;
+
+    if (!novaData || !novoHorario) {
+        await mostrarAvisoAdmin({
+            titulo: "Campos obrigatórios",
+            mensagem: "Informe a data e o horário deste banho do pacote.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const agendamentoId = visitaAtual.agendamentoId || null;
+
+    if (existeConflitoHorario(novaData, novoHorario, 60, agendamentoId) || existeBloqueioHorario(novaData, novoHorario, 60)) {
+        await mostrarAvisoAdmin({
+            titulo: "Horário indisponível",
+            mensagem: "Não foi possível alterar este banho. Já existe agendamento ou bloqueio nesse horário.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const novasVisitas = visitas.map(visita => {
+        if (visita.numero !== visitaNumero) return visita;
+
+        return {
+            ...visita,
+            data: novaData,
+            horario: novoHorario
+        };
+    });
+
+    const visitasOrdenadas = [...novasVisitas].sort((a, b) => Number(a.numero) - Number(b.numero));
+    const primeiraVisita = visitasOrdenadas[0];
+    const ultimaVisita = visitasOrdenadas[visitasOrdenadas.length - 1];
+
+    await db.collection("pacotes").doc(pacoteId).update({
+        visitas: novasVisitas,
+        primeiroBanho: primeiraVisita?.data || pacote.primeiroBanho,
+        dataFim: ultimaVisita?.data || pacote.dataFim,
+        horario: primeiraVisita?.horario || pacote.horario,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (agendamentoId) {
+        await db.collection("agendamentos").doc(agendamentoId).update({
+            data: novaData,
+            dataFormatada: formatarDataCurta(novaData),
+            horario: novoHorario,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    await carregarAgendamentos();
+    await carregarPacotesAdmin();
+
+    renderizarAgenda();
+    renderizarPacotes();
+    atualizarFaturamento();
+    preencherHorariosPacote();
+
+    await mostrarAvisoAdmin({
+        titulo: "Banho atualizado",
+        mensagem: "A data e o horário deste banho foram atualizados na agenda.",
+        icone: "✅"
+    });
+}
+
 
 async function alternarStatusVisitaPacote(pacoteId, visitaNumero) {
     const pacote = pacotesAdmin.find(item => item.id === pacoteId);
