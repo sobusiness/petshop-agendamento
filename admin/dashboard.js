@@ -291,6 +291,31 @@ function agendamentoBateFiltroProtocolo(agendamento) {
 }
 
 
+
+function sincronizarScrollAgenda(origem) {
+    const scrollTop = document.getElementById("agendaScrollTop");
+    const scrollBottom = document.getElementById("agendaScrollBottom");
+
+    if (!scrollTop || !scrollBottom) return;
+
+    if (origem === "top") {
+        scrollBottom.scrollLeft = scrollTop.scrollLeft;
+    }
+
+    if (origem === "bottom") {
+        scrollTop.scrollLeft = scrollBottom.scrollLeft;
+    }
+}
+
+function atualizarScrollSuperiorAgenda() {
+    const calendario = document.getElementById("calendarioAgenda");
+    const scrollContent = document.getElementById("agendaScrollTopContent");
+
+    if (!calendario || !scrollContent) return;
+
+    scrollContent.style.width = `${calendario.scrollWidth}px`;
+}
+
 function renderizarAgenda() {
     const calendario = document.getElementById("calendarioAgenda");
     const filtroInfo = document.getElementById("agendaFiltroInfo");
@@ -395,6 +420,8 @@ function renderizarAgenda() {
     };
 
     filtroInfo.textContent = textosPeriodo[filtroAgendaPeriodo] || textosPeriodo.todos;
+
+    setTimeout(atualizarScrollSuperiorAgenda, 0);
 }
 
 function criarCelula(conteudo, classe) {

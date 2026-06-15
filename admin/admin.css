@@ -1521,3 +1521,40 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         grid-template-columns: 1fr !important;
     }
 }
+
+/* V3.4 - Scroll superior do calendário */
+.calendar-scroll-top {
+    overflow-x: auto;
+    overflow-y: hidden;
+    height: 18px;
+    margin-bottom: 8px;
+    border: 1px solid var(--pet-border);
+    border-radius: 999px;
+    background: rgba(255, 246, 248, .9);
+}
+
+.calendar-scroll-top > div {
+    height: 1px;
+}
+
+.calendar-scroll-top::-webkit-scrollbar,
+.calendar-wrapper::-webkit-scrollbar {
+    height: 12px;
+}
+
+.calendar-scroll-top::-webkit-scrollbar-track,
+.calendar-wrapper::-webkit-scrollbar-track {
+    background: rgba(255, 232, 238, .95);
+    border-radius: 999px;
+}
+
+.calendar-scroll-top::-webkit-scrollbar-thumb,
+.calendar-wrapper::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--pet-primary), var(--pet-primary-dark));
+    border-radius: 999px;
+}
+
+.calendar-scroll-top::-webkit-scrollbar-thumb:hover,
+.calendar-wrapper::-webkit-scrollbar-thumb:hover {
+    background: var(--pet-primary-dark);
+}

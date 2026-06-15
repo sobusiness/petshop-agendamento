@@ -51,7 +51,11 @@
         </div>
 <div id="agendaFiltroInfo" class="filter-info"></div>
 
-        <div class="calendar-wrapper">
+        <div class="calendar-scroll-top" id="agendaScrollTop" onscroll="sincronizarScrollAgenda('top')">
+            <div id="agendaScrollTopContent"></div>
+        </div>
+
+        <div class="calendar-wrapper" id="agendaScrollBottom" onscroll="sincronizarScrollAgenda('bottom')">
             <div id="calendarioAgenda" class="agenda-grid"></div>
         </div>
     </section>
