@@ -292,56 +292,75 @@ function agendamentoBateFiltroProtocolo(agendamento) {
 
 
 
-let sincronizandoScrollAgenda = false;
+
+let scrollAgendaTravado = false;
 let scrollAgendaConfigurado = false;
 
+function obterElementosScrollAgenda() {
+    return {
+        top: document.getElementById("agendaScrollTop"),
+        bottom: document.getElementById("agendaScrollBottom"),
+        content: document.getElementById("agendaScrollTopContent"),
+        grid: document.getElementById("calendarioAgenda")
+    };
+}
+
+function sincronizarScrollAgenda(origem) {
+    const { top, bottom } = obterElementosScrollAgenda();
+    if (!top || !bottom || scrollAgendaTravado) return;
+
+    scrollAgendaTravado = true;
+
+    if (origem === "top") {
+        bottom.scrollLeft = top.scrollLeft;
+    } else {
+        top.scrollLeft = bottom.scrollLeft;
+    }
+
+    requestAnimationFrame(() => {
+        scrollAgendaTravado = false;
+    });
+}
+
 function configurarScrollSuperiorAgenda() {
-    if (scrollAgendaConfigurado) return;
+    const { top, bottom } = obterElementosScrollAgenda();
+    if (!top || !bottom || scrollAgendaConfigurado) return;
 
-    const scrollTop = document.getElementById("agendaScrollTop");
-    const scrollBottom = document.getElementById("agendaScrollBottom");
-
-    if (!scrollTop || !scrollBottom) return;
-
-    scrollTop.addEventListener("scroll", () => {
-        if (sincronizandoScrollAgenda) return;
-
-        sincronizandoScrollAgenda = true;
-        scrollBottom.scrollLeft = scrollTop.scrollLeft;
-        requestAnimationFrame(() => sincronizandoScrollAgenda = false);
-    });
-
-    scrollBottom.addEventListener("scroll", () => {
-        if (sincronizandoScrollAgenda) return;
-
-        sincronizandoScrollAgenda = true;
-        scrollTop.scrollLeft = scrollBottom.scrollLeft;
-        requestAnimationFrame(() => sincronizandoScrollAgenda = false);
-    });
+    top.addEventListener("scroll", () => sincronizarScrollAgenda("top"), { passive: true });
+    bottom.addEventListener("scroll", () => sincronizarScrollAgenda("bottom"), { passive: true });
 
     scrollAgendaConfigurado = true;
 }
 
 function atualizarScrollSuperiorAgenda() {
-    const calendario = document.getElementById("calendarioAgenda");
-    const scrollTop = document.getElementById("agendaScrollTop");
-    const scrollBottom = document.getElementById("agendaScrollBottom");
-    const scrollContent = document.getElementById("agendaScrollTopContent");
-
-    if (!calendario || !scrollTop || !scrollBottom || !scrollContent) return;
+    const { top, bottom, content, grid } = obterElementosScrollAgenda();
+    if (!top || !bottom || !content || !grid) return;
 
     configurarScrollSuperiorAgenda();
 
-    const larguraReal = Math.max(
-        calendario.scrollWidth,
-        calendario.offsetWidth,
-        scrollBottom.scrollWidth
-    );
+    const larguraGrid = grid.scrollWidth;
+    const larguraMinima = bottom.clientWidth + 1;
+    const larguraFinal = Math.max(larguraGrid, larguraMinima);
 
-    scrollContent.style.width = `${larguraReal}px`;
+    content.style.width = `${larguraFinal}px`;
+    grid.style.width = `${larguraFinal}px`;
 
-    scrollTop.scrollLeft = scrollBottom.scrollLeft;
+    top.scrollLeft = bottom.scrollLeft;
+
+    requestAnimationFrame(() => {
+        content.style.width = `${Math.max(grid.scrollWidth, bottom.clientWidth + 1)}px`;
+        top.scrollLeft = bottom.scrollLeft;
+    });
 }
+
+function moverScrollAgenda(delta) {
+    const { bottom, top } = obterElementosScrollAgenda();
+    if (!bottom || !top) return;
+
+    bottom.scrollLeft += delta;
+    top.scrollLeft = bottom.scrollLeft;
+}
+
 
 function renderizarAgenda() {
     const calendario = document.getElementById("calendarioAgenda");
@@ -449,6 +468,7 @@ function renderizarAgenda() {
     filtroInfo.textContent = textosPeriodo[filtroAgendaPeriodo] || textosPeriodo.todos;
 
     setTimeout(atualizarScrollSuperiorAgenda, 0);
+    setTimeout(atualizarScrollSuperiorAgenda, 250);
 }
 
 function criarCelula(conteudo, classe) {

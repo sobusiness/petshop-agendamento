@@ -1586,3 +1586,70 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .agenda-grid {
     width: max-content;
 }
+
+/* V3.6 - Scroll superior final e agenda aberta */
+#secao-agendamentos {
+    overflow: visible !important;
+}
+
+.agenda-scroll-tools {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: 8px 0 8px;
+}
+
+.agenda-scroll-tools button {
+    height: 36px !important;
+    padding: 0 14px !important;
+}
+
+.calendar-scroll-top {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: scroll !important;
+    overflow-y: hidden !important;
+    height: 22px !important;
+    margin: 8px 0 10px !important;
+    border: 1px solid var(--pet-border) !important;
+    border-radius: 999px !important;
+    background: rgba(255, 246, 248, .95) !important;
+}
+
+#agendaScrollTopContent {
+    height: 1px !important;
+    min-width: 100% !important;
+}
+
+.calendar-wrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: scroll !important;
+    overflow-y: visible !important;
+    position: relative !important;
+    scroll-behavior: auto !important;
+}
+
+.agenda-grid {
+    width: max-content !important;
+    max-width: none !important;
+    table-layout: fixed !important;
+}
+
+.calendar-scroll-top::-webkit-scrollbar,
+.calendar-wrapper::-webkit-scrollbar {
+    height: 14px !important;
+}
+
+.calendar-scroll-top::-webkit-scrollbar-track,
+.calendar-wrapper::-webkit-scrollbar-track {
+    background: rgba(255, 232, 238, .98) !important;
+    border-radius: 999px !important;
+}
+
+.calendar-scroll-top::-webkit-scrollbar-thumb,
+.calendar-wrapper::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, var(--pet-primary), var(--pet-primary-dark)) !important;
+    border-radius: 999px !important;
+    border: 2px solid rgba(255, 232, 238, .98) !important;
+}
