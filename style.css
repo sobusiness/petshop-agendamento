@@ -418,3 +418,19 @@ button:hover,
         font-size: 28px;
     }
 }
+
+
+/* V3.8 - seletor de pets encontrados */
+.pet-cadastrado-box {
+    padding: 14px;
+    border: 1px solid #f3b6c8;
+    border-radius: 16px;
+    background: rgba(255, 246, 248, .92);
+}
+
+.pet-cadastrado-box small {
+    display: block;
+    margin-top: 6px;
+    color: #9b6f6f;
+    font-weight: 600;
+}

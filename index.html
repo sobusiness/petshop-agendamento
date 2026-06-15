@@ -28,19 +28,28 @@
 
         <div class="form-grid">
             <div>
-                <label for="cliente">Nome do Cliente</label>
-                <input type="text" id="cliente" placeholder="Digite seu nome">
+                <label for="telefone">Telefone Celular</label>
+                <input type="tel" id="telefone" placeholder="(11) 99999-9999" maxlength="15" inputmode="numeric" autocomplete="tel">
             </div>
 
             <div>
-                <label for="telefone">Telefone Celular</label>
-                <input type="tel" id="telefone" placeholder="(11) 99999-9999" maxlength="15" inputmode="numeric" autocomplete="tel">
+                <label for="cliente">Nome do Cliente</label>
+                <input type="text" id="cliente" placeholder="Digite seu nome">
             </div>
 
             <div>
                 <label for="pet">Nome do Pet</label>
                 <input type="text" id="pet" placeholder="Digite o nome do pet">
             </div>
+
+            <div id="petCadastradoBox" class="pet-cadastrado-box" style="display:none;">
+                <label for="petCadastradoSelect">Pet cadastrado encontrado</label>
+                <select id="petCadastradoSelect">
+                    <option value="">Selecione o pet</option>
+                </select>
+                <small>Encontramos mais de um pet para este telefone. Selecione qual deseja agendar.</small>
+            </div>
+
 
             <div>
                 <label for="especie">Espécie</label>

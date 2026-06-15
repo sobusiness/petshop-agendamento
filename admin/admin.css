@@ -1654,7 +1654,8 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
     border: 2px solid rgba(255, 232, 238, .98) !important;
 }
 
-/* V3.7 - edição individual de visitas do pacote */
+
+/* V3.8 - edição individual de visitas do pacote */
 .pacote-visita-edicao {
     display: grid;
     grid-template-columns: 180px 140px;

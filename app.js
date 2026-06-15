@@ -19,6 +19,7 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
 let agendamentosExistentes = [];
 let servicosPrincipaisCliente = [];
 let timeoutBuscaCadastroTelefone = null;
+let petsEncontradosTelefone = [];
 
 const precosBanhoCaes = {
     "Pequeno": { "Curto": 45, "Médio": 50, "Longo": 60 },
@@ -127,6 +128,14 @@ function normalizarTelefone(valor) {
     return (valor || "").replace(/\D/g, "");
 }
 
+function chavePetCadastro(item) {
+    return [
+        (item.pet || "").trim().toLowerCase(),
+        (item.especie || "").trim().toLowerCase(),
+        (item.raca || "").trim().toLowerCase()
+    ].join("|");
+}
+
 function preencherCampoSeVazioOuDiferente(id, valor) {
     const campo = document.getElementById(id);
     if (!campo || valor === undefined || valor === null || valor === "") return;
@@ -134,40 +143,7 @@ function preencherCampoSeVazioOuDiferente(id, valor) {
     campo.value = valor;
 }
 
-async function buscarCadastroPorTelefoneFirebase(telefoneDigitado) {
-    try {
-        if (typeof db === "undefined") return null;
-
-        const telefoneNumeros = normalizarTelefone(telefoneDigitado);
-
-        if (telefoneNumeros.length !== 11) return null;
-
-        const snapshot = await db.collection("agendamentos").get();
-
-        const registros = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(item => normalizarTelefone(item.telefone) === telefoneNumeros)
-            .sort((a, b) => {
-                const dataA = `${a.data || ""} ${a.horario || ""}`;
-                const dataB = `${b.data || ""} ${b.horario || ""}`;
-                return dataB.localeCompare(dataA);
-            });
-
-        return registros[0] || null;
-    } catch (error) {
-        console.error("Erro ao buscar cadastro por telefone:", error);
-        return null;
-    }
-}
-
-async function preencherCadastroPorTelefone() {
-    const telefone = document.getElementById("telefone").value;
-    const telefoneNumeros = normalizarTelefone(telefone);
-
-    if (telefoneNumeros.length !== 11) return;
-
-    const cadastro = await buscarCadastroPorTelefoneFirebase(telefone);
-
+function aplicarCadastroPet(cadastro) {
     if (!cadastro) return;
 
     preencherCampoSeVazioOuDiferente("cliente", cadastro.cliente);
@@ -181,6 +157,99 @@ async function preencherCadastroPorTelefone() {
     atualizarServicosPorEspecie();
     atualizarResumoServicos();
     carregarHorariosDisponiveis();
+}
+
+function limparSeletorPetsCadastrados() {
+    const box = document.getElementById("petCadastradoBox");
+    const select = document.getElementById("petCadastradoSelect");
+
+    if (!box || !select) return;
+
+    petsEncontradosTelefone = [];
+    select.innerHTML = `<option value="">Selecione o pet</option>`;
+    box.style.display = "none";
+}
+
+function renderizarPetsCadastrados(pets) {
+    const box = document.getElementById("petCadastradoBox");
+    const select = document.getElementById("petCadastradoSelect");
+
+    if (!box || !select) return;
+
+    select.innerHTML = `<option value="">Selecione o pet</option>`;
+
+    pets.forEach((pet, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = `${pet.pet || "Pet sem nome"}${pet.raca ? " - " + pet.raca : ""}`;
+        select.appendChild(option);
+    });
+
+    box.style.display = "block";
+}
+
+async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
+    try {
+        if (typeof db === "undefined") return [];
+
+        const telefoneNumeros = normalizarTelefone(telefoneDigitado);
+
+        if (telefoneNumeros.length !== 11) return [];
+
+        const snapshot = await db.collection("agendamentos").get();
+
+        const registros = snapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(item => normalizarTelefone(item.telefone) === telefoneNumeros)
+            .sort((a, b) => {
+                const dataA = `${a.data || ""} ${a.horario || ""}`;
+                const dataB = `${b.data || ""} ${b.horario || ""}`;
+                return dataB.localeCompare(dataA);
+            });
+
+        const mapaPets = new Map();
+
+        registros.forEach(item => {
+            const chave = chavePetCadastro(item);
+
+            if (!mapaPets.has(chave)) {
+                mapaPets.set(chave, item);
+            }
+        });
+
+        return Array.from(mapaPets.values());
+    } catch (error) {
+        console.error("Erro ao buscar cadastro por telefone:", error);
+        return [];
+    }
+}
+
+async function preencherCadastroPorTelefone() {
+    const telefone = document.getElementById("telefone").value;
+    const telefoneNumeros = normalizarTelefone(telefone);
+
+    if (telefoneNumeros.length !== 11) {
+        limparSeletorPetsCadastrados();
+        return;
+    }
+
+    const pets = await buscarCadastrosPorTelefoneFirebase(telefone);
+
+    if (pets.length === 0) {
+        limparSeletorPetsCadastrados();
+        return;
+    }
+
+    petsEncontradosTelefone = pets;
+
+    if (pets.length === 1) {
+        limparSeletorPetsCadastrados();
+        aplicarCadastroPet(pets[0]);
+        return;
+    }
+
+    preencherCampoSeVazioOuDiferente("cliente", pets[0].cliente);
+    renderizarPetsCadastrados(pets);
 }
 
 function buscarCadastroTelefoneComDelay() {
@@ -218,6 +287,14 @@ document.getElementById("adicionalCorteUnha").addEventListener("change", atualiz
 document.getElementById("data").addEventListener("change", carregarHorariosDisponiveis);
 document.getElementById("raca").addEventListener("input", carregarHorariosDisponiveis);
 document.getElementById("servicoPrincipal").addEventListener("change", carregarHorariosDisponiveis);
+
+document.getElementById("petCadastradoSelect")?.addEventListener("change", function () {
+    const index = Number(this.value);
+
+    if (Number.isNaN(index) || !petsEncontradosTelefone[index]) return;
+
+    aplicarCadastroPet(petsEncontradosTelefone[index]);
+});
 
 
 async function carregarServicosPrincipaisCliente() {
@@ -894,6 +971,7 @@ function fecharPopup() {
 function limparFormulario() {
     document.getElementById("cliente").value = "";
     document.getElementById("telefone").value = "";
+    limparSeletorPetsCadastrados();
     document.getElementById("pet").value = "";
     document.getElementById("especie").value = "";
     document.getElementById("sexo").value = "";

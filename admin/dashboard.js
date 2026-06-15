@@ -1719,7 +1719,7 @@ async function atualizarVisitaPacote(pacoteId, visitaNumero) {
     if (!pacote) return;
 
     const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
-    const visitaAtual = visitas.find(visita => visita.numero === visitaNumero);
+    const visitaAtual = visitas.find(visita => Number(visita.numero) === Number(visitaNumero));
 
     if (!visitaAtual) return;
 
@@ -1747,7 +1747,7 @@ async function atualizarVisitaPacote(pacoteId, visitaNumero) {
     }
 
     const novasVisitas = visitas.map(visita => {
-        if (visita.numero !== visitaNumero) return visita;
+        if (Number(visita.numero) !== Number(visitaNumero)) return visita;
 
         return {
             ...visita,
