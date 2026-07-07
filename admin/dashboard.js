@@ -1,6 +1,7 @@
 let agendamentos = [];
 let servicosAdmin = [];
 let pacotesAdmin = [];
+let clientesAdmin = [];
 let bloqueiosAgenda = [];
 let mesBloqueioReferencia = new Date();
 let diasSelecionadosBloqueio = [];
@@ -34,6 +35,7 @@ async function iniciarDashboard() {
     await carregarAgendamentos();
     await carregarServicosAdmin();
     await carregarPacotesAdmin();
+    await carregarClientesAdmin();
     await carregarBloqueiosAgenda();
     renderizarAgenda();
     atualizarFaturamento();
@@ -58,12 +60,17 @@ function abrirSecao(secao) {
 
     document.getElementById(`secao-${secao}`).classList.add("active");
 
+    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "pacotes", "servicos"];
+    const indice = mapaSecoes.indexOf(secao);
     const botoes = document.querySelectorAll(".tab-button");
-    if (secao === "agendamentos") botoes[0].classList.add("active");
-    if (secao === "faturamento") botoes[1].classList.add("active");
-    if (secao === "dias-horarios") botoes[2].classList.add("active");
-    if (secao === "pacotes") botoes[3].classList.add("active");
-    if (secao === "servicos") botoes[4].classList.add("active");
+
+    if (indice >= 0 && botoes[indice]) {
+        botoes[indice].classList.add("active");
+    }
+
+    if (secao === "clientes") {
+        carregarClientesAdmin();
+    }
 }
 
 async function carregarAgendamentos() {
@@ -1008,6 +1015,209 @@ function renderizarGraficos(dados) {
 }
 
 
+
+
+
+function normalizarTextoCliente(valor) {
+    return (valor || "")
+        .toString()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
+
+function normalizarTelefoneCliente(valor) {
+    return (valor || "").replace(/\D/g, "");
+}
+
+function criarClienteId(telefone, pet) {
+    const tel = normalizarTelefoneCliente(telefone) || "semtelefone";
+    const petNormalizado = normalizarTextoCliente(pet || "sempet")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+    return `${tel}_${petNormalizado || "sempet"}`;
+}
+
+function chaveClientePet(item) {
+    return `${normalizarTelefoneCliente(item.telefone)}|${normalizarTextoCliente(item.pet)}|${normalizarTextoCliente(item.raca)}`;
+}
+
+function montarClienteAPartirAgendamento(item) {
+    return {
+        id: criarClienteId(item.telefone, item.pet),
+        cliente: item.cliente || "",
+        telefone: item.telefone || "",
+        pet: item.pet || "",
+        especie: item.especie || "",
+        sexo: item.sexo || "",
+        raca: item.raca || "",
+        porte: item.porte || "",
+        observacaoPet: item.observacaoPet || ""
+    };
+}
+
+async function carregarClientesAdmin() {
+    const mapa = new Map();
+
+    try {
+        const snapshotClientes = await db.collection("clientes").get();
+
+        snapshotClientes.docs.forEach(doc => {
+            const data = { id: doc.id, ...doc.data() };
+            mapa.set(chaveClientePet(data), data);
+        });
+    } catch (error) {
+        console.warn("Coleção clientes ainda não disponível:", error);
+    }
+
+    try {
+        agendamentos.forEach(agendamento => {
+            const cliente = montarClienteAPartirAgendamento(agendamento);
+            const chave = chaveClientePet(cliente);
+
+            if (!mapa.has(chave)) {
+                mapa.set(chave, cliente);
+            }
+        });
+    } catch (error) {
+        console.warn("Erro ao montar clientes a partir de agendamentos:", error);
+    }
+
+    clientesAdmin = Array.from(mapa.values())
+        .filter(item => item.telefone || item.cliente || item.pet)
+        .sort((a, b) => (a.cliente || "").localeCompare(b.cliente || ""));
+
+    renderizarClientesAdmin();
+}
+
+function clienteAdminBateFiltro(item) {
+    const filtro = normalizarTextoCliente(document.getElementById("filtroClientes")?.value || "");
+
+    if (!filtro) return true;
+
+    return [
+        item.cliente,
+        item.telefone,
+        item.pet,
+        item.especie,
+        item.raca
+    ].some(valor => normalizarTextoCliente(valor).includes(filtro));
+}
+
+function optionSelecionada(valorAtual, valorOption) {
+    return valorAtual === valorOption ? "selected" : "";
+}
+
+function renderizarClientesAdmin() {
+    const lista = document.getElementById("listaClientesAdmin");
+    if (!lista) return;
+
+    const dados = clientesAdmin.filter(clienteAdminBateFiltro);
+
+    if (dados.length === 0) {
+        lista.innerHTML = `<p class="empty-state">Nenhum cliente encontrado.</p>`;
+        return;
+    }
+
+    lista.innerHTML = dados.map(item => `
+        <div class="cliente-card-admin">
+            <div class="cliente-card-title">
+                <div>
+                    <h3>${item.cliente || "Cliente sem nome"}</h3>
+                    <strong>${item.pet || "Pet sem nome"}</strong>
+                </div>
+                <span>${item.telefone || "Sem telefone"}</span>
+            </div>
+
+            <div class="cliente-form-grid">
+                <label><span>Nome do Cliente</span><input type="text" id="cliente-nome-${item.id}" value="${item.cliente || ""}"></label>
+                <label><span>Telefone</span><input type="text" id="cliente-telefone-${item.id}" value="${item.telefone || ""}"></label>
+                <label><span>Nome do Pet</span><input type="text" id="cliente-pet-${item.id}" value="${item.pet || ""}"></label>
+
+                <label><span>Espécie</span><select id="cliente-especie-${item.id}">
+                    <option value="">Selecione</option>
+                    <option value="Cão" ${optionSelecionada(item.especie, "Cão")}>Cão</option>
+                    <option value="Gato" ${optionSelecionada(item.especie, "Gato")}>Gato</option>
+                </select></label>
+
+                <label><span>Sexo</span><select id="cliente-sexo-${item.id}">
+                    <option value="">Selecione</option>
+                    <option value="Macho" ${optionSelecionada(item.sexo, "Macho")}>Macho</option>
+                    <option value="Fêmea" ${optionSelecionada(item.sexo, "Fêmea")}>Fêmea</option>
+                </select></label>
+
+                <label><span>Raça</span><input type="text" id="cliente-raca-${item.id}" value="${item.raca || ""}"></label>
+
+                <label><span>Porte</span><select id="cliente-porte-${item.id}">
+                    <option value="">Selecione</option>
+                    <option value="Pequeno" ${optionSelecionada(item.porte, "Pequeno")}>Pequeno</option>
+                    <option value="Médio" ${optionSelecionada(item.porte, "Médio")}>Médio</option>
+                    <option value="Grande" ${optionSelecionada(item.porte, "Grande")}>Grande</option>
+                </select></label>
+
+                <label><span>Observações do Pet</span><select id="cliente-observacao-${item.id}">
+                    <option value="">Selecione</option>
+                    <option value="Sem Observação" ${optionSelecionada(item.observacaoPet, "Sem Observação")}>Sem Observação</option>
+                    <option value="Bravo" ${optionSelecionada(item.observacaoPet, "Bravo")}>Bravo</option>
+                    <option value="Não gosta de secador" ${optionSelecionada(item.observacaoPet, "Não gosta de secador")}>Não gosta de secador</option>
+                    <option value="Alérgico" ${optionSelecionada(item.observacaoPet, "Alérgico")}>Alérgico</option>
+                    <option value="Ansioso" ${optionSelecionada(item.observacaoPet, "Ansioso")}>Ansioso</option>
+                    <option value="Idoso" ${optionSelecionada(item.observacaoPet, "Idoso")}>Idoso</option>
+                    <option value="Filhote" ${optionSelecionada(item.observacaoPet, "Filhote")}>Filhote</option>
+                </select></label>
+            </div>
+
+            <div class="cliente-card-actions">
+                <button onclick="salvarClienteAdmin('${item.id}')">Salvar Alterações</button>
+            </div>
+        </div>
+    `).join("");
+}
+
+async function salvarClienteAdmin(idAtual) {
+    const dados = {
+        cliente: document.getElementById(`cliente-nome-${idAtual}`).value.trim(),
+        telefone: document.getElementById(`cliente-telefone-${idAtual}`).value.trim(),
+        pet: document.getElementById(`cliente-pet-${idAtual}`).value.trim(),
+        especie: document.getElementById(`cliente-especie-${idAtual}`).value,
+        sexo: document.getElementById(`cliente-sexo-${idAtual}`).value,
+        raca: document.getElementById(`cliente-raca-${idAtual}`).value.trim(),
+        porte: document.getElementById(`cliente-porte-${idAtual}`).value,
+        observacaoPet: document.getElementById(`cliente-observacao-${idAtual}`).value,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!dados.cliente || !dados.telefone || !dados.pet) {
+        await mostrarAvisoAdmin({
+            titulo: "Campos obrigatórios",
+            mensagem: "Informe pelo menos nome do cliente, telefone e nome do pet.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const novoId = criarClienteId(dados.telefone, dados.pet);
+
+    await db.collection("clientes").doc(novoId).set(dados, { merge: true });
+
+    if (novoId !== idAtual) {
+        try {
+            await db.collection("clientes").doc(idAtual).delete();
+        } catch (error) {
+            console.warn("Registro antigo não encontrado para exclusão:", error);
+        }
+    }
+
+    await mostrarAvisoAdmin({
+        titulo: "Cliente atualizado",
+        mensagem: "As alterações foram salvas e já serão usadas no preenchimento automático do agendamento.",
+        icone: "✅"
+    });
+
+    await carregarClientesAdmin();
+}
 
 
 function preencherHorariosBloqueio() {

@@ -196,6 +196,17 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
 
         if (telefoneNumeros.length !== 11) return [];
 
+        const clientesSnapshot = await db.collection("clientes").get();
+
+        const clientes = clientesSnapshot.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(item => normalizarTelefone(item.telefone) === telefoneNumeros)
+            .sort((a, b) => (a.pet || "").localeCompare(b.pet || ""));
+
+        if (clientes.length > 0) {
+            return clientes;
+        }
+
         const snapshot = await db.collection("agendamentos").get();
 
         const registros = snapshot.docs
@@ -923,6 +934,42 @@ function horarioBloqueadoPorAusenciaComDuracao(horario, duracaoMinutos, bloqueio
     });
 }
 
+
+function criarClienteIdLocal(telefone, pet) {
+    const tel = normalizarTelefone(telefone) || "semtelefone";
+    const petNormalizado = (pet || "sempet")
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+
+    return `${tel}_${petNormalizado || "sempet"}`;
+}
+
+async function salvarCadastroClienteAutomatico(dados) {
+    try {
+        if (typeof db === "undefined") return;
+
+        const clienteId = criarClienteIdLocal(dados.telefone, dados.pet);
+
+        await db.collection("clientes").doc(clienteId).set({
+            cliente: dados.cliente,
+            telefone: dados.telefone,
+            pet: dados.pet,
+            especie: dados.especie,
+            sexo: dados.sexo,
+            raca: dados.raca,
+            porte: dados.porte,
+            observacaoPet: dados.observacaoPet,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (error) {
+        console.warn("Não foi possível atualizar cadastro do cliente automaticamente:", error);
+    }
+}
+
+
 function montarDadosAgendamentoFirestore(dados, protocolo) {
     const servicos = dados.resumo.itens.map(item => ({
         nome: item.nome,
@@ -1057,6 +1104,7 @@ async function confirmarAgendamentoFinal() {
         const protocolo = gerarProtocolo();
 
         await salvarAgendamentoFirebase(dadosPreAgendamento, protocolo);
+        await salvarCadastroClienteAutomatico(dadosPreAgendamento);
 
         agendamentosExistentes.push({
             data: dadosPreAgendamento.data,

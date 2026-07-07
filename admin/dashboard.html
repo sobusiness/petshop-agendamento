@@ -30,6 +30,7 @@
         <button class="tab-button active" onclick="abrirSecao('agendamentos')">Agendamentos</button>
         <button class="tab-button" onclick="abrirSecao('faturamento')">Faturamento</button>
         <button class="tab-button" onclick="abrirSecao('dias-horarios')">Dias e Horários</button>
+        <button class="tab-button" onclick="abrirSecao('clientes')">Clientes</button>
         <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
     </nav>
@@ -206,6 +207,24 @@
 
         <div id="calendarioBloqueios" class="bloqueio-calendario"></div>
         <div id="listaBloqueiosAgenda" class="bloqueio-list bloqueio-list-hidden"></div>
+    </section>
+
+
+
+    <section id="secao-clientes" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Cadastro de Clientes</h2>
+                <p>Edite os dados dos clientes e pets cadastrados. As alterações serão usadas no preenchimento automático do agendamento.</p>
+            </div>
+        </div>
+
+        <div class="clientes-toolbar">
+            <input type="text" id="filtroClientes" placeholder="Filtrar por cliente, telefone ou pet" oninput="renderizarClientesAdmin()">
+            <button onclick="carregarClientesAdmin()">Atualizar Lista</button>
+        </div>
+
+        <div id="listaClientesAdmin" class="clientes-list"></div>
     </section>
 
 
