@@ -398,6 +398,10 @@ function renderizarAgenda() {
                         ? agendamento.servicos.map(s => s.nome).join(", ")
                         : "Serviço não informado";
 
+                    const valorServico = formatarMoeda(Number(agendamento.valorTotal || 0));
+                    const clienteAgenda = agendamento.cliente || "Cliente não informado";
+                    const telefoneAgenda = agendamento.telefone || "Telefone não informado";
+
                     const status = agendamento.status || "Confirmado";
                     const statusClasse = status === "Concluído" ? "status-concluido" : "status-confirmado";
                     const ehInicio = agendamento.horario === hora;
@@ -409,10 +413,14 @@ function renderizarAgenda() {
                                 <span class="status-badge ${statusClasse}">${ehInicio ? status : "Bloqueado"}</span>
                             </div>
                             <div class="agenda-event-info">
+                                ${ehInicio ? `<span class="agenda-label">Cliente</span><strong>${clienteAgenda}</strong><br>` : ""}
+                                ${ehInicio ? `<span class="agenda-label">Telefone</span><strong>${telefoneAgenda}</strong><br>` : ""}
+                                ${ehInicio ? `<span class="agenda-label">Pet</span><strong>${agendamento.pet || "Pet"}</strong><br>` : ""}
                                 ${ehInicio ? `<span class="agenda-protocolo">${agendamento.protocolo || ""}</span><br>` : ""}
-                                ${ehInicio ? servicos + "<br>" : `Continuação de ${agendamento.horario}<br>`}
-                                ${ehInicio ? (agendamento.especie || "") + "<br>" : ""}
-                                ${ehInicio ? (agendamento.observacaoPet || "") : ""}
+                                ${ehInicio ? `<span class="agenda-label">Serviço</span>${servicos}<br>` : `Continuação de ${agendamento.horario}<br>`}
+                                ${ehInicio ? `<span class="agenda-label">Valor</span><strong>${valorServico}</strong><br>` : ""}
+                                ${ehInicio ? `<span class="agenda-label">Espécie</span>${agendamento.especie || ""}<br>` : ""}
+                                ${ehInicio ? `<span class="agenda-label">Obs.</span>${agendamento.observacaoPet || ""}` : ""}
                             </div>
                             ${ehInicio ? `
                                 <div class="agenda-duration-control">
