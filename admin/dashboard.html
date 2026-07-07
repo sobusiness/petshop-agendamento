@@ -219,12 +219,13 @@
             </div>
         </div>
 
-        <div class="clientes-toolbar">
-            <input type="text" id="filtroClientes" placeholder="Filtrar por cliente, telefone ou pet" oninput="renderizarClientesAdmin()">
+        <div class="clientes-toolbar clientes-toolbar-unica">
+            <input type="text" id="filtroClientes" placeholder="Pesquise por cliente, telefone ou pet" oninput="renderizarClientesAdmin()">
             <button onclick="carregarClientesAdmin()">Atualizar Lista</button>
         </div>
 
-        <div id="listaClientesAdmin" class="clientes-list"></div>
+        <div id="resultadoBuscaClientes" class="clientes-resultados"></div>
+        <div id="listaClientesAdmin" class="clientes-list cliente-lista-unica"></div>
     </section>
 
 

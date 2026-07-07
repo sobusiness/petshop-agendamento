@@ -2,6 +2,7 @@ let agendamentos = [];
 let servicosAdmin = [];
 let pacotesAdmin = [];
 let clientesAdmin = [];
+let clienteSelecionadoAdminId = null;
 const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca": "Akita Americano", "porte": "Grande"}, {"raca": "Alaskan Malamute", "porte": "Grande"}, {"raca": "American Pit Bull Terrier", "porte": "Médio"}, {"raca": "American Staffordshire Terrier", "porte": "Médio"}, {"raca": "Australian Shepherd", "porte": "Médio"}, {"raca": "Basset Hound", "porte": "Médio"}, {"raca": "Beagle", "porte": "Médio"}, {"raca": "Bernese Mountain Dog", "porte": "Grande"}, {"raca": "Bichon Frisé", "porte": "Pequeno"}, {"raca": "Border Collie", "porte": "Médio"}, {"raca": "Boston Terrier", "porte": "Pequeno"}, {"raca": "Boxer", "porte": "Grande"}, {"raca": "Buldogue Francês", "porte": "Pequeno"}, {"raca": "Bulldog Inglês", "porte": "Médio"}, {"raca": "Bullmastiff", "porte": "Grande"}, {"raca": "Cane Corso", "porte": "Grande"}, {"raca": "Cavalier King Charles Spaniel", "porte": "Pequeno"}, {"raca": "Chihuahua", "porte": "Pequeno"}, {"raca": "Chow Chow", "porte": "Médio"}, {"raca": "Cocker Spaniel Americano", "porte": "Médio"}, {"raca": "Cocker Spaniel Inglês", "porte": "Médio"}, {"raca": "Coton de Tuléar", "porte": "Pequeno"}, {"raca": "Dachshund (Salsicha)", "porte": "Pequeno"}, {"raca": "Dobermann", "porte": "Grande"}, {"raca": "Dogue Alemão", "porte": "Grande"}, {"raca": "Dogue de Bordeaux", "porte": "Grande"}, {"raca": "Dálmata", "porte": "Grande"}, {"raca": "Fila Brasileiro", "porte": "Grande"}, {"raca": "Fox Paulistinha (Terrier Brasileiro)", "porte": "Pequeno"}, {"raca": "Golden Retriever", "porte": "Grande"}, {"raca": "Greyhound", "porte": "Grande"}, {"raca": "Husky Siberiano", "porte": "Médio"}, {"raca": "Jack Russell Terrier", "porte": "Pequeno"}, {"raca": "Komondor", "porte": "Grande"}, {"raca": "Kuvasz", "porte": "Grande"}, {"raca": "Labrador Retriever", "porte": "Grande"}, {"raca": "Leonberger", "porte": "Grande"}, {"raca": "Lhasa Apso", "porte": "Pequeno"}, {"raca": "Maltês", "porte": "Pequeno"}, {"raca": "Mastiff", "porte": "Grande"}, {"raca": "Mastino Napolitano", "porte": "Grande"}, {"raca": "Papillon", "porte": "Pequeno"}, {"raca": "Pastor Alemão", "porte": "Grande"}, {"raca": "Pastor Belga", "porte": "Grande"}, {"raca": "Pequinês", "porte": "Pequeno"}, {"raca": "Pinscher", "porte": "Pequeno"}, {"raca": "Poodle Mini", "porte": "Pequeno"}, {"raca": "Poodle Standard", "porte": "Médio"}, {"raca": "Poodle Toy", "porte": "Pequeno"}, {"raca": "Pug", "porte": "Pequeno"}, {"raca": "Rhodesian Ridgeback", "porte": "Grande"}, {"raca": "Rottweiler", "porte": "Grande"}, {"raca": "Samoieda", "porte": "Médio"}, {"raca": "Schnauzer Miniatura", "porte": "Pequeno"}, {"raca": "Schnauzer Standard", "porte": "Médio"}, {"raca": "Sem Raça Grande", "porte": "Grande"}, {"raca": "Sem Raça Médio", "porte": "Médio"}, {"raca": "Sem Raça Pequeno", "porte": "Pequeno"}, {"raca": "Setter Inglês", "porte": "Médio"}, {"raca": "Setter Irlandês", "porte": "Médio"}, {"raca": "Shar Pei", "porte": "Médio"}, {"raca": "Shiba Inu", "porte": "Pequeno"}, {"raca": "Shih Tzu", "porte": "Pequeno"}, {"raca": "Spitz Alemão (Lulu da Pomerânia)", "porte": "Pequeno"}, {"raca": "Springer Spaniel", "porte": "Médio"}, {"raca": "São Bernardo", "porte": "Grande"}, {"raca": "Terra Nova", "porte": "Grande"}, {"raca": "Weimaraner", "porte": "Médio"}, {"raca": "West Highland White Terrier", "porte": "Pequeno"}, {"raca": "Whippet", "porte": "Médio"}, {"raca": "Wolfhound Irlandês", "porte": "Grande"}, {"raca": "Yorkshire Terrier", "porte": "Pequeno"}];
 let bloqueiosAgenda = [];
 let mesBloqueioReferencia = new Date();
@@ -1149,19 +1150,59 @@ function atualizarPorteClienteAdmin(id) {
 }
 
 
+function selecionarClienteAdmin(id) {
+    clienteSelecionadoAdminId = id;
+    renderizarClientesAdmin();
+}
+
 function renderizarClientesAdmin() {
     const lista = document.getElementById("listaClientesAdmin");
+    const resultados = document.getElementById("resultadoBuscaClientes");
+
     if (!lista) return;
 
+    const filtro = document.getElementById("filtroClientes")?.value || "";
     const dados = clientesAdmin.filter(clienteAdminBateFiltro);
 
+    if (!filtro.trim()) {
+        clienteSelecionadoAdminId = null;
+        if (resultados) resultados.innerHTML = "";
+        lista.innerHTML = `<p class="empty-state">Pesquise pelo nome do cliente, telefone ou nome do pet para carregar o cadastro.</p>`;
+        return;
+    }
+
     if (dados.length === 0) {
+        clienteSelecionadoAdminId = null;
+        if (resultados) resultados.innerHTML = "";
         lista.innerHTML = `<p class="empty-state">Nenhum cliente encontrado.</p>`;
         return;
     }
 
-    lista.innerHTML = dados.map(item => `
-        <div class="cliente-card-admin">
+    if (!clienteSelecionadoAdminId || !dados.some(item => item.id === clienteSelecionadoAdminId)) {
+        clienteSelecionadoAdminId = dados[0].id;
+    }
+
+    const item = clientesAdmin.find(cliente => cliente.id === clienteSelecionadoAdminId) || dados[0];
+
+    if (resultados) {
+        resultados.innerHTML = `
+            <div class="clientes-resultados-header">
+                <strong>${dados.length} cadastro(s) encontrado(s)</strong>
+                <span>Selecione um cadastro para editar</span>
+            </div>
+            <div class="clientes-resultados-lista">
+                ${dados.map(cliente => `
+                    <button type="button" class="cliente-resultado-item ${cliente.id === item.id ? "active" : ""}" onclick="selecionarClienteAdmin('${cliente.id}')">
+                        <strong>${cliente.cliente || "Cliente sem nome"}</strong>
+                        <span>${cliente.pet || "Pet sem nome"} • ${cliente.telefone || "Sem telefone"}</span>
+                    </button>
+                `).join("")}
+            </div>
+        `;
+    }
+
+    lista.innerHTML = `
+        <div class="cliente-card-admin cliente-card-admin-unico">
             <div class="cliente-card-title">
                 <div>
                     <h3>${item.cliente || "Cliente sem nome"}</h3>
@@ -1210,11 +1251,12 @@ function renderizarClientesAdmin() {
                 </select></label>
             </div>
 
-            <div class="cliente-card-actions">
+            <div class="cliente-card-actions cliente-card-actions-duplo">
                 <button onclick="salvarClienteAdmin('${item.id}')">Salvar Alterações</button>
+                <button class="secondary-button" onclick="excluirClienteAdmin('${item.id}')">Excluir Cadastro</button>
             </div>
         </div>
-    `).join("");
+    `;
 }
 
 async function salvarClienteAdmin(idAtual) {
@@ -1258,6 +1300,36 @@ async function salvarClienteAdmin(idAtual) {
     await mostrarAvisoAdmin({
         titulo: "Cliente atualizado",
         mensagem: "As alterações foram salvas no cadastro principal do cliente.",
+        icone: "✅"
+    });
+
+    await carregarClientesAdmin();
+}
+
+
+async function excluirClienteAdmin(idAtual) {
+    const cliente = clientesAdmin.find(item => item.id === idAtual);
+
+    if (!cliente) return;
+
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Excluir cadastro",
+        mensagem: `Deseja excluir o cadastro de ${cliente.cliente || "cliente"} / ${cliente.pet || "pet"}? Esta ação remove apenas o cadastro principal, não apaga agendamentos já realizados.`,
+        icone: "🗑️",
+        textoConfirmar: "Excluir",
+        textoCancelar: "Voltar"
+    });
+
+    if (!confirmar) return;
+
+    await db.collection("clientes").doc(idAtual).delete();
+
+    clientesAdmin = clientesAdmin.filter(item => item.id !== idAtual);
+    clienteSelecionadoAdminId = null;
+
+    await mostrarAvisoAdmin({
+        titulo: "Cadastro excluído",
+        mensagem: "O cadastro principal foi removido com sucesso.",
         icone: "✅"
     });
 

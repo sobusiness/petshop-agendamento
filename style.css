@@ -489,3 +489,67 @@ button:disabled {
         object-position: 43% center;
     }
 }
+
+
+/* V3.18 - Banner refinado e remoção do cabeçalho antigo */
+body > header:not(.client-hero-banner),
+.app-header,
+.site-header,
+.top-header,
+.brand-header,
+.client-header,
+.logo-header {
+    display: none !important;
+}
+
+.client-hero-banner {
+    width: min(760px, calc(100% - 32px));
+    margin: 22px auto 14px !important;
+    border-radius: 24px !important;
+    overflow: hidden;
+    box-shadow: 0 18px 42px rgba(190, 68, 112, .16) !important;
+    border: 1px solid rgba(243, 182, 200, .78) !important;
+    background: rgba(255, 246, 248, .88) !important;
+}
+
+.client-hero-banner img {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+main,
+.container,
+.page-container {
+    margin-top: 0 !important;
+}
+
+form h1,
+form h2,
+.card h1:first-child,
+.card h2:first-child,
+.form-card h1:first-child,
+.form-card h2:first-child {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+    .client-hero-banner {
+        width: calc(100% - 20px);
+        margin: 14px auto 12px !important;
+        border-radius: 18px !important;
+    }
+
+    .client-hero-banner img {
+        height: 145px;
+        object-fit: cover;
+        object-position: 44% center;
+    }
+}
+
+@media (max-width: 480px) {
+    .client-hero-banner img {
+        height: 118px;
+        object-position: 42% center;
+    }
+}
