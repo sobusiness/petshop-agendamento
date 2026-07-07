@@ -1,6 +1,6 @@
 const horaInicio = 9;
 const horaFim = 17;
-const diasFechados = [0, 3];
+const diasFechados = [0, 1];
 const horarioAlmoco = "12:00";
 const telefoneWhatsappPetlyne = "5511957260772";
 
