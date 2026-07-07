@@ -442,3 +442,11 @@ button:disabled {
     cursor: not-allowed;
     transform: none !important;
 }
+
+/* V3.16 - raça selecionável e porte automático */
+#porte:disabled,
+.cliente-form-grid select:disabled {
+    background: rgba(248, 238, 242, .9);
+    color: #7b6f72;
+    cursor: not-allowed;
+}

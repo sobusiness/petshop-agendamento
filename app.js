@@ -1,6 +1,300 @@
 const horaInicio = 9;
 const horaFim = 17;
 const diasFechados = [0, 1];
+const racasPorteBanhoTosa = [
+    {
+        "raca": "Akita",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Akita Americano",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Alaskan Malamute",
+        "porte": "Grande"
+    },
+    {
+        "raca": "American Pit Bull Terrier",
+        "porte": "Médio"
+    },
+    {
+        "raca": "American Staffordshire Terrier",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Australian Shepherd",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Basset Hound",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Beagle",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Bernese Mountain Dog",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Bichon Frisé",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Border Collie",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Boston Terrier",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Boxer",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Buldogue Francês",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Bulldog Inglês",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Bullmastiff",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Cane Corso",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Cavalier King Charles Spaniel",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Chihuahua",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Chow Chow",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Cocker Spaniel Americano",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Cocker Spaniel Inglês",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Coton de Tuléar",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Dachshund (Salsicha)",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Dobermann",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Dogue Alemão",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Dogue de Bordeaux",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Dálmata",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Fila Brasileiro",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Fox Paulistinha (Terrier Brasileiro)",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Golden Retriever",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Greyhound",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Husky Siberiano",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Jack Russell Terrier",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Komondor",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Kuvasz",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Labrador Retriever",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Leonberger",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Lhasa Apso",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Maltês",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Mastiff",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Mastino Napolitano",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Papillon",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Pastor Alemão",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Pastor Belga",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Pequinês",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Pinscher",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Poodle Mini",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Poodle Standard",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Poodle Toy",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Pug",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Rhodesian Ridgeback",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Rottweiler",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Samoieda",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Schnauzer Miniatura",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Schnauzer Standard",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Sem Raça Grande",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Sem Raça Médio",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Sem Raça Pequeno",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Setter Inglês",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Setter Irlandês",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Shar Pei",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Shiba Inu",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Shih Tzu",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Spitz Alemão (Lulu da Pomerânia)",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Springer Spaniel",
+        "porte": "Médio"
+    },
+    {
+        "raca": "São Bernardo",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Terra Nova",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Weimaraner",
+        "porte": "Médio"
+    },
+    {
+        "raca": "West Highland White Terrier",
+        "porte": "Pequeno"
+    },
+    {
+        "raca": "Whippet",
+        "porte": "Médio"
+    },
+    {
+        "raca": "Wolfhound Irlandês",
+        "porte": "Grande"
+    },
+    {
+        "raca": "Yorkshire Terrier",
+        "porte": "Pequeno"
+    }
+];
 const horarioAlmoco = "12:00";
 const telefoneWhatsappPetlyne = "5511957260772";
 
@@ -42,6 +336,56 @@ const precosHidratacaoCaes = {
 const precoTosaHigienicaAvulsa = 12;
 const precoTratamentoAntiParasitas = 25;
 const precoBanhoSecoGato = 80;
+
+
+function popularSelectRacasCliente() {
+    const select = document.getElementById("raca");
+    if (!select) return;
+
+    const valorAtual = select.value;
+
+    select.innerHTML = `<option value="">Selecione a raça</option>`;
+
+    racasPorteBanhoTosa.forEach(item => {
+        const option = document.createElement("option");
+        option.value = item.raca;
+        option.textContent = item.raca;
+        option.dataset.porte = item.porte;
+        select.appendChild(option);
+    });
+
+    if (valorAtual) {
+        select.value = valorAtual;
+    }
+}
+
+function obterPortePorRaca(raca) {
+    const item = racasPorteBanhoTosa.find(registro =>
+        (registro.raca || "").toLowerCase() === (raca || "").toLowerCase()
+    );
+
+    return item ? item.porte : "";
+}
+
+function atualizarPortePorRacaCliente() {
+    const raca = document.getElementById("raca")?.value || "";
+    const porte = obterPortePorRaca(raca);
+
+    if (porte) {
+        const campoPorte = document.getElementById("porte");
+        if (campoPorte) campoPorte.value = porte;
+    }
+
+    if (!cadastro.porte && cadastro.raca) {
+        const portePorRaca = obterPortePorRaca(cadastro.raca);
+        if (portePorRaca) preencherCampoSeVazioOuDiferente("porte", portePorRaca);
+    }
+
+    atualizarServicosPorEspecie();
+    atualizarResumoServicos();
+    carregarHorariosDisponiveis();
+}
+
 
 function formatarMoeda(valor) {
     return valor.toLocaleString("pt-BR", {
@@ -281,6 +625,8 @@ function formatarTelefoneCelular(valor) {
     return `(${valor.slice(0, 2)}) ${valor.slice(2, 7)}-${valor.slice(7, 11)}`;
 }
 
+popularSelectRacasCliente();
+
 document.getElementById("telefone").addEventListener("input", function () {
     this.value = formatarTelefoneCelular(this.value);
     buscarCadastroTelefoneComDelay();
@@ -288,6 +634,7 @@ document.getElementById("telefone").addEventListener("input", function () {
 
 document.getElementById("especie").addEventListener("change", atualizarServicosPorEspecie);
 document.getElementById("porte").addEventListener("change", atualizarResumoServicos);
+document.getElementById("raca").addEventListener("change", atualizarPortePorRacaCliente);
 document.getElementById("servicoPrincipal").addEventListener("change", controlarCamposServico);
 document.getElementById("pelagem").addEventListener("change", atualizarResumoServicos);
 document.getElementById("tipoTosa").addEventListener("change", atualizarResumoServicos);

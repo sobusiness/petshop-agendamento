@@ -2,6 +2,7 @@ let agendamentos = [];
 let servicosAdmin = [];
 let pacotesAdmin = [];
 let clientesAdmin = [];
+const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca": "Akita Americano", "porte": "Grande"}, {"raca": "Alaskan Malamute", "porte": "Grande"}, {"raca": "American Pit Bull Terrier", "porte": "Médio"}, {"raca": "American Staffordshire Terrier", "porte": "Médio"}, {"raca": "Australian Shepherd", "porte": "Médio"}, {"raca": "Basset Hound", "porte": "Médio"}, {"raca": "Beagle", "porte": "Médio"}, {"raca": "Bernese Mountain Dog", "porte": "Grande"}, {"raca": "Bichon Frisé", "porte": "Pequeno"}, {"raca": "Border Collie", "porte": "Médio"}, {"raca": "Boston Terrier", "porte": "Pequeno"}, {"raca": "Boxer", "porte": "Grande"}, {"raca": "Buldogue Francês", "porte": "Pequeno"}, {"raca": "Bulldog Inglês", "porte": "Médio"}, {"raca": "Bullmastiff", "porte": "Grande"}, {"raca": "Cane Corso", "porte": "Grande"}, {"raca": "Cavalier King Charles Spaniel", "porte": "Pequeno"}, {"raca": "Chihuahua", "porte": "Pequeno"}, {"raca": "Chow Chow", "porte": "Médio"}, {"raca": "Cocker Spaniel Americano", "porte": "Médio"}, {"raca": "Cocker Spaniel Inglês", "porte": "Médio"}, {"raca": "Coton de Tuléar", "porte": "Pequeno"}, {"raca": "Dachshund (Salsicha)", "porte": "Pequeno"}, {"raca": "Dobermann", "porte": "Grande"}, {"raca": "Dogue Alemão", "porte": "Grande"}, {"raca": "Dogue de Bordeaux", "porte": "Grande"}, {"raca": "Dálmata", "porte": "Grande"}, {"raca": "Fila Brasileiro", "porte": "Grande"}, {"raca": "Fox Paulistinha (Terrier Brasileiro)", "porte": "Pequeno"}, {"raca": "Golden Retriever", "porte": "Grande"}, {"raca": "Greyhound", "porte": "Grande"}, {"raca": "Husky Siberiano", "porte": "Médio"}, {"raca": "Jack Russell Terrier", "porte": "Pequeno"}, {"raca": "Komondor", "porte": "Grande"}, {"raca": "Kuvasz", "porte": "Grande"}, {"raca": "Labrador Retriever", "porte": "Grande"}, {"raca": "Leonberger", "porte": "Grande"}, {"raca": "Lhasa Apso", "porte": "Pequeno"}, {"raca": "Maltês", "porte": "Pequeno"}, {"raca": "Mastiff", "porte": "Grande"}, {"raca": "Mastino Napolitano", "porte": "Grande"}, {"raca": "Papillon", "porte": "Pequeno"}, {"raca": "Pastor Alemão", "porte": "Grande"}, {"raca": "Pastor Belga", "porte": "Grande"}, {"raca": "Pequinês", "porte": "Pequeno"}, {"raca": "Pinscher", "porte": "Pequeno"}, {"raca": "Poodle Mini", "porte": "Pequeno"}, {"raca": "Poodle Standard", "porte": "Médio"}, {"raca": "Poodle Toy", "porte": "Pequeno"}, {"raca": "Pug", "porte": "Pequeno"}, {"raca": "Rhodesian Ridgeback", "porte": "Grande"}, {"raca": "Rottweiler", "porte": "Grande"}, {"raca": "Samoieda", "porte": "Médio"}, {"raca": "Schnauzer Miniatura", "porte": "Pequeno"}, {"raca": "Schnauzer Standard", "porte": "Médio"}, {"raca": "Sem Raça Grande", "porte": "Grande"}, {"raca": "Sem Raça Médio", "porte": "Médio"}, {"raca": "Sem Raça Pequeno", "porte": "Pequeno"}, {"raca": "Setter Inglês", "porte": "Médio"}, {"raca": "Setter Irlandês", "porte": "Médio"}, {"raca": "Shar Pei", "porte": "Médio"}, {"raca": "Shiba Inu", "porte": "Pequeno"}, {"raca": "Shih Tzu", "porte": "Pequeno"}, {"raca": "Spitz Alemão (Lulu da Pomerânia)", "porte": "Pequeno"}, {"raca": "Springer Spaniel", "porte": "Médio"}, {"raca": "São Bernardo", "porte": "Grande"}, {"raca": "Terra Nova", "porte": "Grande"}, {"raca": "Weimaraner", "porte": "Médio"}, {"raca": "West Highland White Terrier", "porte": "Pequeno"}, {"raca": "Whippet", "porte": "Médio"}, {"raca": "Wolfhound Irlandês", "porte": "Grande"}, {"raca": "Yorkshire Terrier", "porte": "Pequeno"}];
 let bloqueiosAgenda = [];
 let mesBloqueioReferencia = new Date();
 let diasSelecionadosBloqueio = [];
@@ -1119,6 +1120,35 @@ function optionSelecionada(valorAtual, valorOption) {
     return valorAtual === valorOption ? "selected" : "";
 }
 
+
+function gerarOptionsRacasAdmin(racaAtual) {
+    return [
+        `<option value="">Selecione a raça</option>`,
+        ...racasPorteBanhoTosaAdmin.map(item =>
+            `<option value="${item.raca}" ${optionSelecionada(racaAtual, item.raca)}>${item.raca}</option>`
+        )
+    ].join("");
+}
+
+function obterPortePorRacaAdmin(raca) {
+    const item = racasPorteBanhoTosaAdmin.find(registro =>
+        (registro.raca || "").toLowerCase() === (raca || "").toLowerCase()
+    );
+
+    return item ? item.porte : "";
+}
+
+function atualizarPorteClienteAdmin(id) {
+    const raca = document.getElementById(`cliente-raca-${id}`)?.value || "";
+    const porte = obterPortePorRacaAdmin(raca);
+
+    if (porte) {
+        const campoPorte = document.getElementById(`cliente-porte-${id}`);
+        if (campoPorte) campoPorte.value = porte;
+    }
+}
+
+
 function renderizarClientesAdmin() {
     const lista = document.getElementById("listaClientesAdmin");
     if (!lista) return;
@@ -1157,9 +1187,11 @@ function renderizarClientesAdmin() {
                     <option value="Fêmea" ${optionSelecionada(item.sexo, "Fêmea")}>Fêmea</option>
                 </select></label>
 
-                <label><span>Raça</span><input type="text" id="cliente-raca-${item.id}" value="${item.raca || ""}"></label>
+                <label><span>Raça</span><select id="cliente-raca-${item.id}" onchange="atualizarPorteClienteAdmin('${item.id}')">
+                    ${gerarOptionsRacasAdmin(item.raca)}
+                </select></label>
 
-                <label><span>Porte</span><select id="cliente-porte-${item.id}">
+                <label><span>Porte</span><select id="cliente-porte-${item.id}" disabled>
                     <option value="">Selecione</option>
                     <option value="Pequeno" ${optionSelecionada(item.porte, "Pequeno")}>Pequeno</option>
                     <option value="Médio" ${optionSelecionada(item.porte, "Médio")}>Médio</option>

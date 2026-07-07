@@ -1853,3 +1853,11 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         width: 100%;
     }
 }
+
+/* V3.16 - raça selecionável e porte automático */
+#porte:disabled,
+.cliente-form-grid select:disabled {
+    background: rgba(248, 238, 242, .9);
+    color: #7b6f72;
+    cursor: not-allowed;
+}
