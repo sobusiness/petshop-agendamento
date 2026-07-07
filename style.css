@@ -434,3 +434,11 @@ button:hover,
     color: #9b6f6f;
     font-weight: 600;
 }
+
+
+/* V3.9 - segurança anti-bypass */
+button:disabled {
+    opacity: .65;
+    cursor: not-allowed;
+    transform: none !important;
+}

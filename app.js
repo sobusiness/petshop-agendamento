@@ -688,7 +688,7 @@ async function carregarHorariosDisponiveis() {
                 : `${horario} - Disponível`;
         option.disabled = ocupado || ausenciaTemporaria;
 
-        if (!ocupado) existeHorarioLivre = true;
+        if (!ocupado && !ausenciaTemporaria) existeHorarioLivre = true;
 
         selectHorario.appendChild(option);
     });
@@ -884,18 +884,52 @@ function atualizarBotaoWhatsappAgendamento(dados, protocolo) {
 }
 
 
-async function salvarAgendamentoFirebase(dados, protocolo) {
-    if (typeof db === "undefined") {
-        console.warn("Firebase não encontrado. Agendamento não foi salvo no banco.");
-        return;
-    }
 
+function horariosSobrepostosPorDuracao(inicioA, duracaoA, inicioB, duracaoB) {
+    const aInicio = horarioParaMinutos(inicioA);
+    const aFim = aInicio + Number(duracaoA || 60);
+    const bInicio = horarioParaMinutos(inicioB);
+    const bFim = bInicio + Number(duracaoB || 60);
+
+    return aInicio < bFim && aFim > bInicio;
+}
+
+function horarioOcupadoPorPeriodoComDuracao(horario, duracaoMinutos, agendamentos) {
+    return agendamentos.some(agendamento => {
+        if (!agendamento.horario) return false;
+
+        return horariosSobrepostosPorDuracao(
+            horario,
+            duracaoMinutos,
+            agendamento.horario,
+            Number(agendamento.duracaoMinutos || 60)
+        );
+    });
+}
+
+function horarioBloqueadoPorAusenciaComDuracao(horario, duracaoMinutos, bloqueios) {
+    return bloqueios.some(bloqueio => {
+        if (bloqueio.status && bloqueio.status !== "Ativo") return false;
+        if (!bloqueio.inicio || !bloqueio.fim) return false;
+
+        const duracaoBloqueio = horarioParaMinutos(bloqueio.fim) - horarioParaMinutos(bloqueio.inicio);
+
+        return horariosSobrepostosPorDuracao(
+            horario,
+            duracaoMinutos,
+            bloqueio.inicio,
+            duracaoBloqueio
+        );
+    });
+}
+
+function montarDadosAgendamentoFirestore(dados, protocolo) {
     const servicos = dados.resumo.itens.map(item => ({
         nome: item.nome,
         valor: item.valor
     }));
 
-    await db.collection("agendamentos").add({
+    return {
         protocolo: protocolo,
         cliente: dados.cliente,
         telefone: dados.telefone,
@@ -913,38 +947,174 @@ async function salvarAgendamentoFirebase(dados, protocolo) {
         valorTotal: dados.resumo.total,
         status: "Confirmado",
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+}
+
+async function validarDisponibilidadeFinalFirestore(dados) {
+    if (typeof db === "undefined") {
+        return { disponivel: true };
+    }
+
+    const duracaoMinutos = dados.duracaoMinutos || calcularDuracaoAgendamentoMinutos();
+
+    const agendamentosSnapshot = await db.collection("agendamentos")
+        .where("data", "==", dados.data)
+        .get();
+
+    const agendamentosData = agendamentosSnapshot.docs.map(doc => doc.data());
+
+    const bloqueiosSnapshot = await db.collection("bloqueiosAgenda")
+        .where("data", "==", dados.data)
+        .where("status", "==", "Ativo")
+        .get();
+
+    const bloqueiosData = bloqueiosSnapshot.docs.map(doc => doc.data());
+
+    const horarioOcupado = horarioOcupadoPorPeriodoComDuracao(
+        dados.horario,
+        duracaoMinutos,
+        agendamentosData
+    );
+
+    if (horarioOcupado) {
+        return {
+            disponivel: false,
+            motivo: "Este horário acabou de ficar indisponível por outro agendamento."
+        };
+    }
+
+    const horarioBloqueado = horarioBloqueadoPorAusenciaComDuracao(
+        dados.horario,
+        duracaoMinutos,
+        bloqueiosData
+    );
+
+    if (horarioBloqueado) {
+        return {
+            disponivel: false,
+            motivo: "Este horário está bloqueado por ausência temporária."
+        };
+    }
+
+    return { disponivel: true };
+}
+
+async function salvarAgendamentoComTransacao(dados, protocolo) {
+    if (typeof db === "undefined") {
+        console.warn("Firebase não encontrado. Agendamento não foi salvo no banco.");
+        return;
+    }
+
+    const agendamentoRef = db.collection("agendamentos").doc();
+    const duracaoMinutos = dados.duracaoMinutos || calcularDuracaoAgendamentoMinutos();
+
+    await db.runTransaction(async transaction => {
+        const agendamentosQuery = db.collection("agendamentos")
+            .where("data", "==", dados.data);
+
+        const bloqueiosQuery = db.collection("bloqueiosAgenda")
+            .where("data", "==", dados.data)
+            .where("status", "==", "Ativo");
+
+        const agendamentosSnapshot = await transaction.get(agendamentosQuery);
+        const bloqueiosSnapshot = await transaction.get(bloqueiosQuery);
+
+        const agendamentosData = agendamentosSnapshot.docs.map(doc => doc.data());
+        const bloqueiosData = bloqueiosSnapshot.docs.map(doc => doc.data());
+
+        const horarioOcupado = horarioOcupadoPorPeriodoComDuracao(
+            dados.horario,
+            duracaoMinutos,
+            agendamentosData
+        );
+
+        if (horarioOcupado) {
+            throw new Error("HORARIO_OCUPADO");
+        }
+
+        const horarioBloqueado = horarioBloqueadoPorAusenciaComDuracao(
+            dados.horario,
+            duracaoMinutos,
+            bloqueiosData
+        );
+
+        if (horarioBloqueado) {
+            throw new Error("HORARIO_BLOQUEADO");
+        }
+
+        transaction.set(agendamentoRef, montarDadosAgendamentoFirestore(dados, protocolo));
     });
+}
+
+function alternarConfirmacaoPreviaProcessando(processando) {
+    const botao = document.getElementById("btnConfirmarPrevia");
+    if (!botao) return;
+
+    botao.disabled = processando;
+    botao.textContent = processando ? "Validando disponibilidade..." : "Confirmar";
+}
+
+async function tratarFalhaDisponibilidadeFinal(mensagem) {
+    mostrarAlerta(mensagem || "Este horário acabou de ficar indisponível. Escolha outro horário.");
+
+    fecharPrevia();
+
+    await carregarHorariosDisponiveis();
+
+    dadosPreAgendamento = null;
+}
+
+
+async function salvarAgendamentoFirebase(dados, protocolo) {
+    await salvarAgendamentoComTransacao(dados, protocolo);
 }
 
 async function confirmarAgendamentoFinal() {
     if (!dadosPreAgendamento) return;
 
-    const protocolo = gerarProtocolo();
+    alternarConfirmacaoPreviaProcessando(true);
 
     try {
+        const disponibilidade = await validarDisponibilidadeFinalFirestore(dadosPreAgendamento);
+
+        if (!disponibilidade.disponivel) {
+            await tratarFalhaDisponibilidadeFinal(disponibilidade.motivo);
+            return;
+        }
+
+        const protocolo = gerarProtocolo();
+
         await salvarAgendamentoFirebase(dadosPreAgendamento, protocolo);
+
+        agendamentosExistentes.push({
+            data: dadosPreAgendamento.data,
+            horario: dadosPreAgendamento.horario,
+            duracaoMinutos: dadosPreAgendamento.duracaoMinutos || calcularDuracaoAgendamentoMinutos(),
+            protocolo
+        });
+
+        fecharPrevia();
+
+        atualizarBotaoWhatsappAgendamento(dadosPreAgendamento, protocolo);
+        mostrarPopupConfirmacao(dadosPreAgendamento, protocolo);
+
+        limparFormulario();
+        carregarHorariosDisponiveis();
+
+        dadosPreAgendamento = null;
     } catch (error) {
         console.error("Erro ao salvar agendamento no Firebase:", error);
-        mostrarAlerta("Não foi possível salvar o agendamento. Tente novamente.");
-        return;
+
+        const mensagem = error && error.message === "HORARIO_OCUPADO"
+            ? "Este horário acabou de ser reservado por outro cliente. Escolha outro horário."
+            : error && error.message === "HORARIO_BLOQUEADO"
+                ? "Este horário acabou de ficar bloqueado por ausência temporária. Escolha outro horário."
+                : "Não foi possível salvar o agendamento. Atualize os horários e tente novamente.";
+
+        await tratarFalhaDisponibilidadeFinal(mensagem);
+    } finally {
+        alternarConfirmacaoPreviaProcessando(false);
     }
-
-    agendamentosExistentes.push({
-        data: dadosPreAgendamento.data,
-        horario: dadosPreAgendamento.horario,
-        duracaoMinutos: dadosPreAgendamento.duracaoMinutos || calcularDuracaoAgendamentoMinutos(),
-        protocolo
-    });
-
-    fecharPrevia();
-
-    atualizarBotaoWhatsappAgendamento(dadosPreAgendamento, protocolo);
-    mostrarPopupConfirmacao(dadosPreAgendamento, protocolo);
-
-    limparFormulario();
-    carregarHorariosDisponiveis();
-
-    dadosPreAgendamento = null;
 }
 
 function mostrarPopupConfirmacao(dados, protocolo) {
