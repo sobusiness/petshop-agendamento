@@ -1041,7 +1041,7 @@ function criarClienteId(telefone, pet) {
 }
 
 function chaveClientePet(item) {
-    return `${normalizarTelefoneCliente(item.telefone)}|${normalizarTextoCliente(item.pet)}|${normalizarTextoCliente(item.raca)}`;
+    return `${normalizarTelefoneCliente(item.telefone)}|${normalizarTextoCliente(item.pet)}`;
 }
 
 function montarClienteAPartirAgendamento(item) {
@@ -1060,13 +1060,17 @@ function montarClienteAPartirAgendamento(item) {
 
 async function carregarClientesAdmin() {
     const mapa = new Map();
+    const telefonesPetsJaSalvos = new Set();
 
     try {
         const snapshotClientes = await db.collection("clientes").get();
 
         snapshotClientes.docs.forEach(doc => {
             const data = { id: doc.id, ...doc.data() };
-            mapa.set(chaveClientePet(data), data);
+            const chave = chaveClientePet(data);
+
+            mapa.set(chave, data);
+            telefonesPetsJaSalvos.add(chave);
         });
     } catch (error) {
         console.warn("Coleção clientes ainda não disponível:", error);
@@ -1077,7 +1081,7 @@ async function carregarClientesAdmin() {
             const cliente = montarClienteAPartirAgendamento(agendamento);
             const chave = chaveClientePet(cliente);
 
-            if (!mapa.has(chave)) {
+            if (!telefonesPetsJaSalvos.has(chave) && !mapa.has(chave)) {
                 mapa.set(chave, cliente);
             }
         });
@@ -1087,7 +1091,12 @@ async function carregarClientesAdmin() {
 
     clientesAdmin = Array.from(mapa.values())
         .filter(item => item.telefone || item.cliente || item.pet)
-        .sort((a, b) => (a.cliente || "").localeCompare(b.cliente || ""));
+        .sort((a, b) => {
+            const clienteA = `${a.cliente || ""} ${a.pet || ""}`;
+            const clienteB = `${b.cliente || ""} ${b.pet || ""}`;
+
+            return clienteA.localeCompare(clienteB);
+        });
 
     renderizarClientesAdmin();
 }
@@ -1210,15 +1219,18 @@ async function salvarClienteAdmin(idAtual) {
         }
     }
 
+    clientesAdmin = clientesAdmin
+        .filter(item => item.id !== idAtual && item.id !== novoId)
+        .concat([{ id: novoId, ...dados }]);
+
     await mostrarAvisoAdmin({
         titulo: "Cliente atualizado",
-        mensagem: "As alterações foram salvas e já serão usadas no preenchimento automático do agendamento.",
+        mensagem: "As alterações foram salvas no cadastro principal do cliente.",
         icone: "✅"
     });
 
     await carregarClientesAdmin();
 }
-
 
 function preencherHorariosBloqueio() {
     const inicio = document.getElementById("bloqueioInicio");

@@ -131,8 +131,7 @@ function normalizarTelefone(valor) {
 function chavePetCadastro(item) {
     return [
         (item.pet || "").trim().toLowerCase(),
-        (item.especie || "").trim().toLowerCase(),
-        (item.raca || "").trim().toLowerCase()
+        (item.especie || "").trim().toLowerCase()
     ].join("|");
 }
 
