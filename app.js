@@ -295,6 +295,200 @@ const racasPorteBanhoTosa = [
         "porte": "Pequeno"
     }
 ];
+const racasPorteGatosPetlyne = [
+    {
+        "raca": "Abissínio",
+        "porte": "Único"
+    },
+    {
+        "raca": "American Bobtail",
+        "porte": "Único"
+    },
+    {
+        "raca": "American Curl",
+        "porte": "Único"
+    },
+    {
+        "raca": "American Shorthair",
+        "porte": "Único"
+    },
+    {
+        "raca": "Angorá Turco",
+        "porte": "Único"
+    },
+    {
+        "raca": "Azul Russo",
+        "porte": "Único"
+    },
+    {
+        "raca": "Balinês",
+        "porte": "Único"
+    },
+    {
+        "raca": "Bengal",
+        "porte": "Único"
+    },
+    {
+        "raca": "Birmanês",
+        "porte": "Único"
+    },
+    {
+        "raca": "Bobtail Japonês",
+        "porte": "Único"
+    },
+    {
+        "raca": "Bombay",
+        "porte": "Único"
+    },
+    {
+        "raca": "British Longhair",
+        "porte": "Único"
+    },
+    {
+        "raca": "British Shorthair",
+        "porte": "Único"
+    },
+    {
+        "raca": "Burmilla",
+        "porte": "Único"
+    },
+    {
+        "raca": "Burmês",
+        "porte": "Único"
+    },
+    {
+        "raca": "Chartreux",
+        "porte": "Único"
+    },
+    {
+        "raca": "Chausie",
+        "porte": "Único"
+    },
+    {
+        "raca": "Cornish Rex",
+        "porte": "Único"
+    },
+    {
+        "raca": "Cymric",
+        "porte": "Único"
+    },
+    {
+        "raca": "Devon Rex",
+        "porte": "Único"
+    },
+    {
+        "raca": "Egyptian Mau",
+        "porte": "Único"
+    },
+    {
+        "raca": "Exótico",
+        "porte": "Único"
+    },
+    {
+        "raca": "Havana Brown",
+        "porte": "Único"
+    },
+    {
+        "raca": "Himalaio",
+        "porte": "Único"
+    },
+    {
+        "raca": "Khao Manee",
+        "porte": "Único"
+    },
+    {
+        "raca": "Kurilian Bobtail",
+        "porte": "Único"
+    },
+    {
+        "raca": "LaPerm",
+        "porte": "Único"
+    },
+    {
+        "raca": "Maine Coon",
+        "porte": "Único"
+    },
+    {
+        "raca": "Manx",
+        "porte": "Único"
+    },
+    {
+        "raca": "Munchkin",
+        "porte": "Único"
+    },
+    {
+        "raca": "Norueguês da Floresta",
+        "porte": "Único"
+    },
+    {
+        "raca": "Ocicat",
+        "porte": "Único"
+    },
+    {
+        "raca": "Oriental Longhair",
+        "porte": "Único"
+    },
+    {
+        "raca": "Oriental Shorthair",
+        "porte": "Único"
+    },
+    {
+        "raca": "Persa",
+        "porte": "Único"
+    },
+    {
+        "raca": "Peterbald",
+        "porte": "Único"
+    },
+    {
+        "raca": "Ragdoll",
+        "porte": "Único"
+    },
+    {
+        "raca": "Savannah",
+        "porte": "Único"
+    },
+    {
+        "raca": "Scottish Fold",
+        "porte": "Único"
+    },
+    {
+        "raca": "Selkirk Rex",
+        "porte": "Único"
+    },
+    {
+        "raca": "Sem Raça Definida (SRD)",
+        "porte": "Único"
+    },
+    {
+        "raca": "Siamês",
+        "porte": "Único"
+    },
+    {
+        "raca": "Siberiano",
+        "porte": "Único"
+    },
+    {
+        "raca": "Singapura",
+        "porte": "Único"
+    },
+    {
+        "raca": "Somali",
+        "porte": "Único"
+    },
+    {
+        "raca": "Sphynx",
+        "porte": "Único"
+    },
+    {
+        "raca": "Tonquinês",
+        "porte": "Único"
+    },
+    {
+        "raca": "Toyger",
+        "porte": "Único"
+    }
+];
 const horarioAlmoco = "12:00";
 const telefoneWhatsappPetlyne = "5511957260772";
 
@@ -338,15 +532,25 @@ const precoTratamentoAntiParasitas = 25;
 const precoBanhoSecoGato = 80;
 
 
+function obterListaRacasPorEspecie(especie) {
+    if (especie === "Gato") return racasPorteGatosPetlyne;
+    if (especie === "Cão") return racasPorteBanhoTosa;
+    return [];
+}
+
 function popularSelectRacasCliente() {
     const select = document.getElementById("raca");
+    const especie = document.getElementById("especie")?.value || "";
+    const porte = document.getElementById("porte");
+
     if (!select) return;
 
     const valorAtual = select.value;
+    const lista = obterListaRacasPorEspecie(especie);
 
-    select.innerHTML = `<option value="">Selecione a raça</option>`;
+    select.innerHTML = `<option value="">${especie ? "Selecione a raça" : "Selecione a espécie primeiro"}</option>`;
 
-    racasPorteBanhoTosa.forEach(item => {
+    lista.forEach(item => {
         const option = document.createElement("option");
         option.value = item.raca;
         option.textContent = item.raca;
@@ -354,13 +558,19 @@ function popularSelectRacasCliente() {
         select.appendChild(option);
     });
 
-    if (valorAtual) {
+    if (valorAtual && lista.some(item => item.raca === valorAtual)) {
         select.value = valorAtual;
+    } else {
+        select.value = "";
+        if (porte) porte.value = "";
     }
 }
 
-function obterPortePorRaca(raca) {
-    const item = racasPorteBanhoTosa.find(registro =>
+function obterPortePorRaca(raca, especieAtual = null) {
+    const especie = especieAtual || document.getElementById("especie")?.value || "";
+    const lista = obterListaRacasPorEspecie(especie);
+
+    const item = lista.find(registro =>
         (registro.raca || "").toLowerCase() === (raca || "").toLowerCase()
     );
 
@@ -371,15 +581,8 @@ function atualizarPortePorRacaCliente() {
     const raca = document.getElementById("raca")?.value || "";
     const porte = obterPortePorRaca(raca);
 
-    if (porte) {
-        const campoPorte = document.getElementById("porte");
-        if (campoPorte) campoPorte.value = porte;
-    }
-
-    if (!cadastro.porte && cadastro.raca) {
-        const portePorRaca = obterPortePorRaca(cadastro.raca);
-        if (portePorRaca) preencherCampoSeVazioOuDiferente("porte", portePorRaca);
-    }
+    const campoPorte = document.getElementById("porte");
+    if (campoPorte) campoPorte.value = porte || "";
 
     atualizarServicosPorEspecie();
     atualizarResumoServicos();
@@ -490,11 +693,17 @@ function aplicarCadastroPet(cadastro) {
     if (!cadastro) return;
 
     preencherCampoSeVazioOuDiferente("cliente", cadastro.cliente);
-    preencherCampoSeVazioOuDiferente("pet", cadastro.pet);
     preencherCampoSeVazioOuDiferente("especie", cadastro.especie);
+
+    popularSelectRacasCliente();
+
+    preencherCampoSeVazioOuDiferente("pet", cadastro.pet);
     preencherCampoSeVazioOuDiferente("sexo", cadastro.sexo);
     preencherCampoSeVazioOuDiferente("raca", cadastro.raca);
-    preencherCampoSeVazioOuDiferente("porte", cadastro.porte);
+
+    const porteCadastro = cadastro.porte || obterPortePorRaca(cadastro.raca, cadastro.especie);
+    preencherCampoSeVazioOuDiferente("porte", porteCadastro);
+
     preencherCampoSeVazioOuDiferente("observacaoPet", cadastro.observacaoPet);
 
     atualizarServicosPorEspecie();
@@ -632,7 +841,11 @@ document.getElementById("telefone").addEventListener("input", function () {
     buscarCadastroTelefoneComDelay();
 });
 
-document.getElementById("especie").addEventListener("change", atualizarServicosPorEspecie);
+document.getElementById("especie").addEventListener("change", function () {
+    popularSelectRacasCliente();
+    atualizarPortePorRacaCliente();
+    atualizarServicosPorEspecie();
+});
 document.getElementById("porte").addEventListener("change", atualizarResumoServicos);
 document.getElementById("raca").addEventListener("change", atualizarPortePorRacaCliente);
 document.getElementById("servicoPrincipal").addEventListener("change", controlarCamposServico);

@@ -3,6 +3,7 @@ let servicosAdmin = [];
 let pacotesAdmin = [];
 let clientesAdmin = [];
 let clienteSelecionadoAdminId = null;
+const racasPorteGatosPetlyneAdmin = [{"raca": "Abissínio", "porte": "Único"}, {"raca": "American Bobtail", "porte": "Único"}, {"raca": "American Curl", "porte": "Único"}, {"raca": "American Shorthair", "porte": "Único"}, {"raca": "Angorá Turco", "porte": "Único"}, {"raca": "Azul Russo", "porte": "Único"}, {"raca": "Balinês", "porte": "Único"}, {"raca": "Bengal", "porte": "Único"}, {"raca": "Birmanês", "porte": "Único"}, {"raca": "Bobtail Japonês", "porte": "Único"}, {"raca": "Bombay", "porte": "Único"}, {"raca": "British Longhair", "porte": "Único"}, {"raca": "British Shorthair", "porte": "Único"}, {"raca": "Burmilla", "porte": "Único"}, {"raca": "Burmês", "porte": "Único"}, {"raca": "Chartreux", "porte": "Único"}, {"raca": "Chausie", "porte": "Único"}, {"raca": "Cornish Rex", "porte": "Único"}, {"raca": "Cymric", "porte": "Único"}, {"raca": "Devon Rex", "porte": "Único"}, {"raca": "Egyptian Mau", "porte": "Único"}, {"raca": "Exótico", "porte": "Único"}, {"raca": "Havana Brown", "porte": "Único"}, {"raca": "Himalaio", "porte": "Único"}, {"raca": "Khao Manee", "porte": "Único"}, {"raca": "Kurilian Bobtail", "porte": "Único"}, {"raca": "LaPerm", "porte": "Único"}, {"raca": "Maine Coon", "porte": "Único"}, {"raca": "Manx", "porte": "Único"}, {"raca": "Munchkin", "porte": "Único"}, {"raca": "Norueguês da Floresta", "porte": "Único"}, {"raca": "Ocicat", "porte": "Único"}, {"raca": "Oriental Longhair", "porte": "Único"}, {"raca": "Oriental Shorthair", "porte": "Único"}, {"raca": "Persa", "porte": "Único"}, {"raca": "Peterbald", "porte": "Único"}, {"raca": "Ragdoll", "porte": "Único"}, {"raca": "Savannah", "porte": "Único"}, {"raca": "Scottish Fold", "porte": "Único"}, {"raca": "Selkirk Rex", "porte": "Único"}, {"raca": "Sem Raça Definida (SRD)", "porte": "Único"}, {"raca": "Siamês", "porte": "Único"}, {"raca": "Siberiano", "porte": "Único"}, {"raca": "Singapura", "porte": "Único"}, {"raca": "Somali", "porte": "Único"}, {"raca": "Sphynx", "porte": "Único"}, {"raca": "Tonquinês", "porte": "Único"}, {"raca": "Toyger", "porte": "Único"}];
 const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca": "Akita Americano", "porte": "Grande"}, {"raca": "Alaskan Malamute", "porte": "Grande"}, {"raca": "American Pit Bull Terrier", "porte": "Médio"}, {"raca": "American Staffordshire Terrier", "porte": "Médio"}, {"raca": "Australian Shepherd", "porte": "Médio"}, {"raca": "Basset Hound", "porte": "Médio"}, {"raca": "Beagle", "porte": "Médio"}, {"raca": "Bernese Mountain Dog", "porte": "Grande"}, {"raca": "Bichon Frisé", "porte": "Pequeno"}, {"raca": "Border Collie", "porte": "Médio"}, {"raca": "Boston Terrier", "porte": "Pequeno"}, {"raca": "Boxer", "porte": "Grande"}, {"raca": "Buldogue Francês", "porte": "Pequeno"}, {"raca": "Bulldog Inglês", "porte": "Médio"}, {"raca": "Bullmastiff", "porte": "Grande"}, {"raca": "Cane Corso", "porte": "Grande"}, {"raca": "Cavalier King Charles Spaniel", "porte": "Pequeno"}, {"raca": "Chihuahua", "porte": "Pequeno"}, {"raca": "Chow Chow", "porte": "Médio"}, {"raca": "Cocker Spaniel Americano", "porte": "Médio"}, {"raca": "Cocker Spaniel Inglês", "porte": "Médio"}, {"raca": "Coton de Tuléar", "porte": "Pequeno"}, {"raca": "Dachshund (Salsicha)", "porte": "Pequeno"}, {"raca": "Dobermann", "porte": "Grande"}, {"raca": "Dogue Alemão", "porte": "Grande"}, {"raca": "Dogue de Bordeaux", "porte": "Grande"}, {"raca": "Dálmata", "porte": "Grande"}, {"raca": "Fila Brasileiro", "porte": "Grande"}, {"raca": "Fox Paulistinha (Terrier Brasileiro)", "porte": "Pequeno"}, {"raca": "Golden Retriever", "porte": "Grande"}, {"raca": "Greyhound", "porte": "Grande"}, {"raca": "Husky Siberiano", "porte": "Médio"}, {"raca": "Jack Russell Terrier", "porte": "Pequeno"}, {"raca": "Komondor", "porte": "Grande"}, {"raca": "Kuvasz", "porte": "Grande"}, {"raca": "Labrador Retriever", "porte": "Grande"}, {"raca": "Leonberger", "porte": "Grande"}, {"raca": "Lhasa Apso", "porte": "Pequeno"}, {"raca": "Maltês", "porte": "Pequeno"}, {"raca": "Mastiff", "porte": "Grande"}, {"raca": "Mastino Napolitano", "porte": "Grande"}, {"raca": "Papillon", "porte": "Pequeno"}, {"raca": "Pastor Alemão", "porte": "Grande"}, {"raca": "Pastor Belga", "porte": "Grande"}, {"raca": "Pequinês", "porte": "Pequeno"}, {"raca": "Pinscher", "porte": "Pequeno"}, {"raca": "Poodle Mini", "porte": "Pequeno"}, {"raca": "Poodle Standard", "porte": "Médio"}, {"raca": "Poodle Toy", "porte": "Pequeno"}, {"raca": "Pug", "porte": "Pequeno"}, {"raca": "Rhodesian Ridgeback", "porte": "Grande"}, {"raca": "Rottweiler", "porte": "Grande"}, {"raca": "Samoieda", "porte": "Médio"}, {"raca": "Schnauzer Miniatura", "porte": "Pequeno"}, {"raca": "Schnauzer Standard", "porte": "Médio"}, {"raca": "Sem Raça Grande", "porte": "Grande"}, {"raca": "Sem Raça Médio", "porte": "Médio"}, {"raca": "Sem Raça Pequeno", "porte": "Pequeno"}, {"raca": "Setter Inglês", "porte": "Médio"}, {"raca": "Setter Irlandês", "porte": "Médio"}, {"raca": "Shar Pei", "porte": "Médio"}, {"raca": "Shiba Inu", "porte": "Pequeno"}, {"raca": "Shih Tzu", "porte": "Pequeno"}, {"raca": "Spitz Alemão (Lulu da Pomerânia)", "porte": "Pequeno"}, {"raca": "Springer Spaniel", "porte": "Médio"}, {"raca": "São Bernardo", "porte": "Grande"}, {"raca": "Terra Nova", "porte": "Grande"}, {"raca": "Weimaraner", "porte": "Médio"}, {"raca": "West Highland White Terrier", "porte": "Pequeno"}, {"raca": "Whippet", "porte": "Médio"}, {"raca": "Wolfhound Irlandês", "porte": "Grande"}, {"raca": "Yorkshire Terrier", "porte": "Pequeno"}];
 let bloqueiosAgenda = [];
 let mesBloqueioReferencia = new Date();
@@ -1122,31 +1123,52 @@ function optionSelecionada(valorAtual, valorOption) {
 }
 
 
-function gerarOptionsRacasAdmin(racaAtual) {
+function obterListaRacasAdminPorEspecie(especie) {
+    if (especie === "Gato") return racasPorteGatosPetlyneAdmin;
+    if (especie === "Cão") return racasPorteBanhoTosaAdmin;
+    return [];
+}
+
+function gerarOptionsRacasAdmin(racaAtual, especieAtual = "") {
+    const lista = obterListaRacasAdminPorEspecie(especieAtual);
+
     return [
-        `<option value="">Selecione a raça</option>`,
-        ...racasPorteBanhoTosaAdmin.map(item =>
+        `<option value="">${especieAtual ? "Selecione a raça" : "Selecione a espécie primeiro"}</option>`,
+        ...lista.map(item =>
             `<option value="${item.raca}" ${optionSelecionada(racaAtual, item.raca)}>${item.raca}</option>`
         )
     ].join("");
 }
 
-function obterPortePorRacaAdmin(raca) {
-    const item = racasPorteBanhoTosaAdmin.find(registro =>
+function obterPortePorRacaAdmin(raca, especieAtual = "") {
+    const lista = obterListaRacasAdminPorEspecie(especieAtual);
+
+    const item = lista.find(registro =>
         (registro.raca || "").toLowerCase() === (raca || "").toLowerCase()
     );
 
     return item ? item.porte : "";
 }
 
-function atualizarPorteClienteAdmin(id) {
-    const raca = document.getElementById(`cliente-raca-${id}`)?.value || "";
-    const porte = obterPortePorRacaAdmin(raca);
+function atualizarRacasClienteAdmin(id) {
+    const especie = document.getElementById(`cliente-especie-${id}`)?.value || "";
+    const selectRaca = document.getElementById(`cliente-raca-${id}`);
+    const campoPorte = document.getElementById(`cliente-porte-${id}`);
 
-    if (porte) {
-        const campoPorte = document.getElementById(`cliente-porte-${id}`);
-        if (campoPorte) campoPorte.value = porte;
-    }
+    if (!selectRaca) return;
+
+    selectRaca.innerHTML = gerarOptionsRacasAdmin("", especie);
+
+    if (campoPorte) campoPorte.value = "";
+}
+
+function atualizarPorteClienteAdmin(id) {
+    const especie = document.getElementById(`cliente-especie-${id}`)?.value || "";
+    const raca = document.getElementById(`cliente-raca-${id}`)?.value || "";
+    const porte = obterPortePorRacaAdmin(raca, especie);
+
+    const campoPorte = document.getElementById(`cliente-porte-${id}`);
+    if (campoPorte) campoPorte.value = porte || "";
 }
 
 
@@ -1216,7 +1238,7 @@ function renderizarClientesAdmin() {
                 <label><span>Telefone</span><input type="text" id="cliente-telefone-${item.id}" value="${item.telefone || ""}"></label>
                 <label><span>Nome do Pet</span><input type="text" id="cliente-pet-${item.id}" value="${item.pet || ""}"></label>
 
-                <label><span>Espécie</span><select id="cliente-especie-${item.id}">
+                <label><span>Espécie</span><select id="cliente-especie-${item.id}" onchange="atualizarRacasClienteAdmin('${item.id}')">
                     <option value="">Selecione</option>
                     <option value="Cão" ${optionSelecionada(item.especie, "Cão")}>Cão</option>
                     <option value="Gato" ${optionSelecionada(item.especie, "Gato")}>Gato</option>
@@ -1229,7 +1251,7 @@ function renderizarClientesAdmin() {
                 </select></label>
 
                 <label><span>Raça</span><select id="cliente-raca-${item.id}" onchange="atualizarPorteClienteAdmin('${item.id}')">
-                    ${gerarOptionsRacasAdmin(item.raca)}
+                    ${gerarOptionsRacasAdmin(item.raca, item.especie)}
                 </select></label>
 
                 <label><span>Porte</span><select id="cliente-porte-${item.id}" disabled>
