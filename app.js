@@ -1005,45 +1005,17 @@ async function salvarAgendamentoComTransacao(dados, protocolo) {
         return;
     }
 
-    const agendamentoRef = db.collection("agendamentos").doc();
-    const duracaoMinutos = dados.duracaoMinutos || calcularDuracaoAgendamentoMinutos();
+    const disponibilidade = await validarDisponibilidadeFinalFirestore(dados);
 
-    await db.runTransaction(async transaction => {
-        const agendamentosQuery = db.collection("agendamentos")
-            .where("data", "==", dados.data);
-
-        const bloqueiosQuery = db.collection("bloqueiosAgenda")
-            .where("data", "==", dados.data)
-            .where("status", "==", "Ativo");
-
-        const agendamentosSnapshot = await transaction.get(agendamentosQuery);
-        const bloqueiosSnapshot = await transaction.get(bloqueiosQuery);
-
-        const agendamentosData = agendamentosSnapshot.docs.map(doc => doc.data());
-        const bloqueiosData = bloqueiosSnapshot.docs.map(doc => doc.data());
-
-        const horarioOcupado = horarioOcupadoPorPeriodoComDuracao(
-            dados.horario,
-            duracaoMinutos,
-            agendamentosData
-        );
-
-        if (horarioOcupado) {
-            throw new Error("HORARIO_OCUPADO");
-        }
-
-        const horarioBloqueado = horarioBloqueadoPorAusenciaComDuracao(
-            dados.horario,
-            duracaoMinutos,
-            bloqueiosData
-        );
-
-        if (horarioBloqueado) {
+    if (!disponibilidade.disponivel) {
+        if ((disponibilidade.motivo || "").toLowerCase().includes("bloqueado")) {
             throw new Error("HORARIO_BLOQUEADO");
         }
 
-        transaction.set(agendamentoRef, montarDadosAgendamentoFirestore(dados, protocolo));
-    });
+        throw new Error("HORARIO_OCUPADO");
+    }
+
+    await db.collection("agendamentos").add(montarDadosAgendamentoFirestore(dados, protocolo));
 }
 
 function alternarConfirmacaoPreviaProcessando(processando) {
@@ -1109,7 +1081,7 @@ async function confirmarAgendamentoFinal() {
             ? "Este horário acabou de ser reservado por outro cliente. Escolha outro horário."
             : error && error.message === "HORARIO_BLOQUEADO"
                 ? "Este horário acabou de ficar bloqueado por ausência temporária. Escolha outro horário."
-                : "Não foi possível salvar o agendamento. Atualize os horários e tente novamente.";
+                : "Não foi possível confirmar o agendamento agora. Atualize os horários e tente novamente.";
 
         await tratarFalhaDisponibilidadeFinal(mensagem);
     } finally {
