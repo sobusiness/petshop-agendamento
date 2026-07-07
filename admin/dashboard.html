@@ -185,6 +185,7 @@
 
             <button onclick="salvarBloqueioAgenda()">Bloquear Horário</button>
             <button type="button" class="secondary-button bloqueio-dia-todo-btn" onclick="bloquearDiasSelecionadosDiaTodo()">Bloquear Dia Todo</button>
+            <button type="button" class="secondary-button desbloquear-dias-btn" onclick="desbloquearDiasSelecionados()">Desbloquear Dia(s)</button>
         </div>
 
         <div class="bloqueio-selecionados-box">
@@ -204,9 +205,7 @@
         </div>
 
         <div id="calendarioBloqueios" class="bloqueio-calendario"></div>
-
-        <h3 class="subtitulo-bloqueio">Bloqueios cadastrados</h3>
-        <div id="listaBloqueiosAgenda" class="bloqueio-list"></div>
+        <div id="listaBloqueiosAgenda" class="bloqueio-list bloqueio-list-hidden"></div>
     </section>
 
 

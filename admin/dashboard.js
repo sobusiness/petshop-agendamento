@@ -1264,27 +1264,70 @@ async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false)
 
 function renderizarBloqueiosAgenda() {
     const lista = document.getElementById("listaBloqueiosAgenda");
-    if (!lista) return;
+    if (lista) lista.innerHTML = "";
+}
 
-    const bloqueios = bloqueiosAgenda
-        .filter(b => b.status === "Ativo")
-        .sort((a, b) => `${a.data} ${a.inicio}`.localeCompare(`${b.data} ${b.inicio}`));
 
-    if (bloqueios.length === 0) {
-        lista.innerHTML = `<p class="empty-state">Nenhum bloqueio cadastrado.</p>`;
+async function desbloquearDiasSelecionados() {
+    const dataCampo = document.getElementById("bloqueioData")?.value;
+    const datas = diasSelecionadosBloqueio.length > 0 ? [...diasSelecionadosBloqueio] : [dataCampo].filter(Boolean);
+
+    if (datas.length === 0) {
+        await mostrarAvisoAdmin({
+            titulo: "Nenhum dia selecionado",
+            mensagem: "Selecione um ou mais dias no calendário para desbloquear.",
+            icone: "⚠️"
+        });
         return;
     }
 
-    lista.innerHTML = bloqueios.map(bloqueio => `
-        <div class="bloqueio-card">
-            <div>
-                <strong>${formatarDataCurta(bloqueio.data)} — ${bloqueio.inicio} até ${bloqueio.fim}</strong>
-                <span>${bloqueio.diaTodo ? "Dia todo — " : ""}${bloqueio.motivo || "Ausência Temporária"}</span>
-            </div>
-            <button class="secondary-button" onclick="excluirBloqueioAgenda('${bloqueio.id}')">Desbloquear</button>
-        </div>
-    `).join("");
+    const bloqueiosParaExcluir = bloqueiosAgenda.filter(bloqueio =>
+        bloqueio.status === "Ativo" &&
+        datas.includes(bloqueio.data)
+    );
+
+    if (bloqueiosParaExcluir.length === 0) {
+        await mostrarAvisoAdmin({
+            titulo: "Nenhum bloqueio encontrado",
+            mensagem: "Os dias selecionados não possuem bloqueios ativos.",
+            icone: "ℹ️"
+        });
+        return;
+    }
+
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Desbloquear agenda",
+        mensagem: `Deseja remover ${bloqueiosParaExcluir.length} bloqueio(s) dos dia(s) selecionado(s)?`,
+        icone: "🔓",
+        textoConfirmar: "Desbloquear",
+        textoCancelar: "Voltar"
+    });
+
+    if (!confirmar) return;
+
+    const batch = db.batch();
+
+    bloqueiosParaExcluir.forEach(bloqueio => {
+        const ref = db.collection("bloqueiosAgenda").doc(bloqueio.id);
+        batch.delete(ref);
+    });
+
+    await batch.commit();
+
+    limparSelecaoDiasBloqueio();
+    await carregarBloqueiosAgenda();
+
+    renderizarAgenda();
+    renderizarCalendarioBloqueios();
+    preencherHorariosPacote();
+
+    await mostrarAvisoAdmin({
+        titulo: "Agenda desbloqueada",
+        mensagem: "Os bloqueios dos dias selecionados foram removidos com sucesso.",
+        icone: "✅"
+    });
 }
+
 
 async function excluirBloqueioAgenda(id) {
     const confirmar = await mostrarConfirmacaoAdmin({

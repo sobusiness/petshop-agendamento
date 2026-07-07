@@ -1706,3 +1706,35 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         width: 100%;
     }
 }
+
+/* V3.11 - Dias e Horários sem lista e com desbloqueio em lote */
+.bloqueio-form {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto auto;
+}
+
+.desbloquear-dias-btn {
+    height: 46px;
+    background: linear-gradient(135deg, #6f696b, #8a8383) !important;
+    color: white !important;
+}
+
+.bloqueio-list-hidden,
+#listaBloqueiosAgenda.bloqueio-list-hidden {
+    display: none !important;
+}
+
+.subtitulo-bloqueio {
+    display: none !important;
+}
+
+@media (max-width: 1200px) {
+    .bloqueio-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 680px) {
+    .bloqueio-form {
+        grid-template-columns: 1fr;
+    }
+}
