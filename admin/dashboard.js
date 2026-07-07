@@ -1141,6 +1141,10 @@ function gerarOptionsRacasAdmin(racaAtual, especieAtual = "") {
 }
 
 function obterPortePorRacaAdmin(raca, especieAtual = "") {
+    if (especieAtual === "Gato" && raca) {
+        return "Único";
+    }
+
     const lista = obterListaRacasAdminPorEspecie(especieAtual);
 
     const item = lista.find(registro =>
@@ -1259,6 +1263,7 @@ function renderizarClientesAdmin() {
                     <option value="Pequeno" ${optionSelecionada(item.porte, "Pequeno")}>Pequeno</option>
                     <option value="Médio" ${optionSelecionada(item.porte, "Médio")}>Médio</option>
                     <option value="Grande" ${optionSelecionada(item.porte, "Grande")}>Grande</option>
+                    <option value="Único" ${optionSelecionada(item.porte, "Único")}>Único</option>
                 </select></label>
 
                 <label><span>Observações do Pet</span><select id="cliente-observacao-${item.id}">

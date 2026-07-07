@@ -568,6 +568,11 @@ function popularSelectRacasCliente() {
 
 function obterPortePorRaca(raca, especieAtual = null) {
     const especie = especieAtual || document.getElementById("especie")?.value || "";
+
+    if (especie === "Gato" && raca) {
+        return "Único";
+    }
+
     const lista = obterListaRacasPorEspecie(especie);
 
     const item = lista.find(registro =>
