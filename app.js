@@ -529,6 +529,12 @@ const precosHidratacaoCaes = {
 
 const precoTosaHigienicaAvulsa = 12;
 const precoTratamentoAntiParasitas = 25;
+
+const precosDesemboloCaes = {
+    "Pequeno": 25,
+    "Médio": 35,
+    "Grande": 45
+};
 const precoBanhoSecoGato = 80;
 
 
@@ -859,6 +865,7 @@ document.getElementById("tipoTosa").addEventListener("change", atualizarResumoSe
 document.getElementById("adicionalHidratacao").addEventListener("change", atualizarResumoServicos);
 document.getElementById("adicionalTosaHigienica").addEventListener("change", atualizarResumoServicos);
 document.getElementById("adicionalCorteUnha").addEventListener("change", atualizarResumoServicos);
+document.getElementById("adicionalDesembolo").addEventListener("change", atualizarResumoServicos);
 document.getElementById("data").addEventListener("change", carregarHorariosDisponiveis);
 document.getElementById("raca").addEventListener("input", carregarHorariosDisponiveis);
 document.getElementById("servicoPrincipal").addEventListener("change", carregarHorariosDisponiveis);
@@ -1009,15 +1016,18 @@ function atualizarServicosPorEspecie() {
     const adicionalHidratacao = document.getElementById("adicionalHidratacao");
     const adicionalTosaHigienica = document.getElementById("adicionalTosaHigienica");
     const adicionalCorteUnha = document.getElementById("adicionalCorteUnha");
+    const adicionalDesembolo = document.getElementById("adicionalDesembolo");
 
     servicoPrincipal.innerHTML = "";
     adicionalHidratacao.checked = false;
     adicionalTosaHigienica.checked = false;
     adicionalCorteUnha.checked = false;
+    adicionalDesembolo.checked = false;
 
     adicionalHidratacao.closest(".checkbox-line").style.display = "flex";
     adicionalTosaHigienica.closest(".checkbox-line").style.display = "flex";
     adicionalCorteUnha.closest(".checkbox-line").style.display = "flex";
+    adicionalDesembolo.closest(".checkbox-line").style.display = "flex";
 
     if (especie === "") {
         servicoPrincipal.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
@@ -1034,6 +1044,8 @@ function atualizarServicosPorEspecie() {
         servicoPrincipal.innerHTML = montarOptionsServicosPrincipais("Gato");
 
         adicionalHidratacao.closest(".checkbox-line").style.display = "none";
+        adicionalDesembolo.closest(".checkbox-line").style.display = "none";
+        adicionalDesembolo.checked = false;
     }
 
     controlarCamposServico();
@@ -1153,6 +1165,14 @@ function calcularServicosSelecionados() {
     if (document.getElementById("adicionalCorteUnha").checked) {
         itens.push({ nome: "Tratamento Anti-Parasitas", valor: precoTratamentoAntiParasitas });
         total += precoTratamentoAntiParasitas;
+    }
+
+    if (especie === "Cão" && document.getElementById("adicionalDesembolo").checked && porte) {
+        const valor = precosDesemboloCaes[porte] || 0;
+        if (valor > 0) {
+            itens.push({ nome: `Desembolo (${porte})`, valor });
+            total += valor;
+        }
     }
 
     return { itens, total };
