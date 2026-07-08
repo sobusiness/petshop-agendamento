@@ -893,6 +893,18 @@ async function carregarServicosPrincipaisCliente() {
     }
 }
 
+
+function racaSelecionadaEhGoldenRetriever() {
+    const raca = document.getElementById("raca")?.value || "";
+    return raca.trim().toLowerCase() === "golden retriever";
+}
+
+function servicoEhTrimmingGolden(nomeServico) {
+    const nome = (nomeServico || "").toLowerCase();
+    return nome.includes("trimming") && nome.includes("golden");
+}
+
+
 function obterServicosPrincipaisPorEspecie(especie) {
     return servicosPrincipaisCliente.filter(servico => {
         if (!servico.ativo) return false;
@@ -913,7 +925,17 @@ function obterServicoPrincipalSelecionado() {
 
 function montarOptionsServicosPrincipais(especie) {
     const servicos = obterServicosPrincipaisPorEspecie(especie);
-    const nomesUnicos = [...new Set(servicos.map(servico => servico.nome).filter(Boolean))];
+    const ehGoldenRetriever = racaSelecionadaEhGoldenRetriever();
+
+    let nomesUnicos = [...new Set(servicos.map(servico => servico.nome).filter(Boolean))];
+
+    nomesUnicos = nomesUnicos.filter(nome => {
+        if (servicoEhTrimmingGolden(nome)) {
+            return especie === "Cão" && ehGoldenRetriever;
+        }
+
+        return true;
+    });
 
     if (nomesUnicos.length === 0) {
         if (especie === "Cão") {
@@ -921,6 +943,7 @@ function montarOptionsServicosPrincipais(especie) {
                 <option value="">Selecione</option>
                 <option value="Banho">Banho</option>
                 <option value="Tosa">Tosa</option>
+                ${ehGoldenRetriever ? `<option value="Trimming (Golden)">Trimming (Golden)</option>` : ""}
             `;
         }
 
@@ -940,7 +963,6 @@ function montarOptionsServicosPrincipais(especie) {
 
     return `<option value="">Selecione</option>${options}`;
 }
-
 
 function obterRegraPrecoServico(nomeServico, especie, porte, pelagem, tipoTosa) {
     const regras = servicosPrincipaisCliente.filter(servico => {
