@@ -9,6 +9,6 @@ Sistema de agendamento online para petshop.
 - Agenda online
 - Controle de serviços
 - Histórico de atendimentos
-- Confirmação por e-mail
+- Confirmação de agendamento por whatsapp e com protocolo
 
 Projeto desenvolvido para a Petlyne.
