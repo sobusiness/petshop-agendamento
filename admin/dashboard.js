@@ -73,6 +73,7 @@ function abrirSecao(secao) {
 
     if (secao === "clientes") {
         carregarClientesAdmin();
+        configurarMascaraNovoCliente();
     }
 }
 
@@ -1173,6 +1174,146 @@ function atualizarPorteClienteAdmin(id) {
 
     const campoPorte = document.getElementById(`cliente-porte-${id}`);
     if (campoPorte) campoPorte.value = porte || "";
+}
+
+
+
+function alternarFormularioNovoCliente() {
+    const form = document.getElementById("formNovoCliente");
+    if (!form) return;
+
+    const abrindo = form.style.display === "none" || !form.style.display;
+    form.style.display = abrindo ? "block" : "none";
+
+    if (abrindo) {
+        configurarMascaraNovoCliente();
+        document.getElementById("novoClienteNome")?.focus();
+    }
+}
+
+function configurarMascaraNovoCliente() {
+    const input = document.getElementById("novoClienteTelefone");
+    if (!input || input.dataset.mascaraConfigurada === "true") return;
+
+    input.addEventListener("input", () => {
+        input.value = formatarTelefonePacote(input.value);
+    });
+
+    input.dataset.mascaraConfigurada = "true";
+}
+
+function atualizarRacasNovoCliente() {
+    const especie = document.getElementById("novoClienteEspecie")?.value || "";
+    const selectRaca = document.getElementById("novoClienteRaca");
+    const campoPorte = document.getElementById("novoClientePorte");
+
+    if (!selectRaca) return;
+
+    selectRaca.innerHTML = gerarOptionsRacasAdmin("", especie);
+
+    if (campoPorte) campoPorte.value = "";
+}
+
+function atualizarPorteNovoCliente() {
+    const especie = document.getElementById("novoClienteEspecie")?.value || "";
+    const raca = document.getElementById("novoClienteRaca")?.value || "";
+    const porte = obterPortePorRacaAdmin(raca, especie);
+    const campoPorte = document.getElementById("novoClientePorte");
+
+    if (campoPorte) campoPorte.value = porte || "";
+}
+
+function limparFormularioNovoCliente() {
+    [
+        "novoClienteNome",
+        "novoClienteTelefone",
+        "novoClientePet"
+    ].forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) campo.value = "";
+    });
+
+    [
+        "novoClienteEspecie",
+        "novoClienteSexo",
+        "novoClienteObservacao"
+    ].forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) campo.value = "";
+    });
+
+    const raca = document.getElementById("novoClienteRaca");
+    const porte = document.getElementById("novoClientePorte");
+
+    if (raca) raca.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
+    if (porte) porte.value = "";
+}
+
+async function gravarNovoCliente() {
+    const dados = {
+        cliente: document.getElementById("novoClienteNome")?.value.trim() || "",
+        telefone: document.getElementById("novoClienteTelefone")?.value.trim() || "",
+        pet: document.getElementById("novoClientePet")?.value.trim() || "",
+        especie: document.getElementById("novoClienteEspecie")?.value || "",
+        sexo: document.getElementById("novoClienteSexo")?.value || "",
+        raca: document.getElementById("novoClienteRaca")?.value || "",
+        porte: document.getElementById("novoClientePorte")?.value || "",
+        observacaoPet: document.getElementById("novoClienteObservacao")?.value || "",
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    const telefoneNumeros = normalizarTelefoneCliente(dados.telefone);
+
+    if (!dados.cliente || !dados.telefone || !dados.pet || !dados.especie || !dados.sexo || !dados.raca || !dados.porte || !dados.observacaoPet) {
+        await mostrarAvisoAdmin({
+            titulo: "Campos obrigatórios",
+            mensagem: "Preencha todos os campos do cadastro do cliente.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    if (telefoneNumeros.length !== 11) {
+        await mostrarAvisoAdmin({
+            titulo: "Telefone inválido",
+            mensagem: "Informe um celular com DDD no formato (11) 99999-9999.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const clienteId = criarClienteId(dados.telefone, dados.pet);
+    const registroExistente = await db.collection("clientes").doc(clienteId).get();
+
+    if (registroExistente.exists) {
+        await mostrarAvisoAdmin({
+            titulo: "Cadastro já existente",
+            mensagem: "Já existe um cadastro para este telefone e pet. Use a pesquisa abaixo para editar os dados.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    await db.collection("clientes").doc(clienteId).set(dados);
+
+    limparFormularioNovoCliente();
+    document.getElementById("formNovoCliente").style.display = "none";
+
+    await carregarClientesAdmin();
+
+    const filtro = document.getElementById("filtroClientes");
+    if (filtro) {
+        filtro.value = dados.telefone;
+        clienteSelecionadoAdminId = clienteId;
+        renderizarClientesAdmin();
+    }
+
+    await mostrarAvisoAdmin({
+        titulo: "Cliente cadastrado",
+        mensagem: "O novo cliente foi gravado com sucesso e já está disponível no agendamento online.",
+        icone: "✅"
+    });
 }
 
 

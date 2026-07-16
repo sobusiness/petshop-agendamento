@@ -219,6 +219,91 @@
             </div>
         </div>
 
+
+        <div class="novo-cliente-panel">
+            <div class="novo-cliente-header">
+                <div>
+                    <h3>Novo Cliente</h3>
+                    <p>Cadastre manualmente um cliente e o respectivo pet.</p>
+                </div>
+                <button type="button" class="secondary-button" onclick="alternarFormularioNovoCliente()">Cadastrar Novo Cliente</button>
+            </div>
+
+            <div id="formNovoCliente" class="novo-cliente-form" style="display:none;">
+                <div class="cliente-form-grid">
+                    <label>
+                        <span>Nome do Cliente</span>
+                        <input type="text" id="novoClienteNome" placeholder="Nome completo">
+                    </label>
+
+                    <label>
+                        <span>Telefone</span>
+                        <input type="text" id="novoClienteTelefone" placeholder="(11) 99999-9999" maxlength="15">
+                    </label>
+
+                    <label>
+                        <span>Nome do Pet</span>
+                        <input type="text" id="novoClientePet" placeholder="Nome do pet">
+                    </label>
+
+                    <label>
+                        <span>Espécie</span>
+                        <select id="novoClienteEspecie" onchange="atualizarRacasNovoCliente()">
+                            <option value="">Selecione</option>
+                            <option value="Cão">Cão</option>
+                            <option value="Gato">Gato</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Sexo</span>
+                        <select id="novoClienteSexo">
+                            <option value="">Selecione</option>
+                            <option value="Macho">Macho</option>
+                            <option value="Fêmea">Fêmea</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Raça</span>
+                        <select id="novoClienteRaca" onchange="atualizarPorteNovoCliente()">
+                            <option value="">Selecione a espécie primeiro</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Porte</span>
+                        <select id="novoClientePorte" disabled>
+                            <option value="">Selecione a raça</option>
+                            <option value="Pequeno">Pequeno</option>
+                            <option value="Médio">Médio</option>
+                            <option value="Grande">Grande</option>
+                            <option value="Único">Único</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <span>Observação PET</span>
+                        <select id="novoClienteObservacao">
+                            <option value="">Selecione</option>
+                            <option value="Sem Observação">Sem Observação</option>
+                            <option value="Bravo">Bravo</option>
+                            <option value="Não gosta de secador">Não gosta de secador</option>
+                            <option value="Alérgico">Alérgico</option>
+                            <option value="Ansioso">Ansioso</option>
+                            <option value="Idoso">Idoso</option>
+                            <option value="Filhote">Filhote</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="novo-cliente-actions">
+                    <button type="button" onclick="gravarNovoCliente()">Gravar Cliente</button>
+                    <button type="button" class="secondary-button" onclick="limparFormularioNovoCliente()">Limpar</button>
+                </div>
+            </div>
+        </div>
+
         <div class="clientes-toolbar clientes-toolbar-unica">
             <input type="text" id="filtroClientes" placeholder="Pesquise por cliente, telefone ou pet" oninput="renderizarClientesAdmin()">
             <button onclick="carregarClientesAdmin()">Atualizar Lista</button>
