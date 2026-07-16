@@ -2019,3 +2019,68 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
     font-size: 12px;
     vertical-align: middle;
 }
+
+
+/* V3.25 - Cadastro manual definitivo */
+.novo-cliente-panel {
+    border: 1px solid var(--pet-border);
+    border-radius: 18px;
+    background: rgba(255, 246, 248, .9);
+    padding: 18px;
+    margin-bottom: 20px;
+}
+
+.novo-cliente-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.novo-cliente-header h3 {
+    margin: 0;
+    color: var(--pet-primary-dark);
+    font-size: 22px;
+}
+
+.novo-cliente-header p {
+    margin: 4px 0 0;
+    color: var(--pet-text-muted);
+}
+
+.novo-cliente-form {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--pet-border);
+}
+
+.novo-cliente-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.versao-clientes-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: rgba(214, 90, 126, .14);
+    color: var(--pet-primary-dark);
+    font-size: 12px;
+    vertical-align: middle;
+}
+
+@media (max-width: 680px) {
+    .novo-cliente-header,
+    .novo-cliente-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .novo-cliente-header button,
+    .novo-cliente-actions button {
+        width: 100%;
+    }
+}

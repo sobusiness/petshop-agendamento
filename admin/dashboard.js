@@ -1178,14 +1178,28 @@ function atualizarPorteClienteAdmin(id) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function alternarFormularioNovoCliente() {
     const form = document.getElementById("formNovoCliente");
     if (!form) return;
 
-    const abrindo = form.style.display === "none" || !form.style.display;
-    form.style.display = abrindo ? "block" : "none";
+    const abrir = form.style.display === "none" || form.style.display === "";
+    form.style.display = abrir ? "block" : "none";
 
-    if (abrindo) {
+    if (abrir) {
         configurarMascaraNovoCliente();
         document.getElementById("novoClienteNome")?.focus();
     }
@@ -1224,20 +1238,12 @@ function atualizarPorteNovoCliente() {
 }
 
 function limparFormularioNovoCliente() {
-    [
-        "novoClienteNome",
-        "novoClienteTelefone",
-        "novoClientePet"
-    ].forEach(id => {
+    ["novoClienteNome", "novoClienteTelefone", "novoClientePet"].forEach(id => {
         const campo = document.getElementById(id);
         if (campo) campo.value = "";
     });
 
-    [
-        "novoClienteEspecie",
-        "novoClienteSexo",
-        "novoClienteObservacao"
-    ].forEach(id => {
+    ["novoClienteEspecie", "novoClienteSexo", "novoClienteObservacao"].forEach(id => {
         const campo = document.getElementById(id);
         if (campo) campo.value = "";
     });
@@ -1263,33 +1269,33 @@ async function gravarNovoCliente() {
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    const telefoneNumeros = normalizarTelefoneCliente(dados.telefone);
-
     if (!dados.cliente || !dados.telefone || !dados.pet || !dados.especie || !dados.sexo || !dados.raca || !dados.porte || !dados.observacaoPet) {
         await mostrarAvisoAdmin({
             titulo: "Campos obrigatórios",
-            mensagem: "Preencha todos os campos do cadastro do cliente.",
+            mensagem: "Preencha todos os campos do cadastro.",
             icone: "⚠️"
         });
         return;
     }
 
+    const telefoneNumeros = normalizarTelefoneCliente(dados.telefone);
+
     if (telefoneNumeros.length !== 11) {
         await mostrarAvisoAdmin({
             titulo: "Telefone inválido",
-            mensagem: "Informe um celular com DDD no formato (11) 99999-9999.",
+            mensagem: "Informe o telefone no formato (11) 99999-9999.",
             icone: "⚠️"
         });
         return;
     }
 
     const clienteId = criarClienteId(dados.telefone, dados.pet);
-    const registroExistente = await db.collection("clientes").doc(clienteId).get();
+    const existente = await db.collection("clientes").doc(clienteId).get();
 
-    if (registroExistente.exists) {
+    if (existente.exists) {
         await mostrarAvisoAdmin({
             titulo: "Cadastro já existente",
-            mensagem: "Já existe um cadastro para este telefone e pet. Use a pesquisa abaixo para editar os dados.",
+            mensagem: "Já existe um cadastro para este telefone e pet.",
             icone: "⚠️"
         });
         return;
@@ -1311,7 +1317,7 @@ async function gravarNovoCliente() {
 
     await mostrarAvisoAdmin({
         titulo: "Cliente cadastrado",
-        mensagem: "O novo cliente foi gravado com sucesso e já está disponível no agendamento online.",
+        mensagem: "O novo cliente foi gravado com sucesso.",
         icone: "✅"
     });
 }
