@@ -1,0 +1,8 @@
+PETLYNE V3.31
+
+Correções:
+- Cadastro manual continua no CRM "Conhecer agendamento online" após alteração do telefone.
+- Ao trocar o telefone, o novo documento preserva criadoEm e a origem manual do cadastro.
+- CRM passa a reconhecer cadastro manual pela origem da coleção clientes, sem depender somente de criadoEm.
+- Máscara de telefone restaurada nos campos de edição do cadastro de clientes.
+- Campo aceita DDD + telefone com 8 ou 9 dígitos e formata automaticamente.

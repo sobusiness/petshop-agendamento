@@ -1449,7 +1449,7 @@ function renderizarClientesAdmin() {
 
             <div class="cliente-form-grid">
                 <label><span>Nome do Cliente</span><input type="text" id="cliente-nome-${item.id}" value="${item.cliente || ""}"></label>
-                <label><span>Telefone</span><input type="text" id="cliente-telefone-${item.id}" value="${item.telefone || ""}"></label>
+                <label><span>Telefone</span><input type="text" id="cliente-telefone-${item.id}" value="${formatarTelefonePacote(item.telefone || "")}" inputmode="numeric" maxlength="15" oninput="this.value = formatarTelefonePacote(this.value)"></label>
                 <label><span>Nome do Pet</span><input type="text" id="cliente-pet-${item.id}" value="${item.pet || ""}"></label>
 
                 <label><span>Espécie</span><select id="cliente-especie-${item.id}" onchange="atualizarRacasClienteAdmin('${item.id}')">
@@ -1497,6 +1497,7 @@ function renderizarClientesAdmin() {
 }
 
 async function salvarClienteAdmin(idAtual) {
+    const cadastroAnterior = clientesAdmin.find(item => item.id === idAtual) || {};
     const dados = {
         cliente: document.getElementById(`cliente-nome-${idAtual}`).value.trim(),
         telefone: document.getElementById(`cliente-telefone-${idAtual}`).value.trim(),
@@ -1506,6 +1507,8 @@ async function salvarClienteAdmin(idAtual) {
         raca: document.getElementById(`cliente-raca-${idAtual}`).value.trim(),
         porte: document.getElementById(`cliente-porte-${idAtual}`).value,
         observacaoPet: document.getElementById(`cliente-observacao-${idAtual}`).value,
+        origemCadastro: "clientes",
+        criadoEm: cadastroAnterior.criadoEm || firebase.firestore.FieldValue.serverTimestamp(),
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
 
@@ -2944,7 +2947,7 @@ function calcularCRM() {
             let categoria = null, ultimo = null, dias = null;
             if (concluidos.length) {
                 ultimo = concluidos[0]; dias = calcularDiasDesdeCRM(ultimo.data); categoria = categoriaPorDiasCRM(dias);
-            } else if (petCadastro.criadoEm) categoria = "conhecer";
+            } else if (petCadastro.origemCadastro === "clientes" || petCadastro.criadoEm) categoria = "conhecer";
             if (categoria) candidatos.push({ categoria, petCadastro, ultimo, dias, totalLyne: concluidos.length });
         });
 
