@@ -97,93 +97,80 @@
         </div>
     </section>
 
-    <section id="secao-faturamento" class="admin-section">
-        <div class="section-title-row">
+    <section id="secao-faturamento" class="admin-section finance-intelligence">
+        <div class="finance-hero">
             <div>
-                <h2>Faturamento</h2>
-                <p>Resumo financeiro dos atendimentos realizados.</p>
+                <span class="finance-eyebrow">PETLYNE FINANCE INTELLIGENCE</span>
+                <h2>Centro de Inteligência Financeira</h2>
+                <p>Receita, desempenho, tendências e oportunidades em uma única visão.</p>
+            </div>
+            <div class="finance-health-card">
+                <span>Saúde do negócio</span>
+                <strong id="financeHealthScore">0</strong>
+                <small id="financeHealthLabel">Calculando...</small>
             </div>
         </div>
 
-        <div class="kpi-grid">
-            <div class="kpi-card">
-                <span>Atendimentos Realizados</span>
-                <strong id="kpiAtendimentos">0</strong>
+        <div class="finance-toolbar">
+            <div class="finance-period-chips" id="financePeriodChips">
+                <button data-periodo="hoje" onclick="filtrarFaturamento('hoje')">Hoje</button>
+                <button data-periodo="7dias" onclick="filtrarFaturamento('7dias')">7 dias</button>
+                <button data-periodo="30dias" onclick="filtrarFaturamento('30dias')">30 dias</button>
+                <button data-periodo="mes" onclick="filtrarFaturamento('mes')">Este mês</button>
+                <button data-periodo="todos" onclick="filtrarFaturamento('todos')">Todo histórico</button>
             </div>
-
-            <div class="kpi-card">
-                <span>Valor Total</span>
-                <strong id="kpiValorTotal">R$ 0,00</strong>
-            </div>
-
-            <div class="kpi-card">
-                <span>Ticket Médio</span>
-                <strong id="kpiTicketMedio">R$ 0,00</strong>
-            </div>
-
-            <div class="kpi-card">
-                <span>Pacotes Ativos</span>
-                <strong id="kpiPacotesAtivos">0</strong>
-            </div>
-
-            <div class="kpi-card">
-                <span>Valor dos Pacotes</span>
-                <strong id="kpiValorPacotes">R$ 0,00</strong>
-            </div>
+            <button class="finance-filter-toggle" type="button" onclick="alternarFiltrosFinanceiros()">Filtros avançados</button>
         </div>
 
-        <div class="faturamento-filter-card">
+        <div class="faturamento-filter-card finance-filters" id="financeFiltersPanel">
             <div class="faturamento-filter-row">
-                <button onclick="filtrarFaturamento('hoje')">Hoje</button>
-                <button onclick="filtrarFaturamento('7dias')">Últimos 7 dias</button>
-                <button onclick="filtrarFaturamento('30dias')">Últimos 30 dias</button>
-
-                <input type="date" id="dataInicioFaturamento">
-                <input type="date" id="dataFimFaturamento">
-
-                <select id="filtroEspecieFaturamento" onchange="atualizarFaturamento()">
-                    <option value="">Todas as espécies</option>
-                    <option value="Cão">Cão</option>
-                    <option value="Gato">Gato</option>
-                </select>
-
-                <select id="filtroPorteFaturamento" onchange="atualizarFaturamento()">
-                    <option value="">Todos os portes</option>
-                    <option value="Pequeno">Pequeno</option>
-                    <option value="Médio">Médio</option>
-                    <option value="Grande">Grande</option>
-                </select>
-
-                <select id="filtroServicoFaturamento" onchange="atualizarFaturamento()">
-                    <option value="">Todos os serviços</option>
-                    <option value="banho">Banho</option>
-                    <option value="tosa">Tosa</option>
-                    <option value="avulsos">Serviços Avulsos</option>
-                </select>
-
-                <button onclick="filtrarFaturamento('personalizado')">Aplicar</button>
-                <button class="secondary-button" onclick="limparFiltroFaturamento()">Limpar Filtros</button>
+                <label><span>Data inicial</span><input type="date" id="dataInicioFaturamento"></label>
+                <label><span>Data final</span><input type="date" id="dataFimFaturamento"></label>
+                <label><span>Espécie</span><select id="filtroEspecieFaturamento" onchange="atualizarFaturamento()"><option value="">Todas</option><option value="Cão">Cão</option><option value="Gato">Gato</option></select></label>
+                <label><span>Porte</span><select id="filtroPorteFaturamento" onchange="atualizarFaturamento()"><option value="">Todos</option><option value="Pequeno">Pequeno</option><option value="Médio">Médio</option><option value="Grande">Grande</option></select></label>
+                <label><span>Serviço</span><select id="filtroServicoFaturamento" onchange="atualizarFaturamento()"><option value="">Todos</option><option value="banho">Banho</option><option value="tosa">Tosa</option><option value="avulsos">Avulsos</option></select></label>
+                <button onclick="filtrarFaturamento('personalizado')">Aplicar período</button>
+                <button class="secondary-button" onclick="limparFiltroFaturamento()">Limpar</button>
             </div>
         </div>
 
-        <div class="charts-grid">
-            <div class="chart-card">
-                <h3>Faturamento por Dia</h3>
-                <canvas id="graficoFaturamentoDia"></canvas>
-            </div>
+        <div class="finance-context-row">
+            <div><span>Período analisado</span><strong id="financePeriodLabel">Todo o histórico</strong></div>
+            <div class="finance-goal-control"><span>Meta mensal</span><input id="metaMensalFaturamento" type="number" min="0" step="100" placeholder="5000" onchange="salvarMetaMensalFinanceira()"><strong id="financeGoalPercent">0%</strong></div>
+        </div>
 
-            <div class="chart-card">
-                <h3>Faturamento por Espécie</h3>
-                <canvas id="graficoEspecie"></canvas>
-            </div>
+        <div class="finance-kpi-grid">
+            <article class="finance-kpi primary"><div class="finance-kpi-icon">R$</div><div><span>Receita realizada</span><strong id="kpiValorTotal">R$ 0,00</strong><small id="kpiReceitaComparacao">Sem comparação</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">#</div><div><span>Atendimentos</span><strong id="kpiAtendimentos">0</strong><small id="kpiAtendimentosComparacao">No período</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">TM</div><div><span>Ticket médio</span><strong id="kpiTicketMedio">R$ 0,00</strong><small id="kpiTicketComparacao">Receita por atendimento</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">PR</div><div><span>Receita prevista</span><strong id="kpiReceitaPrevista">R$ 0,00</strong><small id="kpiPrevistoDescricao">Agendamentos pendentes</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">OC</div><div><span>Ocupação</span><strong id="kpiOcupacaoFinanceira">0%</strong><small id="kpiOcupacaoDescricao">Horários utilizados</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">PK</div><div><span>Pacotes ativos</span><strong id="kpiPacotesAtivos">0</strong><small id="kpiValorPacotes">R$ 0,00</small></div></article>
+        </div>
 
-            <div class="chart-card full-width">
-                <h3>Faturamento por Serviço</h3>
-                <canvas id="graficoServico"></canvas>
-            </div>
+        <div class="finance-goal-panel">
+            <div class="finance-goal-copy"><span>Progresso da meta mensal</span><strong id="financeGoalValue">R$ 0 de R$ 0</strong><small id="financeGoalProjection">Defina uma meta para acompanhar a projeção.</small></div>
+            <div class="finance-goal-track"><div id="financeGoalBar"></div></div>
+        </div>
+
+        <div class="finance-insights-layout">
+            <section class="finance-insights-card"><div class="finance-card-title"><div><span>LEITURA EXECUTIVA</span><h3>Insights automáticos</h3></div></div><div id="financeInsights" class="finance-insights-list"></div></section>
+            <section class="finance-today-card"><div class="finance-card-title"><div><span>OPERAÇÃO</span><h3>Visão de hoje</h3></div></div><div class="finance-today-grid"><div><span>Realizado</span><strong id="financeHojeRealizado">R$ 0</strong></div><div><span>Previsto</span><strong id="financeHojePrevisto">R$ 0</strong></div><div><span>Atendimentos</span><strong id="financeHojeAtendimentos">0</strong></div><div><span>Próximo livre</span><strong id="financeProximoLivre">—</strong></div></div></section>
+        </div>
+
+        <div class="finance-charts-grid">
+            <section class="finance-chart-card finance-chart-wide"><div class="finance-card-title"><div><span>TENDÊNCIA</span><h3>Evolução da receita</h3></div><strong id="financeTrendSummary"></strong></div><canvas id="graficoFaturamentoDia"></canvas></section>
+            <section class="finance-chart-card"><div class="finance-card-title"><div><span>MIX</span><h3>Receita por espécie</h3></div></div><canvas id="graficoEspecie"></canvas></section>
+            <section class="finance-chart-card"><div class="finance-card-title"><div><span>PERFORMANCE</span><h3>Receita por dia da semana</h3></div></div><canvas id="graficoDiaSemana"></canvas></section>
+            <section class="finance-chart-card finance-chart-wide"><div class="finance-card-title"><div><span>PORTFÓLIO</span><h3>Serviços que mais faturam</h3></div></div><canvas id="graficoServico"></canvas></section>
+        </div>
+
+        <div class="finance-rankings-grid">
+            <section class="finance-ranking-card"><div class="finance-card-title"><div><span>CLIENTES</span><h3>Maiores clientes</h3></div></div><div id="financeTopClientes" class="finance-ranking-list"></div></section>
+            <section class="finance-ranking-card"><div class="finance-card-title"><div><span>HORÁRIOS</span><h3>Faixas mais rentáveis</h3></div></div><div id="financeTopHorarios" class="finance-ranking-list"></div></section>
+            <section class="finance-ranking-card"><div class="finance-card-title"><div><span>SERVIÇOS</span><h3>Top serviços</h3></div></div><div id="financeTopServicos" class="finance-ranking-list"></div></section>
         </div>
     </section>
-
 
 
     <section id="secao-dias-horarios" class="admin-section">

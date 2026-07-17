@@ -21,6 +21,7 @@ let filtroFaturamentoAtual = "todos";
 let chartFaturamentoDia = null;
 let chartEspecie = null;
 let chartServico = null;
+let chartDiaSemana = null;
 
 const horasAgenda = [];
 
@@ -599,6 +600,11 @@ function obterAgendamentosFiltradosFaturamento() {
         resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
     }
 
+    if (filtroFaturamentoAtual === "mes") {
+        const inicio = hoje.slice(0, 7) + "-01";
+        resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
+    }
+
     if (filtroFaturamentoAtual === "30dias") {
         const inicio = adicionarDias(hoje, -29);
         resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
@@ -704,30 +710,161 @@ function obterResumoPacotesRealizados() {
 
 function atualizarFaturamento() {
     const dados = obterAgendamentosFiltradosFaturamento();
-
     const resumoPacotesRealizados = obterResumoPacotesRealizados();
-
     const quantidadeAgendamentos = dados.length;
     const valorAgendamentos = dados.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
-
     const quantidade = quantidadeAgendamentos + resumoPacotesRealizados.quantidade;
     const valorTotal = valorAgendamentos + resumoPacotesRealizados.valor;
     const ticketMedio = quantidade > 0 ? valorTotal / quantidade : 0;
-
     const pacotesAtivos = pacotesAdmin.filter(pacote => pacote.status === "Ativo");
     const valorPacotes = pacotesAtivos.reduce((acc, pacote) => acc + Number(pacote.valorPacote || 0), 0);
 
-    document.getElementById("kpiAtendimentos").textContent = quantidade;
-    document.getElementById("kpiValorTotal").textContent = formatarMoeda(valorTotal);
-    document.getElementById("kpiTicketMedio").textContent = formatarMoeda(ticketMedio);
+    definirTexto("kpiAtendimentos", quantidade);
+    definirTexto("kpiValorTotal", formatarMoeda(valorTotal));
+    definirTexto("kpiTicketMedio", formatarMoeda(ticketMedio));
+    definirTexto("kpiPacotesAtivos", pacotesAtivos.length);
+    definirTexto("kpiValorPacotes", formatarMoeda(valorPacotes));
 
-    const kpiPacotesAtivos = document.getElementById("kpiPacotesAtivos");
-    const kpiValorPacotes = document.getElementById("kpiValorPacotes");
-
-    if (kpiPacotesAtivos) kpiPacotesAtivos.textContent = pacotesAtivos.length;
-    if (kpiValorPacotes) kpiValorPacotes.textContent = formatarMoeda(valorPacotes);
-
+    const contexto = calcularContextoFinanceiro(dados, valorTotal, ticketMedio);
+    renderizarInteligenciaFinanceira(dados, contexto);
     renderizarGraficos(dados);
+    atualizarEstadoFiltrosFinanceiros();
+}
+
+function definirTexto(id, valor) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+}
+
+function obterIntervaloFinanceiroAtual() {
+    const hoje = hojeISO();
+    if (filtroFaturamentoAtual === "hoje") return { inicio: hoje, fim: hoje, label: "Hoje" };
+    if (filtroFaturamentoAtual === "7dias") return { inicio: adicionarDias(hoje, -6), fim: hoje, label: "Últimos 7 dias" };
+    if (filtroFaturamentoAtual === "30dias") return { inicio: adicionarDias(hoje, -29), fim: hoje, label: "Últimos 30 dias" };
+    if (filtroFaturamentoAtual === "mes") return { inicio: `${hoje.slice(0, 7)}-01`, fim: hoje, label: "Este mês" };
+    if (filtroFaturamentoAtual === "personalizado") {
+        const inicio = document.getElementById("dataInicioFaturamento")?.value;
+        const fim = document.getElementById("dataFimFaturamento")?.value;
+        return { inicio, fim, label: inicio && fim ? `${formatarDataCurta(inicio)} a ${formatarDataCurta(fim)}` : "Período personalizado" };
+    }
+    return { inicio: "", fim: hoje, label: "Todo o histórico" };
+}
+
+function calcularContextoFinanceiro(dados, valorTotal, ticketMedio) {
+    const hoje = hojeISO();
+    const realizadosHoje = agendamentos.filter(item => item.status === "Concluído" && item.data === hoje);
+    const pendentesHoje = agendamentos.filter(item => item.status !== "Concluído" && item.status !== "Cancelado" && item.data === hoje);
+    const receitaHoje = realizadosHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
+    const previstoHoje = pendentesHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
+    const slotsDia = 14;
+    const ocupadosHoje = agendamentos.filter(i => i.data === hoje && i.status !== "Cancelado").length;
+    const ocupacaoHoje = Math.min(100, Math.round((ocupadosHoje / slotsDia) * 100));
+    const intervalo = obterIntervaloFinanceiroAtual();
+    const meta = Number(localStorage.getItem("petlyneMetaMensal") || 5000);
+    const receitaMes = agendamentos.filter(i => i.status === "Concluído" && i.data?.startsWith(hoje.slice(0,7))).reduce((a,i)=>a+Number(i.valorTotal||0),0) + pacotesAdmin.filter(p=>p.status === "Ativo" || p.status === "Concluído").reduce((a,p)=>a+Number(p.valorPacote||0),0);
+    const percentualMeta = meta > 0 ? Math.min(999, (receitaMes / meta) * 100) : 0;
+    const scoreReceita = Math.min(40, percentualMeta * .4);
+    const scoreOcupacao = Math.min(25, ocupacaoHoje * .25);
+    const scoreTicket = Math.min(20, (ticketMedio / 80) * 20);
+    const concluidos = dados.length;
+    const scoreVolume = Math.min(15, concluidos * 1.5);
+    const healthScore = Math.round(scoreReceita + scoreOcupacao + scoreTicket + scoreVolume);
+    return { hoje, realizadosHoje, pendentesHoje, receitaHoje, previstoHoje, ocupacaoHoje, intervalo, meta, receitaMes, percentualMeta, healthScore, valorTotal, ticketMedio };
+}
+
+function renderizarInteligenciaFinanceira(dados, c) {
+    definirTexto("financePeriodLabel", c.intervalo.label);
+    const metaInput = document.getElementById("metaMensalFaturamento");
+    if (metaInput && document.activeElement !== metaInput) metaInput.value = c.meta || "";
+    definirTexto("financeGoalPercent", `${c.percentualMeta.toFixed(0)}%`);
+    definirTexto("financeGoalValue", `${formatarMoeda(c.receitaMes)} de ${formatarMoeda(c.meta)}`);
+    const goalBar = document.getElementById("financeGoalBar");
+    if (goalBar) goalBar.style.width = `${Math.min(100, c.percentualMeta)}%`;
+    definirTexto("financeGoalProjection", c.percentualMeta >= 100 ? "Meta mensal atingida. Excelente desempenho." : `Faltam ${formatarMoeda(Math.max(0, c.meta-c.receitaMes))} para a meta.`);
+    definirTexto("financeHealthScore", c.healthScore);
+    definirTexto("financeHealthLabel", c.healthScore >= 80 ? "Excelente" : c.healthScore >= 60 ? "Saudável" : c.healthScore >= 40 ? "Atenção" : "Em construção");
+    definirTexto("kpiReceitaPrevista", formatarMoeda(c.previstoHoje));
+    definirTexto("kpiOcupacaoFinanceira", `${c.ocupacaoHoje}%`);
+    definirTexto("financeHojeRealizado", formatarMoeda(c.receitaHoje));
+    definirTexto("financeHojePrevisto", formatarMoeda(c.previstoHoje));
+    definirTexto("financeHojeAtendimentos", c.realizadosHoje.length + c.pendentesHoje.length);
+    definirTexto("financeProximoLivre", obterProximoHorarioLivreHoje());
+
+    renderizarComparacaoFinanceira(dados, c);
+    renderizarInsightsFinanceiros(dados, c);
+    renderizarRankingsFinanceiros(dados);
+}
+
+function renderizarComparacaoFinanceira(dados, c) {
+    const intervalo = c.intervalo;
+    if (!intervalo.inicio || !intervalo.fim || filtroFaturamentoAtual === "todos") {
+        definirTexto("kpiReceitaComparacao", "Acumulado selecionado");
+        definirTexto("kpiAtendimentosComparacao", `${dados.length} registros concluídos`);
+        return;
+    }
+    const inicio = new Date(`${intervalo.inicio}T12:00:00`);
+    const fim = new Date(`${intervalo.fim}T12:00:00`);
+    const dias = Math.max(1, Math.round((fim-inicio)/86400000)+1);
+    const antFim = adicionarDias(intervalo.inicio, -1);
+    const antInicio = adicionarDias(antFim, -(dias-1));
+    const anterior = aplicarFiltrosAvancadosFaturamento(agendamentos.filter(i => i.status === "Concluído" && i.data >= antInicio && i.data <= antFim));
+    const valorAnterior = anterior.reduce((a,i)=>a+Number(i.valorTotal||0),0);
+    const atual = dados.reduce((a,i)=>a+Number(i.valorTotal||0),0);
+    const variacao = valorAnterior > 0 ? ((atual-valorAnterior)/valorAnterior)*100 : null;
+    definirTexto("kpiReceitaComparacao", variacao === null ? "Sem base anterior" : `${variacao >= 0 ? "▲" : "▼"} ${Math.abs(variacao).toFixed(1).replace('.',',')}% vs período anterior`);
+    definirTexto("kpiAtendimentosComparacao", `${dados.length-anterior.length >= 0 ? "+" : ""}${dados.length-anterior.length} vs período anterior`);
+    const ticketAnt = anterior.length ? valorAnterior/anterior.length : 0;
+    definirTexto("kpiTicketComparacao", ticketAnt ? `${c.ticketMedio >= ticketAnt ? "▲" : "▼"} ${formatarMoeda(Math.abs(c.ticketMedio-ticketAnt))}` : "Sem base anterior");
+}
+
+function renderizarInsightsFinanceiros(dados, c) {
+    const insights=[];
+    const servicos = Object.entries(agruparServicos(dados)).sort((a,b)=>b[1]-a[1]);
+    if (servicos[0]) insights.push({icone:"01", titulo:`${servicos[0][0]} lidera a receita`, texto:`Representa ${c.valorTotal ? ((servicos[0][1]/c.valorTotal)*100).toFixed(0) : 0}% do valor analisado.`});
+    const dias = agruparReceitaPorDiaSemana(dados); const topDia=Object.entries(dias).sort((a,b)=>b[1]-a[1])[0];
+    if (topDia?.[1]) insights.push({icone:"02", titulo:`${topDia[0]} é o dia mais forte`, texto:`Acumula ${formatarMoeda(topDia[1])} no período selecionado.`});
+    insights.push({icone:"03", titulo:`Ocupação de hoje em ${c.ocupacaoHoje}%`, texto:c.ocupacaoHoje < 60 ? "Ainda há capacidade para divulgar horários disponíveis." : "A agenda apresenta boa utilização operacional."});
+    insights.push({icone:"04", titulo:`Ticket médio de ${formatarMoeda(c.ticketMedio)}`, texto:c.ticketMedio < 60 ? "Serviços adicionais podem elevar o valor por atendimento." : "O valor médio por atendimento está em uma faixa positiva."});
+    const container=document.getElementById("financeInsights");
+    if (container) container.innerHTML=insights.map(i=>`<article><span>${i.icone}</span><div><strong>${i.titulo}</strong><p>${i.texto}</p></div></article>`).join("");
+}
+
+function renderizarRankingsFinanceiros(dados) {
+    const clientes={}; const horarios={};
+    dados.forEach(i=>{ const cliente=i.cliente||"Não informado"; clientes[cliente]=(clientes[cliente]||0)+Number(i.valorTotal||0); const h=i.horario||"Sem horário"; horarios[h]=(horarios[h]||0)+Number(i.valorTotal||0); });
+    renderizarRanking("financeTopClientes", Object.entries(clientes).sort((a,b)=>b[1]-a[1]).slice(0,5));
+    renderizarRanking("financeTopHorarios", Object.entries(horarios).sort((a,b)=>b[1]-a[1]).slice(0,5));
+    renderizarRanking("financeTopServicos", Object.entries(agruparServicos(dados)).sort((a,b)=>b[1]-a[1]).slice(0,5));
+}
+
+function renderizarRanking(id, itens) {
+    const el=document.getElementById(id); if(!el) return;
+    const max=itens[0]?.[1]||1;
+    el.innerHTML=itens.length ? itens.map((item,idx)=>`<article><span class="rank-number">${String(idx+1).padStart(2,"0")}</span><div><strong>${item[0]}</strong><div class="rank-track"><i style="width:${(item[1]/max)*100}%"></i></div></div><b>${formatarMoeda(item[1])}</b></article>`).join("") : '<p class="finance-empty">Sem dados no período.</p>';
+}
+
+function agruparReceitaPorDiaSemana(dados) {
+    const nomes=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
+    const r={}; nomes.forEach(n=>r[n]=0);
+    dados.forEach(i=>{ if(!i.data)return; const d=new Date(`${i.data}T12:00:00`); r[nomes[d.getDay()]]+=Number(i.valorTotal||0); });
+    return r;
+}
+
+function obterProximoHorarioLivreHoje() {
+    const horarios=["09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"];
+    const agora=new Date(); const atual=`${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
+    const ocupados=new Set(agendamentos.filter(i=>i.data===hojeISO() && i.status!=="Cancelado").map(i=>i.horario));
+    return horarios.find(h=>h>=atual && !ocupados.has(h)) || "Sem vagas";
+}
+
+function salvarMetaMensalFinanceira() {
+    const valor=Number(document.getElementById("metaMensalFaturamento")?.value||0);
+    localStorage.setItem("petlyneMetaMensal", String(valor)); atualizarFaturamento();
+}
+
+function alternarFiltrosFinanceiros() { document.getElementById("financeFiltersPanel")?.classList.toggle("is-open"); }
+function atualizarEstadoFiltrosFinanceiros() {
+    document.querySelectorAll("#financePeriodChips button").forEach(btn=>btn.classList.toggle("active", btn.dataset.periodo===filtroFaturamentoAtual));
 }
 
 function agruparPorCampo(dados, campo) {
@@ -1014,79 +1151,27 @@ function renderizarGraficos(dados) {
     const porDia = agruparPorDiaComPacotes(dados);
     const porEspecie = agruparPorEspecieComPacotes(dados);
     const porServico = agruparServicos(dados);
-
+    const porDiaSemana = agruparReceitaPorDiaSemana(dados);
     if (chartFaturamentoDia) chartFaturamentoDia.destroy();
     if (chartEspecie) chartEspecie.destroy();
     if (chartServico) chartServico.destroy();
+    if (chartDiaSemana) chartDiaSemana.destroy();
 
+    const entradasDia=Object.entries(porDia).sort((a,b)=>a[0].localeCompare(b[0]));
     chartFaturamentoDia = new Chart(document.getElementById("graficoFaturamentoDia"), {
-        type: "bar",
-        data: {
-            labels: Object.keys(porDia).map(formatarDataCurta),
-            datasets: [{
-                label: "Faturamento",
-                data: Object.values(porDia),
-                backgroundColor(context) {
-                    return criarGradienteBarra(context.chart, "rgba(248, 191, 207, .94)", "rgba(185, 74, 106, .96)");
-                },
-                borderColor: "#b94a6a",
-                borderWidth: 1,
-                borderRadius: 16,
-                borderSkipped: false,
-                maxBarThickness: 54
-            }]
-        },
-        options: opcoesGraficoBarras("Faturamento"),
-        plugins: [pluginRotulosValores]
+        type: "line",
+        data: { labels: entradasDia.map(i=>formatarDataCurta(i[0])), datasets:[{label:"Receita",data:entradasDia.map(i=>i[1]),borderColor:"#bd4267",backgroundColor:"rgba(214,90,126,.13)",fill:true,tension:.35,pointRadius:4,pointHoverRadius:7,borderWidth:3}] },
+        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>formatarMoedaGrafico(c.raw)}}},scales:{x:{grid:{display:false},ticks:{color:"#806b72"}},y:{beginAtZero:true,grid:{color:"rgba(214,90,126,.10)"},ticks:{callback:v=>formatarMoedaGrafico(v),color:"#806b72"}}}}
     });
+    const totalTrend=entradasDia.reduce((a,i)=>a+i[1],0); definirTexto("financeTrendSummary", formatarMoeda(totalTrend));
 
-    chartEspecie = new Chart(document.getElementById("graficoEspecie"), {
-        type: "doughnut",
-        data: {
-            labels: Object.keys(porEspecie),
-            datasets: [{
-                data: Object.values(porEspecie),
-                backgroundColor: [
-                    "rgba(214, 90, 126, .92)",
-                    "rgba(248, 191, 207, .94)",
-                    "rgba(173, 139, 120, .82)",
-                    "rgba(138, 131, 131, .82)"
-                ],
-                borderColor: "#fff",
-                borderWidth: 5,
-                hoverOffset: 8
-            }]
-        },
-        options: opcoesGraficoRosca(),
-        plugins: [pluginRotulosValores]
-    });
+    chartEspecie = new Chart(document.getElementById("graficoEspecie"), {type:"doughnut",data:{labels:Object.keys(porEspecie),datasets:[{data:Object.values(porEspecie),backgroundColor:["#d65a7e","#f4b9cb","#a88c7b","#8a8383"],borderColor:"#fff",borderWidth:5,hoverOffset:6}]},options:opcoesGraficoRosca(),plugins:[pluginRotulosValores]});
 
-    const servicosOrdenados = Object.entries(porServico).sort((a, b) => b[1] - a[1]);
-    const usarHorizontal = servicosOrdenados.length >= 4;
+    chartDiaSemana = new Chart(document.getElementById("graficoDiaSemana"), {type:"bar",data:{labels:Object.keys(porDiaSemana).map(n=>n.slice(0,3)),datasets:[{data:Object.values(porDiaSemana),backgroundColor:"rgba(214,90,126,.75)",borderRadius:10,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>formatarMoedaGrafico(c.raw)}}},scales:{x:{grid:{display:false},ticks:{color:"#806b72",font:{weight:"bold"}}},y:{beginAtZero:true,grid:{color:"rgba(214,90,126,.10)"},ticks:{callback:v=>formatarMoedaGrafico(v),color:"#806b72"}}}}});
 
-    chartServico = new Chart(document.getElementById("graficoServico"), {
-        type: "bar",
-        data: {
-            labels: servicosOrdenados.map(item => item[0]),
-            datasets: [{
-                label: "Valor",
-                data: servicosOrdenados.map(item => item[1]),
-                backgroundColor(context) {
-                    return criarGradienteBarra(context.chart, "rgba(248, 191, 207, .92)", "rgba(150, 54, 83, .95)");
-                },
-                borderColor: "#963653",
-                borderWidth: 1,
-                borderRadius: 16,
-                borderSkipped: false,
-                maxBarThickness: 46
-            }]
-        },
-        options: opcoesGraficoBarras("Valor", usarHorizontal),
-        plugins: [pluginRotulosValores]
-    });
+    const servicosOrdenados=Object.entries(porServico).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    chartServico = new Chart(document.getElementById("graficoServico"), {type:"bar",data:{labels:servicosOrdenados.map(i=>i[0]),datasets:[{label:"Valor",data:servicosOrdenados.map(i=>i[1]),backgroundColor(context){return criarGradienteBarra(context.chart,"rgba(248,191,207,.92)","rgba(150,54,83,.95)");},borderColor:"#963653",borderWidth:1,borderRadius:12,borderSkipped:false,maxBarThickness:38}]},options:opcoesGraficoBarras("Valor",true),plugins:[pluginRotulosValores]});
 }
-
-
 
 
 

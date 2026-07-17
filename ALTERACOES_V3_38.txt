@@ -1,0 +1,13 @@
+PETLYNE V3.38 - FINANCE INTELLIGENCE CENTER
+
+- Redesign completo do módulo Faturamento em nível BI/UX premium.
+- Score de saúde do negócio.
+- Meta mensal configurável e persistida no navegador.
+- KPIs executivos: realizado, atendimentos, ticket, previsto, ocupação e pacotes.
+- Comparação com período anterior.
+- Insights automáticos orientados à ação.
+- Visão operacional de hoje e próximo horário livre.
+- Tendência de receita, mix por espécie, desempenho por dia da semana e top serviços.
+- Rankings de clientes, horários e serviços.
+- Filtros avançados recolhíveis e períodos rápidos.
+- Layout responsivo para celular.
