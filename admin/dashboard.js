@@ -398,7 +398,7 @@ function renderizarAgenda() {
 
     const datas = obterDatasAgendaPorPeriodo();
 
-    calendario.style.gridTemplateColumns = `90px repeat(${datas.length}, minmax(170px, 1fr))`;
+    calendario.style.gridTemplateColumns = `64px repeat(${datas.length}, minmax(148px, 1fr))`;
 
     calendario.appendChild(criarCelula("Hora", "agenda-cell agenda-header"));
 
@@ -442,37 +442,21 @@ function renderizarAgenda() {
                             </div>
                             <div class="agenda-event-info">
                                 ${ehInicio ? `
-                                    <div class="agenda-info-grid">
-                                        <div class="agenda-info-item agenda-info-cliente">
-                                            <span class="agenda-label">Cliente</span>
-                                            <strong>${clienteAgenda}</strong>
-                                        </div>
-                                        <div class="agenda-info-item agenda-info-telefone">
-                                            <span class="agenda-label">Telefone</span>
-                                            <strong>${telefoneAgenda}</strong>
-                                        </div>
-                                        <div class="agenda-info-item agenda-info-pet">
-                                            <span class="agenda-label">Pet</span>
-                                            <strong>${agendamento.pet || "Pet"}</strong>
-                                        </div>
-                                        <div class="agenda-info-item agenda-info-especie">
-                                            <span class="agenda-label">Espécie</span>
-                                            <span>${agendamento.especie || "Não informada"}</span>
-                                        </div>
-                                        <div class="agenda-info-item agenda-info-servico">
-                                            <span class="agenda-label">Serviço</span>
-                                            <span title="${servicos.replace(/"/g, '&quot;')}">${servicos}</span>
-                                        </div>
-                                        <div class="agenda-info-item agenda-info-valor">
-                                            <span class="agenda-label">Valor</span>
-                                            <strong>${valorServico}</strong>
-                                        </div>
-                                        <div class="agenda-info-item agenda-info-observacao">
-                                            <span class="agenda-label">Observação</span>
-                                            <span>${agendamento.observacaoPet || "Sem observação"}</span>
-                                        </div>
+                                    <div class="agenda-compact-line agenda-client-line">
+                                        <span title="${clienteAgenda.replace(/"/g, '&quot;')}"><b>Cliente:</b> ${clienteAgenda}</span>
+                                        <span title="${telefoneAgenda.replace(/"/g, '&quot;')}"><b>Tel.:</b> ${telefoneAgenda}</span>
                                     </div>
-                                    <span class="agenda-protocolo">${agendamento.protocolo || ""}</span>
+                                    <div class="agenda-compact-line agenda-service-line" title="${servicos.replace(/"/g, '&quot;')}">
+                                        <b>Serviço:</b> ${servicos}
+                                    </div>
+                                    <div class="agenda-compact-line agenda-meta-line">
+                                        <span><b>${valorServico}</b></span>
+                                        <span>${agendamento.especie || "Não informada"}</span>
+                                        <span class="agenda-protocolo">${agendamento.protocolo || ""}</span>
+                                    </div>
+                                    <div class="agenda-compact-line agenda-observation-line" title="${(agendamento.observacaoPet || "Sem observação").replace(/"/g, '&quot;')}">
+                                        <b>Obs.:</b> ${agendamento.observacaoPet || "Sem observação"}
+                                    </div>
                                 ` : `Continuação de ${agendamento.horario}`}
                             </div>
                             ${ehInicio ? `

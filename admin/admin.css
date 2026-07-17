@@ -2283,3 +2283,115 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         grid-column: auto;
     }
 }
+
+
+/* V3.36 - Agenda ultracompacta horizontal e vertical */
+#secao-agendamentos .agenda-grid {
+    font-size: 12px;
+}
+
+#secao-agendamentos .agenda-cell {
+    min-height: 46px;
+    padding: 4px;
+}
+
+#secao-agendamentos .agenda-header,
+#secao-agendamentos .agenda-hour {
+    padding: 7px 5px;
+    font-size: 12px;
+}
+
+#secao-agendamentos .agenda-event {
+    padding: 7px;
+    border-radius: 9px;
+    line-height: 1.1;
+    box-shadow: 0 2px 6px rgba(112, 58, 77, .05);
+}
+
+#secao-agendamentos .agenda-event-header {
+    gap: 5px;
+    margin-bottom: 5px;
+}
+
+#secao-agendamentos .agenda-event-header > strong {
+    font-size: 13px;
+}
+
+#secao-agendamentos .status-badge {
+    padding: 2px 6px;
+    font-size: 8px;
+}
+
+#secao-agendamentos .agenda-event-info {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 0;
+}
+
+#secao-agendamentos .agenda-compact-line {
+    min-width: 0;
+    color: var(--pet-text);
+    font-size: 10px;
+}
+
+#secao-agendamentos .agenda-compact-line b {
+    color: var(--pet-primary-dark);
+    font-size: 9px;
+    text-transform: uppercase;
+}
+
+#secao-agendamentos .agenda-client-line {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 7px;
+}
+
+#secao-agendamentos .agenda-client-line > span,
+#secao-agendamentos .agenda-service-line,
+#secao-agendamentos .agenda-observation-line {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#secao-agendamentos .agenda-meta-line {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+}
+
+#secao-agendamentos .agenda-meta-line > span:not(.agenda-protocolo) {
+    white-space: nowrap;
+}
+
+#secao-agendamentos .agenda-protocolo {
+    margin: 0 0 0 auto;
+    padding: 2px 5px;
+    max-width: 82px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 8px;
+}
+
+#secao-agendamentos .agenda-event-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+#secao-agendamentos .agenda-event-actions button {
+    min-height: 27px;
+    padding: 4px 5px;
+    border-radius: 7px;
+    font-size: 9px;
+    line-height: 1;
+}
+
+@media (max-width: 900px) {
+    #secao-agendamentos .agenda-client-line {
+        grid-template-columns: 1fr;
+        gap: 3px;
+    }
+}

@@ -1,0 +1,11 @@
+PETLYNE V3.36 - AGENDA ADMINISTRATIVA ULTRACOMPACTA
+
+- Colunas de datas reduzidas para largura minima de 148px.
+- Coluna de horarios reduzida para 64px.
+- Cartoes reorganizados em linhas compactas.
+- Nome do pet permanece no cabecalho, eliminando repeticao interna.
+- Cliente e telefone aparecem lado a lado.
+- Servico e observacao usam uma linha com texto completo no atributo title.
+- Valor, especie e protocolo aparecem na mesma linha.
+- Botoes menores e lado a lado.
+- Nenhuma regra de negocio foi alterada.
