@@ -2819,3 +2819,35 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
  .schedule-upcoming-item{grid-template-columns:45px 1fr}.schedule-upcoming-item button{grid-column:1/-1;width:100%}
  .schedule-slot{grid-template-columns:42px 1fr}.schedule-slot > :last-child:not(div){grid-column:2}
 }
+
+/* V6.1 - correção e acabamento do Centro de Controle da Agenda */
+.schedule-calendar-panel { overflow: hidden; }
+.schedule-calendar-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, minmax(76px, 1fr)) !important;
+    width: 100%;
+    min-width: 650px;
+    gap: 7px !important;
+}
+.schedule-calendar-scroll { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.schedule-calendar-panel:has(.schedule-calendar-grid) { overflow-x:auto; }
+.schedule-calendar-grid .bloqueio-dia,
+.schedule-calendar-grid .bloqueio-dia.vazio { box-sizing:border-box; }
+.schedule-calendar-grid .bloqueio-dia.outro-mes { opacity:.38; background:rgba(248,244,245,.7); }
+.schedule-calendar-grid .bloqueio-dia.outro-mes .schedule-day-signals { display:none; }
+.schedule-calendar-grid .bloqueio-dia { min-width:0; }
+.schedule-mode-row { display:grid; grid-template-columns:minmax(260px,1fr) minmax(180px,.65fr) minmax(180px,.65fr); gap:12px; margin:14px 0 0; }
+.schedule-mode-row label { display:flex; flex-direction:column; gap:6px; }
+.schedule-mode-row label span { color:var(--pet-primary-dark); font-weight:800; font-size:11px; }
+.schedule-mode-row .is-hidden { display:none; }
+.schedule-calendar-error { grid-column:1/-1; padding:18px; text-align:center; color:var(--pet-primary-dark); border:1px dashed var(--pet-border); border-radius:14px; }
+@media (max-width:1000px){
+  .bloqueio-calendario.schedule-calendar-grid { grid-template-columns:repeat(7,minmax(76px,1fr)) !important; }
+}
+@media (max-width:720px){
+  .schedule-calendar-panel { overflow-x:auto; }
+  .schedule-calendar-grid { min-width:610px; }
+  .schedule-mode-row { grid-template-columns:1fr; }
+  .schedule-calendar-toolbar { position:sticky; left:0; min-width:0; background:#fff; z-index:2; padding-bottom:6px; }
+  .schedule-legend { position:sticky; left:0; min-width:0; background:#fff; z-index:2; padding-bottom:4px; }
+}

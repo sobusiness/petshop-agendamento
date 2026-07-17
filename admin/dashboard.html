@@ -206,8 +206,19 @@
                 <button type="button" data-tipo="Manutenção" onclick="selecionarTipoBloqueio(this)">Manutenção</button>
                 <button type="button" data-tipo="Outro" onclick="selecionarTipoBloqueio(this)">Outro</button>
             </div>
+            <div class="schedule-mode-row">
+                <label><span>Forma do bloqueio</span>
+                    <select id="bloqueioModo" onchange="atualizarModoBloqueio()">
+                        <option value="unico">Dia único ou seleção no calendário</option>
+                        <option value="periodo">Período contínuo</option>
+                        <option value="semanal">Recorrência semanal</option>
+                    </select>
+                </label>
+                <label id="bloqueioDataFinalLabel" class="is-hidden"><span>Data final</span><input type="date" id="bloqueioDataFinal"></label>
+                <label id="bloqueioRecorrenciaFimLabel" class="is-hidden"><span>Repetir até</span><input type="date" id="bloqueioRecorrenciaFim"></label>
+            </div>
             <div class="bloqueio-form schedule-form-premium">
-                <label><span>Data</span><input type="date" id="bloqueioData" onchange="selecionarDataManualBloqueio()"></label>
+                <label><span>Data inicial</span><input type="date" id="bloqueioData" onchange="selecionarDataManualBloqueio()"></label>
                 <label><span>Início</span><select id="bloqueioInicio"></select></label>
                 <label><span>Final</span><select id="bloqueioFim"></select></label>
                 <label class="schedule-motivo-field"><span>Motivo</span><input type="text" id="bloqueioMotivo" placeholder="Ex.: consulta, compromisso ou folga"></label>

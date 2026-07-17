@@ -1,0 +1,11 @@
+PETLYNE V6.1 — CORREÇÃO DO CENTRO DE CONTROLE DA AGENDA
+
+- Corrigido o calendário que podia exibir somente o primeiro dia do mês.
+- Calendário agora sempre renderiza 6 semanas completas (42 células), mantendo alinhamento consistente.
+- Mantidas 7 colunas em desktop, tablet e celular; no celular existe rolagem horizontal controlada.
+- Adicionados dias do mês anterior e seguinte em estado visual discreto.
+- Adicionada proteção contra falhas de dados individuais interromperem toda a renderização.
+- Adicionado bloqueio por período contínuo (ex.: férias de 01/08 a 10/08).
+- Adicionada recorrência semanal sem nova coleção no Firebase (gera bloqueios individuais nas datas).
+- Mantidos bloqueio por seleção múltipla no calendário, dia todo e desbloqueio em massa.
+- Mantidas as coleções e estrutura atuais do Firebase.

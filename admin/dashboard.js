@@ -1878,54 +1878,77 @@ function renderizarCalendarioBloqueios() {
     const titulo = document.getElementById("tituloMesBloqueio");
     if (!container || !titulo) return;
 
-    const ano = mesBloqueioReferencia.getFullYear();
-    const mes = mesBloqueioReferencia.getMonth();
-    const selecionada = document.getElementById("bloqueioData")?.value || "";
-    titulo.textContent = obterNomeMes(mesBloqueioReferencia);
-    container.innerHTML = "";
+    try {
+        const ano = mesBloqueioReferencia.getFullYear();
+        const mes = mesBloqueioReferencia.getMonth();
+        const selecionada = document.getElementById("bloqueioData")?.value || "";
+        titulo.textContent = obterNomeMes(mesBloqueioReferencia);
+        container.innerHTML = "";
 
-    ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].forEach(dia => {
-        const header = document.createElement("div");
-        header.className = "bloqueio-dia-header";
-        header.textContent = dia;
-        container.appendChild(header);
-    });
+        ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].forEach(dia => {
+            const header = document.createElement("div");
+            header.className = "bloqueio-dia-header";
+            header.textContent = dia;
+            container.appendChild(header);
+        });
 
-    const primeiroDia = new Date(ano, mes, 1).getDay();
-    const totalDias = new Date(ano, mes + 1, 0).getDate();
-    const hoje = hojeISO();
+        const primeiroDiaMes = new Date(ano, mes, 1);
+        const inicioGrade = new Date(ano, mes, 1 - primeiroDiaMes.getDay());
+        const hoje = hojeISO();
 
-    for (let i = 0; i < primeiroDia; i++) {
-        const vazio = document.createElement("div");
-        vazio.className = "bloqueio-dia vazio";
-        container.appendChild(vazio);
+        // Sempre desenha seis semanas completas. Isso evita calendário quebrado,
+        // alturas variáveis e meses mostrando apenas parte dos dias.
+        for (let indice = 0; indice < 42; indice++) {
+            const dataCelula = new Date(inicioGrade);
+            dataCelula.setDate(inicioGrade.getDate() + indice);
+            const dataISO = dataISOAnoMesDia(dataCelula.getFullYear(), dataCelula.getMonth(), dataCelula.getDate());
+            const pertenceMes = dataCelula.getMonth() === mes;
+
+            const bloqueiosDia = bloqueiosAgenda.filter(item =>
+                item && item.status === "Ativo" && String(item.data || "") === dataISO
+            );
+            const agendamentosDia = agendamentos.filter(item => {
+                if (!item || String(item.data || "") !== dataISO) return false;
+                return normalizarTexto(String(item.status || "")) !== "cancelado";
+            });
+
+            const temBloqueio = bloqueiosDia.length > 0;
+            const temAgendamento = agendamentosDia.length > 0;
+            const classeEstado = temBloqueio && temAgendamento
+                ? "dia-misto"
+                : temBloqueio
+                    ? "com-bloqueio"
+                    : temAgendamento
+                        ? "com-agendamento"
+                        : "dia-livre";
+
+            const celula = document.createElement("button");
+            celula.type = "button";
+            celula.className = `bloqueio-dia ${classeEstado} ${pertenceMes ? "" : "outro-mes"} ${dataISO === hoje ? "dia-hoje" : ""} ${(selecionada === dataISO || diasSelecionadosBloqueio.includes(dataISO)) ? "selecionado" : ""}`;
+            celula.setAttribute("aria-label", `${dataCelula.toLocaleDateString("pt-BR")}: ${agendamentosDia.length} agendamento(s), ${bloqueiosDia.length} bloqueio(s)`);
+            celula.onclick = () => {
+                if (!pertenceMes) {
+                    mesBloqueioReferencia = new Date(dataCelula.getFullYear(), dataCelula.getMonth(), 1);
+                }
+                selecionarDataBloqueio(dataISO);
+            };
+            celula.innerHTML = `
+                <div class="schedule-day-number"><strong>${dataCelula.getDate()}</strong>${dataISO === hoje ? '<em>Hoje</em>' : ''}</div>
+                <div class="schedule-day-signals">
+                    ${temAgendamento ? `<span class="signal-booked">${agendamentosDia.length} atend.</span>` : ""}
+                    ${temBloqueio ? `<span class="signal-blocked">${bloqueiosDia.length} bloq.</span>` : ""}
+                    ${!temAgendamento && !temBloqueio && pertenceMes ? '<span class="signal-free">Livre</span>' : ""}
+                </div>`;
+            container.appendChild(celula);
+        }
+
+        atualizarCockpitDiasHorarios();
+        const diaPainel = selecionada || diasSelecionadosBloqueio[diasSelecionadosBloqueio.length - 1];
+        if (diaPainel) renderizarDetalheDiaAgenda(diaPainel);
+    } catch (erro) {
+        console.error("Erro ao montar calendário de dias e horários:", erro);
+        container.innerHTML = '<div class="schedule-calendar-error">Não foi possível montar o calendário. Atualize a página. Se continuar, abra o console para verificar o erro.</div>';
     }
-
-    for (let dia = 1; dia <= totalDias; dia++) {
-        const dataISO = dataISOAnoMesDia(ano, mes, dia);
-        const bloqueiosDia = bloqueiosAgenda.filter(b => b.status === "Ativo" && b.data === dataISO);
-        const agendamentosDia = agendamentos.filter(a => a.data === dataISO && normalizarTexto(a.status || "") !== "cancelado");
-        const temBloqueio = bloqueiosDia.length > 0;
-        const temAgendamento = agendamentosDia.length > 0;
-        const classeEstado = temBloqueio && temAgendamento ? "dia-misto" : temBloqueio ? "com-bloqueio" : temAgendamento ? "com-agendamento" : "dia-livre";
-
-        const celula = document.createElement("button");
-        celula.type = "button";
-        celula.className = `bloqueio-dia ${classeEstado} ${dataISO === hoje ? "dia-hoje" : ""} ${(selecionada === dataISO || diasSelecionadosBloqueio.includes(dataISO)) ? "selecionado" : ""}`;
-        celula.onclick = () => selecionarDataBloqueio(dataISO);
-        celula.innerHTML = `
-            <div class="schedule-day-number"><strong>${dia}</strong>${dataISO === hoje ? '<em>Hoje</em>' : ''}</div>
-            <div class="schedule-day-signals">
-                ${temAgendamento ? `<span class="signal-booked">${agendamentosDia.length} atend.</span>` : ""}
-                ${temBloqueio ? `<span class="signal-blocked">${bloqueiosDia.length} bloq.</span>` : ""}
-                ${!temAgendamento && !temBloqueio ? '<span class="signal-free">Livre</span>' : ""}
-            </div>`;
-        container.appendChild(celula);
-    }
-
-    atualizarCockpitDiasHorarios();
-    const diaPainel = selecionada || diasSelecionadosBloqueio[diasSelecionadosBloqueio.length - 1];
-    if (diaPainel) renderizarDetalheDiaAgenda(diaPainel);
 }
 
 function obterBloqueiosMesAtual() {
@@ -2016,9 +2039,53 @@ function irParaHojeBloqueio() {
     renderizarDetalheDiaAgenda(hoje);
 }
 
+function atualizarModoBloqueio() {
+    const modo = document.getElementById("bloqueioModo")?.value || "unico";
+    document.getElementById("bloqueioDataFinalLabel")?.classList.toggle("is-hidden", modo !== "periodo");
+    document.getElementById("bloqueioRecorrenciaFimLabel")?.classList.toggle("is-hidden", modo !== "semanal");
+}
+
+function enumerarDatasEntre(inicioISO, fimISO) {
+    if (!inicioISO || !fimISO || fimISO < inicioISO) return [];
+    const datas = [];
+    const atual = new Date(inicioISO + "T12:00:00");
+    const fim = new Date(fimISO + "T12:00:00");
+    while (atual <= fim && datas.length < 370) {
+        datas.push(dataISOAnoMesDia(atual.getFullYear(), atual.getMonth(), atual.getDate()));
+        atual.setDate(atual.getDate() + 1);
+    }
+    return datas;
+}
+
+function obterDatasDoComposerBloqueio() {
+    const modo = document.getElementById("bloqueioModo")?.value || "unico";
+    const dataInicial = document.getElementById("bloqueioData")?.value || "";
+
+    if (modo === "periodo") {
+        const dataFinal = document.getElementById("bloqueioDataFinal")?.value || "";
+        return enumerarDatasEntre(dataInicial, dataFinal);
+    }
+
+    if (modo === "semanal") {
+        const repeticaoFim = document.getElementById("bloqueioRecorrenciaFim")?.value || "";
+        if (!dataInicial || !repeticaoFim || repeticaoFim < dataInicial) return [];
+        const datas = [];
+        const cursor = new Date(dataInicial + "T12:00:00");
+        const fim = new Date(repeticaoFim + "T12:00:00");
+        while (cursor <= fim && datas.length < 60) {
+            datas.push(dataISOAnoMesDia(cursor.getFullYear(), cursor.getMonth(), cursor.getDate()));
+            cursor.setDate(cursor.getDate() + 7);
+        }
+        return datas;
+    }
+
+    return diasSelecionadosBloqueio.length > 0
+        ? [...new Set(diasSelecionadosBloqueio)]
+        : [dataInicial].filter(Boolean);
+}
+
 async function salvarBloqueioAgenda() {
-    const dataCampo = document.getElementById("bloqueioData").value;
-    const datas = diasSelecionadosBloqueio.length > 0 ? [...diasSelecionadosBloqueio] : [dataCampo].filter(Boolean);
+    const datas = obterDatasDoComposerBloqueio();
     const inicio = document.getElementById("bloqueioInicio").value;
     const fim = document.getElementById("bloqueioFim").value;
     const motivo = document.getElementById("bloqueioMotivo").value.trim() || "Ausência Temporária";
@@ -2036,8 +2103,7 @@ async function salvarBloqueioAgenda() {
 }
 
 async function bloquearDiasSelecionadosDiaTodo() {
-    const dataCampo = document.getElementById("bloqueioData").value;
-    const datas = diasSelecionadosBloqueio.length > 0 ? [...diasSelecionadosBloqueio] : [dataCampo].filter(Boolean);
+    const datas = obterDatasDoComposerBloqueio();
     const motivo = document.getElementById("bloqueioMotivo").value.trim() || "Ausência Temporária";
 
     if (datas.length === 0) {
@@ -2117,6 +2183,10 @@ async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false)
     await batch.commit();
 
     document.getElementById("bloqueioMotivo").value = "";
+    const dataFinal = document.getElementById("bloqueioDataFinal");
+    const recorrenciaFim = document.getElementById("bloqueioRecorrenciaFim");
+    if (dataFinal) dataFinal.value = "";
+    if (recorrenciaFim) recorrenciaFim.value = "";
     limparSelecaoDiasBloqueio();
 
     await carregarBloqueiosAgenda();
