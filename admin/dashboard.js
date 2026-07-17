@@ -3,6 +3,10 @@ let servicosAdmin = [];
 let pacotesAdmin = [];
 let clientesAdmin = [];
 let clienteSelecionadoAdminId = null;
+let crmHistorico = [];
+let crmCategoriaSelecionada = "todas";
+let crmRegistrosCalculados = [];
+let crmRegistrosPorChave = new Map();
 const racasPorteGatosPetlyneAdmin = [{"raca": "Abissínio", "porte": "Único"}, {"raca": "American Bobtail", "porte": "Único"}, {"raca": "American Curl", "porte": "Único"}, {"raca": "American Shorthair", "porte": "Único"}, {"raca": "Angorá Turco", "porte": "Único"}, {"raca": "Azul Russo", "porte": "Único"}, {"raca": "Balinês", "porte": "Único"}, {"raca": "Bengal", "porte": "Único"}, {"raca": "Birmanês", "porte": "Único"}, {"raca": "Bobtail Japonês", "porte": "Único"}, {"raca": "Bombay", "porte": "Único"}, {"raca": "British Longhair", "porte": "Único"}, {"raca": "British Shorthair", "porte": "Único"}, {"raca": "Burmilla", "porte": "Único"}, {"raca": "Burmês", "porte": "Único"}, {"raca": "Chartreux", "porte": "Único"}, {"raca": "Chausie", "porte": "Único"}, {"raca": "Cornish Rex", "porte": "Único"}, {"raca": "Cymric", "porte": "Único"}, {"raca": "Devon Rex", "porte": "Único"}, {"raca": "Egyptian Mau", "porte": "Único"}, {"raca": "Exótico", "porte": "Único"}, {"raca": "Havana Brown", "porte": "Único"}, {"raca": "Himalaio", "porte": "Único"}, {"raca": "Khao Manee", "porte": "Único"}, {"raca": "Kurilian Bobtail", "porte": "Único"}, {"raca": "LaPerm", "porte": "Único"}, {"raca": "Maine Coon", "porte": "Único"}, {"raca": "Manx", "porte": "Único"}, {"raca": "Munchkin", "porte": "Único"}, {"raca": "Norueguês da Floresta", "porte": "Único"}, {"raca": "Ocicat", "porte": "Único"}, {"raca": "Oriental Longhair", "porte": "Único"}, {"raca": "Oriental Shorthair", "porte": "Único"}, {"raca": "Persa", "porte": "Único"}, {"raca": "Peterbald", "porte": "Único"}, {"raca": "Ragdoll", "porte": "Único"}, {"raca": "Savannah", "porte": "Único"}, {"raca": "Scottish Fold", "porte": "Único"}, {"raca": "Selkirk Rex", "porte": "Único"}, {"raca": "Sem Raça Definida (SRD)", "porte": "Único"}, {"raca": "Siamês", "porte": "Único"}, {"raca": "Siberiano", "porte": "Único"}, {"raca": "Singapura", "porte": "Único"}, {"raca": "Somali", "porte": "Único"}, {"raca": "Sphynx", "porte": "Único"}, {"raca": "Tonquinês", "porte": "Único"}, {"raca": "Toyger", "porte": "Único"}];
 const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca": "Akita Americano", "porte": "Grande"}, {"raca": "Alaskan Malamute", "porte": "Grande"}, {"raca": "American Pit Bull Terrier", "porte": "Médio"}, {"raca": "American Staffordshire Terrier", "porte": "Médio"}, {"raca": "Australian Shepherd", "porte": "Médio"}, {"raca": "Basset Hound", "porte": "Médio"}, {"raca": "Beagle", "porte": "Médio"}, {"raca": "Bernese Mountain Dog", "porte": "Grande"}, {"raca": "Bichon Frisé", "porte": "Pequeno"}, {"raca": "Border Collie", "porte": "Médio"}, {"raca": "Boston Terrier", "porte": "Pequeno"}, {"raca": "Boxer", "porte": "Grande"}, {"raca": "Buldogue Francês", "porte": "Pequeno"}, {"raca": "Bulldog Inglês", "porte": "Médio"}, {"raca": "Bullmastiff", "porte": "Grande"}, {"raca": "Cane Corso", "porte": "Grande"}, {"raca": "Cavalier King Charles Spaniel", "porte": "Pequeno"}, {"raca": "Chihuahua", "porte": "Pequeno"}, {"raca": "Chow Chow", "porte": "Médio"}, {"raca": "Cocker Spaniel Americano", "porte": "Médio"}, {"raca": "Cocker Spaniel Inglês", "porte": "Médio"}, {"raca": "Coton de Tuléar", "porte": "Pequeno"}, {"raca": "Dachshund (Salsicha)", "porte": "Pequeno"}, {"raca": "Dobermann", "porte": "Grande"}, {"raca": "Dogue Alemão", "porte": "Grande"}, {"raca": "Dogue de Bordeaux", "porte": "Grande"}, {"raca": "Dálmata", "porte": "Grande"}, {"raca": "Fila Brasileiro", "porte": "Grande"}, {"raca": "Fox Paulistinha (Terrier Brasileiro)", "porte": "Pequeno"}, {"raca": "Golden Retriever", "porte": "Grande"}, {"raca": "Greyhound", "porte": "Grande"}, {"raca": "Husky Siberiano", "porte": "Médio"}, {"raca": "Jack Russell Terrier", "porte": "Pequeno"}, {"raca": "Komondor", "porte": "Grande"}, {"raca": "Kuvasz", "porte": "Grande"}, {"raca": "Labrador Retriever", "porte": "Grande"}, {"raca": "Leonberger", "porte": "Grande"}, {"raca": "Lhasa Apso", "porte": "Pequeno"}, {"raca": "Maltês", "porte": "Pequeno"}, {"raca": "Mastiff", "porte": "Grande"}, {"raca": "Mastino Napolitano", "porte": "Grande"}, {"raca": "Papillon", "porte": "Pequeno"}, {"raca": "Pastor Alemão", "porte": "Grande"}, {"raca": "Pastor Belga", "porte": "Grande"}, {"raca": "Pequinês", "porte": "Pequeno"}, {"raca": "Pinscher", "porte": "Pequeno"}, {"raca": "Poodle Mini", "porte": "Pequeno"}, {"raca": "Poodle Standard", "porte": "Médio"}, {"raca": "Poodle Toy", "porte": "Pequeno"}, {"raca": "Pug", "porte": "Pequeno"}, {"raca": "Rhodesian Ridgeback", "porte": "Grande"}, {"raca": "Rottweiler", "porte": "Grande"}, {"raca": "Samoieda", "porte": "Médio"}, {"raca": "Schnauzer Miniatura", "porte": "Pequeno"}, {"raca": "Schnauzer Standard", "porte": "Médio"}, {"raca": "Sem Raça Grande", "porte": "Grande"}, {"raca": "Sem Raça Médio", "porte": "Médio"}, {"raca": "Sem Raça Pequeno", "porte": "Pequeno"}, {"raca": "Setter Inglês", "porte": "Médio"}, {"raca": "Setter Irlandês", "porte": "Médio"}, {"raca": "Shar Pei", "porte": "Médio"}, {"raca": "Shiba Inu", "porte": "Pequeno"}, {"raca": "Shih Tzu", "porte": "Pequeno"}, {"raca": "Spitz Alemão (Lulu da Pomerânia)", "porte": "Pequeno"}, {"raca": "Springer Spaniel", "porte": "Médio"}, {"raca": "São Bernardo", "porte": "Grande"}, {"raca": "Terra Nova", "porte": "Grande"}, {"raca": "Weimaraner", "porte": "Médio"}, {"raca": "West Highland White Terrier", "porte": "Pequeno"}, {"raca": "Whippet", "porte": "Médio"}, {"raca": "Wolfhound Irlandês", "porte": "Grande"}, {"raca": "Yorkshire Terrier", "porte": "Pequeno"}];
 let bloqueiosAgenda = [];
@@ -39,6 +43,7 @@ async function iniciarDashboard() {
     await carregarServicosAdmin();
     await carregarPacotesAdmin();
     await carregarClientesAdmin();
+    await carregarHistoricoCRM();
     await carregarBloqueiosAgenda();
     renderizarAgenda();
     atualizarFaturamento();
@@ -51,6 +56,8 @@ async function iniciarDashboard() {
     configurarMascaraTelefonePacote();
     preencherHorariosPacote();
     atualizarPreviaPacote();
+    calcularCRM();
+    renderizarCRM();
 }
 
 function sair() {
@@ -63,7 +70,7 @@ function abrirSecao(secao) {
 
     document.getElementById(`secao-${secao}`).classList.add("active");
 
-    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "pacotes", "servicos"];
+    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "pacotes", "servicos"];
     const indice = mapaSecoes.indexOf(secao);
     const botoes = document.querySelectorAll(".tab-button");
 
@@ -74,6 +81,10 @@ function abrirSecao(secao) {
     if (secao === "clientes") {
         carregarClientesAdmin();
         configurarMascaraNovoCliente();
+    }
+
+    if (secao === "crm") {
+        atualizarCRM();
     }
 }
 
@@ -2715,4 +2726,373 @@ async function excluirServico(id) {
 
     await carregarServicosAdmin();
     renderizarServicosAdmin();
+}
+
+
+/* =========================================================
+   CRM GROWTH - ATENDIMENTOS AVULSOS LYNE
+   ========================================================= */
+
+const CRM_CONFIG = {
+    avaliacaoAteDias: 8,
+    proximoBanhoInicio: 15,
+    proximoBanhoFim: 20,
+    atrasoInicio: 21,
+    atrasoFim: 30,
+    recuperacaoInicio: 31,
+    repeticaoDias: 7,
+    linkAgendamento: "https://petlyne-agendamento-two.vercel.app/",
+    linkAvaliacao: "https://share.google/grSyRShIkMMpW9VLH"
+};
+
+const CRM_CATEGORIAS = {
+    avaliacao: {
+        titulo: "Avaliação Google",
+        descricao: "Último atendimento LYNE concluído há até 8 dias e avaliação ainda não solicitada.",
+        icone: "⭐"
+    },
+    proximo: {
+        titulo: "Hora do próximo banho",
+        descricao: "Clientes entre 15 e 20 dias desde o último banho avulso.",
+        icone: "🛁"
+    },
+    atraso: {
+        titulo: "Banho em atraso",
+        descricao: "Clientes entre 21 e 30 dias desde o último banho avulso.",
+        icone: "⚠️"
+    },
+    recuperacao: {
+        titulo: "Recuperar cliente",
+        descricao: "Clientes há mais de 30 dias sem banho avulso.",
+        icone: "❤️"
+    },
+    conhecer: {
+        titulo: "Conhecer agendamento online",
+        descricao: "Cadastros manuais sem histórico PACK e que ainda não fizeram agendamento LYNE.",
+        icone: "📱"
+    }
+};
+
+async function carregarHistoricoCRM() {
+    try {
+        const snapshot = await db.collection("crmHistorico").orderBy("criadoEm", "desc").get();
+        crmHistorico = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (error) {
+        console.warn("Histórico do CRM ainda não disponível:", error);
+        crmHistorico = [];
+    }
+}
+
+function protocoloEhPack(protocolo) {
+    return String(protocolo || "").trim().toUpperCase().startsWith("PACK-");
+}
+
+function protocoloEhLyne(protocolo) {
+    return String(protocolo || "").trim().toUpperCase().startsWith("LYNE-");
+}
+
+function agendamentoConcluidoCRM(item) {
+    return normalizarTextoCliente(item.status) === normalizarTextoCliente("Concluído");
+}
+
+function dataISOValidaCRM(valor) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(String(valor || ""));
+}
+
+function calcularDiasDesdeCRM(dataISO) {
+    if (!dataISOValidaCRM(dataISO)) return null;
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const data = new Date(`${dataISO}T00:00:00`);
+    const diferenca = Math.floor((hoje - data) / 86400000);
+    return diferenca < 0 ? 0 : diferenca;
+}
+
+function dataFirestoreParaDateCRM(valor) {
+    if (!valor) return null;
+    if (typeof valor.toDate === "function") return valor.toDate();
+    if (valor.seconds) return new Date(valor.seconds * 1000);
+    const data = new Date(valor);
+    return Number.isNaN(data.getTime()) ? null : data;
+}
+
+function formatarDataCRM(dataISO) {
+    if (!dataISOValidaCRM(dataISO)) return "Sem atendimento";
+    return new Date(`${dataISO}T00:00:00`).toLocaleDateString("pt-BR");
+}
+
+function escaparHTMLCRM(valor) {
+    return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function obterHistoricoClienteCRM(chave) {
+    return crmHistorico.filter(item => item.clienteChave === chave);
+}
+
+function acaoCRMJaRegistrada(chave, tipo, permanente = false) {
+    const registros = obterHistoricoClienteCRM(chave).filter(item => item.tipoAcao === tipo);
+    if (registros.length === 0) return false;
+    if (permanente) return true;
+
+    const registroMaisRecente = registros
+        .map(item => dataFirestoreParaDateCRM(item.criadoEm || item.dataEnvio))
+        .filter(Boolean)
+        .sort((a, b) => b - a)[0];
+
+    if (!registroMaisRecente) return true;
+    return ((Date.now() - registroMaisRecente.getTime()) / 86400000) < CRM_CONFIG.repeticaoDias;
+}
+
+function categoriaPorDiasCRM(dias) {
+    if (dias === null) return null;
+    if (dias >= 0 && dias <= CRM_CONFIG.avaliacaoAteDias) return "avaliacao";
+    if (dias >= CRM_CONFIG.proximoBanhoInicio && dias <= CRM_CONFIG.proximoBanhoFim) return "proximo";
+    if (dias >= CRM_CONFIG.atrasoInicio && dias <= CRM_CONFIG.atrasoFim) return "atraso";
+    if (dias >= CRM_CONFIG.recuperacaoInicio) return "recuperacao";
+    return null;
+}
+
+function calcularCRM() {
+    const gruposAgendamento = new Map();
+
+    agendamentos.forEach(item => {
+        const chave = chaveClientePet(item);
+        if (!chave || chave === "|") return;
+        if (!gruposAgendamento.has(chave)) gruposAgendamento.set(chave, []);
+        gruposAgendamento.get(chave).push(item);
+    });
+
+    const registros = [];
+
+    clientesAdmin.forEach(cliente => {
+        const chave = chaveClientePet(cliente);
+        const historicoAgendamentos = gruposAgendamento.get(chave) || [];
+        const temPack = historicoAgendamentos.some(item => protocoloEhPack(item.protocolo));
+        const lynesConcluidos = historicoAgendamentos
+            .filter(item => protocoloEhLyne(item.protocolo) && agendamentoConcluidoCRM(item) && dataISOValidaCRM(item.data))
+            .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+
+        // Qualquer registro PACK exclui o cliente deste MVP.
+        if (temPack) return;
+
+        let categoria = null;
+        let ultimoAtendimento = null;
+        let diasSemBanho = null;
+
+        if (lynesConcluidos.length > 0) {
+            ultimoAtendimento = lynesConcluidos[0];
+            diasSemBanho = calcularDiasDesdeCRM(ultimoAtendimento.data);
+            categoria = categoriaPorDiasCRM(diasSemBanho);
+        } else if (cliente.criadoEm) {
+            categoria = "conhecer";
+        }
+
+        if (!categoria) return;
+
+        const permanente = categoria === "avaliacao" || categoria === "conhecer";
+        if (acaoCRMJaRegistrada(chave, categoria, permanente)) return;
+
+        const registro = {
+            chave,
+            categoria,
+            cliente: cliente.cliente || ultimoAtendimento?.cliente || "Cliente",
+            pet: cliente.pet || ultimoAtendimento?.pet || "Pet",
+            telefone: cliente.telefone || ultimoAtendimento?.telefone || "",
+            ultimoAtendimento: ultimoAtendimento?.data || null,
+            diasSemBanho,
+            totalLyne: lynesConcluidos.length
+        };
+
+        registros.push(registro);
+    });
+
+    const ordem = { avaliacao: 1, proximo: 2, atraso: 3, recuperacao: 4, conhecer: 5 };
+    crmRegistrosCalculados = registros.sort((a, b) => {
+        const porCategoria = (ordem[a.categoria] || 99) - (ordem[b.categoria] || 99);
+        if (porCategoria !== 0) return porCategoria;
+        return (b.diasSemBanho || 0) - (a.diasSemBanho || 0);
+    });
+    crmRegistrosPorChave = new Map(crmRegistrosCalculados.map(item => [item.chave, item]));
+}
+
+function renderizarCRM() {
+    renderizarCRMResumo();
+    renderizarCRMLista();
+}
+
+function renderizarCRMResumo() {
+    const container = document.getElementById("crmResumo");
+    if (!container) return;
+
+    container.innerHTML = Object.entries(CRM_CATEGORIAS).map(([chave, config]) => {
+        const quantidade = crmRegistrosCalculados.filter(item => item.categoria === chave).length;
+        return `
+            <button type="button" class="crm-summary-card crm-card-${chave} ${crmCategoriaSelecionada === chave ? "active" : ""}" onclick="selecionarCategoriaCRM('${chave}')">
+                <span class="crm-summary-icon">${config.icone}</span>
+                <span class="crm-summary-content">
+                    <strong>${config.titulo}</strong>
+                    <small>${config.descricao}</small>
+                </span>
+                <span class="crm-summary-number">${quantidade}</span>
+            </button>
+        `;
+    }).join("");
+}
+
+function selecionarCategoriaCRM(categoria) {
+    crmCategoriaSelecionada = categoria;
+    renderizarCRM();
+}
+
+function renderizarCRMLista() {
+    const lista = document.getElementById("crmLista");
+    const titulo = document.getElementById("crmListaTitulo");
+    const descricao = document.getElementById("crmListaDescricao");
+    if (!lista) return;
+
+    const busca = normalizarTextoCliente(document.getElementById("crmBusca")?.value || "");
+    let dados = crmRegistrosCalculados;
+
+    if (crmCategoriaSelecionada !== "todas") {
+        dados = dados.filter(item => item.categoria === crmCategoriaSelecionada);
+    }
+
+    if (busca) {
+        dados = dados.filter(item => [item.cliente, item.pet, item.telefone]
+            .some(valor => normalizarTextoCliente(valor).includes(busca)));
+    }
+
+    if (crmCategoriaSelecionada === "todas") {
+        if (titulo) titulo.textContent = "Todas as ações pendentes";
+        if (descricao) descricao.textContent = "Clientes elegíveis ao CRM avulso LYNE, sem histórico PACK.";
+    } else {
+        const config = CRM_CATEGORIAS[crmCategoriaSelecionada];
+        if (titulo) titulo.textContent = `${config.icone} ${config.titulo}`;
+        if (descricao) descricao.textContent = config.descricao;
+    }
+
+    if (dados.length === 0) {
+        lista.innerHTML = `<p class="empty-state">Nenhum cliente pendente para este filtro.</p>`;
+        return;
+    }
+
+    lista.innerHTML = dados.map(item => {
+        const config = CRM_CATEGORIAS[item.categoria];
+        const chaveCodificada = encodeURIComponent(item.chave);
+        const detalheData = item.ultimoAtendimento
+            ? `${formatarDataCRM(item.ultimoAtendimento)} • ${item.diasSemBanho} dia(s)`
+            : "Ainda não usou o agendamento online";
+
+        return `
+            <article class="crm-client-card">
+                <div class="crm-client-main">
+                    <span class="crm-client-badge crm-badge-${item.categoria}">${config.icone} ${config.titulo}</span>
+                    <h4>${escaparHTMLCRM(item.cliente)}</h4>
+                    <p><strong>Pet:</strong> ${escaparHTMLCRM(item.pet)}</p>
+                    <p><strong>Telefone:</strong> ${escaparHTMLCRM(item.telefone)}</p>
+                    <p><strong>Último atendimento:</strong> ${detalheData}</p>
+                    ${item.totalLyne ? `<p><strong>Banhos LYNE concluídos:</strong> ${item.totalLyne}</p>` : ""}
+                </div>
+                <div class="crm-client-actions">
+                    <button type="button" onclick="abrirWhatsAppCRM('${chaveCodificada}')"><i class="fa-brands fa-whatsapp"></i> Abrir WhatsApp</button>
+                    <button type="button" class="secondary-button" onclick="marcarAcaoCRMEnviada('${chaveCodificada}')">Marcar como enviado</button>
+                </div>
+            </article>
+        `;
+    }).join("");
+}
+
+function montarMensagemCRM(item) {
+    const cliente = item.cliente || "";
+    const pet = item.pet || "seu pet";
+
+    const mensagens = {
+        avaliacao: `Oi, ${cliente}! 🩷\n\nEsperamos que ${pet} tenha aproveitado bastante o banho!\n\nSe você gostou da experiência na PetLyne, poderia dedicar menos de 1 minuto para deixar sua avaliação? Ela ajuda outras famílias a conhecerem nosso trabalho e faz muita diferença para nós.\n\n⭐ Avalie aqui:\n${CRM_CONFIG.linkAvaliacao}\n\nMuito obrigado! 🐾`,
+        proximo: `Oi, ${cliente}! 🐶🛁\n\nJá está chegando o momento do próximo banho de ${pet}. Que tal garantir o melhor dia e horário?\n\n📅 Agende aqui:\n${CRM_CONFIG.linkAgendamento}\n\nVai ser um prazer receber vocês novamente! 🩷`,
+        atraso: `Oi, ${cliente}! 🐾\n\nPercebemos que já passou um pouquinho do período ideal para o próximo banho de ${pet}. Que tal garantir um horário para deixar ${pet} limpinho e cheiroso novamente?\n\n📅 Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
+        recuperacao: `Oi, ${cliente}! 🩷\n\nEstamos com saudades de ${pet} por aqui! Já faz mais de 30 dias desde o último banho. Temos horários disponíveis e será um prazer receber vocês novamente.\n\n📅 Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
+        conhecer: `Oi, ${cliente}! 🐾\n\nTemos uma novidade para facilitar seus próximos agendamentos na PetLyne! Agora você pode escolher o dia, o horário e o serviço diretamente pelo celular.\n\nQuando ${pet} precisar do próximo banho, é só acessar:\n${CRM_CONFIG.linkAgendamento}\n\nEsperamos vocês! 🩷`
+    };
+
+    return mensagens[item.categoria] || "";
+}
+
+function abrirWhatsAppCRM(chaveCodificada) {
+    const chave = decodeURIComponent(chaveCodificada);
+    const item = crmRegistrosPorChave.get(chave);
+    if (!item) return;
+
+    let telefone = normalizarTelefoneCliente(item.telefone);
+    if (telefone.length === 11) telefone = `55${telefone}`;
+
+    if (!telefone) {
+        mostrarAvisoAdmin({
+            titulo: "Telefone não encontrado",
+            mensagem: "Este cliente não possui um telefone válido para abrir o WhatsApp.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    const url = `https://wa.me/${telefone}?text=${encodeURIComponent(montarMensagemCRM(item))}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+}
+
+async function marcarAcaoCRMEnviada(chaveCodificada) {
+    const chave = decodeURIComponent(chaveCodificada);
+    const item = crmRegistrosPorChave.get(chave);
+    if (!item) return;
+
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Confirmar envio",
+        mensagem: `Confirma que a mensagem de ${CRM_CATEGORIAS[item.categoria].titulo.toLowerCase()} foi enviada para ${item.cliente}?`,
+        icone: "📲",
+        textoConfirmar: "Sim, foi enviada"
+    });
+
+    if (!confirmar) return;
+
+    await db.collection("crmHistorico").add({
+        clienteChave: item.chave,
+        cliente: item.cliente,
+        pet: item.pet,
+        telefone: item.telefone,
+        tipoAcao: item.categoria,
+        protocoloEscopo: "LYNE",
+        status: "Enviado",
+        ultimoAtendimento: item.ultimoAtendimento || null,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await carregarHistoricoCRM();
+    calcularCRM();
+    renderizarCRM();
+
+    await mostrarAvisoAdmin({
+        titulo: "Ação registrada",
+        mensagem: "O envio foi salvo no histórico do CRM.",
+        icone: "✅"
+    });
+}
+
+async function atualizarCRM() {
+    try {
+        await carregarAgendamentos();
+        await carregarClientesAdmin();
+        await carregarHistoricoCRM();
+        calcularCRM();
+        renderizarCRM();
+    } catch (error) {
+        console.error("Erro ao atualizar CRM:", error);
+        await mostrarAvisoAdmin({
+            titulo: "Erro ao atualizar CRM",
+            mensagem: "Não foi possível carregar os dados agora. Tente novamente.",
+            icone: "⚠️"
+        });
+    }
 }

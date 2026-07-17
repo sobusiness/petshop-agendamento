@@ -31,6 +31,7 @@
         <button class="tab-button" onclick="abrirSecao('faturamento')">Faturamento</button>
         <button class="tab-button" onclick="abrirSecao('dias-horarios')">Dias e Horários</button>
         <button class="tab-button" onclick="abrirSecao('clientes')">Clientes</button>
+        <button class="tab-button" onclick="abrirSecao('crm')">CRM Growth</button>
         <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
     </nav>
@@ -330,6 +331,36 @@
     <div id="listaClientesAdmin" class="clientes-list cliente-lista-unica"></div>
 </section>
 
+
+
+<section id="secao-crm" class="admin-section">
+    <div class="section-title-row crm-title-row">
+        <div>
+            <h2>CRM Growth</h2>
+            <p>Relacionamento com clientes de atendimento avulso. Registros de pacote (PACK) não entram neste módulo.</p>
+        </div>
+        <button type="button" class="secondary-button" onclick="atualizarCRM()">Atualizar CRM</button>
+    </div>
+
+    <div class="crm-scope-alert">
+        <strong>Escopo atual:</strong> clientes sem histórico PACK e com atendimento avulso LYNE, além de cadastros manuais que ainda não usaram o agendamento online.
+    </div>
+
+    <div id="crmResumo" class="crm-summary-grid"></div>
+
+    <div class="crm-toolbar">
+        <div>
+            <h3 id="crmListaTitulo">Todas as ações</h3>
+            <p id="crmListaDescricao">Selecione um card ou visualize todas as ações pendentes.</p>
+        </div>
+        <div class="crm-toolbar-actions">
+            <input type="text" id="crmBusca" placeholder="Pesquisar cliente, pet ou telefone" oninput="renderizarCRMLista()">
+            <button type="button" class="secondary-button" onclick="selecionarCategoriaCRM('todas')">Mostrar todas</button>
+        </div>
+    </div>
+
+    <div id="crmLista" class="crm-list"></div>
+</section>
 
 
     <section id="secao-pacotes" class="admin-section">
