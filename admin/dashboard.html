@@ -173,60 +173,90 @@
     </section>
 
 
-    <section id="secao-dias-horarios" class="admin-section">
-        <div class="section-title-row">
+    <section id="secao-dias-horarios" class="admin-section schedule-control-center">
+        <div class="schedule-hero">
             <div>
+                <span class="schedule-eyebrow">CENTRO DE CONTROLE DA AGENDA</span>
                 <h2>Dias e Horários</h2>
-                <p>Bloqueie períodos específicos da agenda para compromissos, folgas ou ausências temporárias.</p>
+                <p>Visualize disponibilidade, agendamentos e bloqueios em um só lugar.</p>
+            </div>
+            <div class="schedule-hero-actions">
+                <button type="button" class="secondary-button" onclick="irParaHojeBloqueio()">Hoje</button>
+                <button type="button" onclick="abrirComposerBloqueio()">+ Novo bloqueio</button>
             </div>
         </div>
 
-        <div class="bloqueio-form">
-            <label>
-                <span>Data do Bloqueio</span>
-                <input type="date" id="bloqueioData" onchange="selecionarDataManualBloqueio()">
-            </label>
-
-            <label>
-                <span>Horário Inicial</span>
-                <select id="bloqueioInicio"></select>
-            </label>
-
-            <label>
-                <span>Horário Final</span>
-                <select id="bloqueioFim"></select>
-            </label>
-
-            <label>
-                <span>Motivo</span>
-                <input type="text" id="bloqueioMotivo" placeholder="Ex: Ausência Temporária">
-            </label>
-
-            <button onclick="salvarBloqueioAgenda()">Bloquear Horário</button>
-            <button type="button" class="secondary-button bloqueio-dia-todo-btn" onclick="bloquearDiasSelecionadosDiaTodo()">Bloquear Dia Todo</button>
-            <button type="button" class="secondary-button desbloquear-dias-btn" onclick="desbloquearDiasSelecionados()">Desbloquear Dia(s)</button>
+        <div class="schedule-kpi-grid">
+            <article class="schedule-kpi"><span>Bloqueios no mês</span><strong id="agendaKpiBloqueios">0</strong><small>períodos ativos</small></article>
+            <article class="schedule-kpi"><span>Horas bloqueadas</span><strong id="agendaKpiHoras">0h</strong><small>no mês selecionado</small></article>
+            <article class="schedule-kpi"><span>Dias afetados</span><strong id="agendaKpiDias">0</strong><small>com indisponibilidade</small></article>
+            <article class="schedule-kpi schedule-kpi-highlight"><span>Disponibilidade</span><strong id="agendaKpiDisponibilidade">100%</strong><small>dos horários úteis</small></article>
+            <article class="schedule-kpi"><span>Próximo bloqueio</span><strong id="agendaKpiProximo">—</strong><small id="agendaKpiProximoDetalhe">Agenda livre</small></article>
         </div>
 
-        <div class="bloqueio-selecionados-box">
-            <strong>Dias selecionados:</strong>
-            <span id="diasSelecionadosBloqueio">Nenhum dia selecionado.</span>
-            <button type="button" class="secondary-button" onclick="limparSelecaoDiasBloqueio()">Limpar Seleção</button>
+        <div id="composerBloqueio" class="schedule-composer">
+            <div class="schedule-composer-head">
+                <div><strong>Novo bloqueio</strong><span>Selecione uma ou várias datas no calendário.</span></div>
+                <button type="button" class="schedule-icon-button" onclick="fecharComposerBloqueio()" aria-label="Fechar">×</button>
+            </div>
+            <div class="schedule-type-chips" id="bloqueioTipoChips">
+                <button type="button" class="active" data-tipo="Compromisso" onclick="selecionarTipoBloqueio(this)">Compromisso</button>
+                <button type="button" data-tipo="Folga" onclick="selecionarTipoBloqueio(this)">Folga</button>
+                <button type="button" data-tipo="Férias" onclick="selecionarTipoBloqueio(this)">Férias</button>
+                <button type="button" data-tipo="Manutenção" onclick="selecionarTipoBloqueio(this)">Manutenção</button>
+                <button type="button" data-tipo="Outro" onclick="selecionarTipoBloqueio(this)">Outro</button>
+            </div>
+            <div class="bloqueio-form schedule-form-premium">
+                <label><span>Data</span><input type="date" id="bloqueioData" onchange="selecionarDataManualBloqueio()"></label>
+                <label><span>Início</span><select id="bloqueioInicio"></select></label>
+                <label><span>Final</span><select id="bloqueioFim"></select></label>
+                <label class="schedule-motivo-field"><span>Motivo</span><input type="text" id="bloqueioMotivo" placeholder="Ex.: consulta, compromisso ou folga"></label>
+            </div>
+            <div class="schedule-selected-row">
+                <div><strong>Dias selecionados</strong><span id="diasSelecionadosBloqueio">Nenhum dia selecionado.</span></div>
+                <button type="button" class="schedule-link-button" onclick="limparSelecaoDiasBloqueio()">Limpar</button>
+            </div>
+            <div class="schedule-composer-actions">
+                <button type="button" class="secondary-button" onclick="bloquearDiasSelecionadosDiaTodo()">Bloquear dia todo</button>
+                <button type="button" class="secondary-button" onclick="desbloquearDiasSelecionados()">Desbloquear selecionados</button>
+                <button type="button" onclick="salvarBloqueioAgenda()">Salvar bloqueio</button>
+            </div>
+            <p class="schedule-rule-note">Não é possível bloquear períodos que já possuem atendimento avulso ou pacote marcado.</p>
         </div>
 
-        <div class="bloqueio-alerta">
-            <strong>Regra:</strong> não é possível bloquear horários que já possuem agendamento avulso ou pacote marcado.
+        <div class="schedule-workspace">
+            <section class="schedule-calendar-panel">
+                <div class="schedule-calendar-toolbar">
+                    <button class="schedule-nav-button" onclick="mudarMesBloqueio(-1)" aria-label="Mês anterior">‹</button>
+                    <div><span>Calendário</span><strong id="tituloMesBloqueio"></strong></div>
+                    <button class="schedule-nav-button" onclick="mudarMesBloqueio(1)" aria-label="Próximo mês">›</button>
+                </div>
+                <div class="schedule-legend">
+                    <span><i class="schedule-dot schedule-dot-booked"></i>Agendamento</span>
+                    <span><i class="schedule-dot schedule-dot-blocked"></i>Bloqueio</span>
+                    <span><i class="schedule-dot schedule-dot-mixed"></i>Ambos</span>
+                    <span><i class="schedule-dot schedule-dot-free"></i>Livre</span>
+                </div>
+                <div id="calendarioBloqueios" class="bloqueio-calendario schedule-calendar-grid"></div>
+            </section>
+
+            <aside class="schedule-day-panel">
+                <div class="schedule-day-header">
+                    <div><span>DIA SELECIONADO</span><h3 id="agendaDiaTitulo">Selecione uma data</h3><p id="agendaDiaResumo">Veja a operação completa do dia.</p></div>
+                    <button type="button" class="schedule-icon-button" onclick="abrirComposerParaDiaSelecionado()">+</button>
+                </div>
+                <div id="agendaDiaStats" class="schedule-day-stats"></div>
+                <div id="agendaDiaTimeline" class="schedule-day-timeline">
+                    <div class="schedule-empty-day">Toque em um dia do calendário para visualizar horários, atendimentos e bloqueios.</div>
+                </div>
+            </aside>
         </div>
 
-        <div class="bloqueio-calendario-header">
-            <button class="secondary-button" onclick="mudarMesBloqueio(-1)">Mês Anterior</button>
-            <strong id="tituloMesBloqueio"></strong>
-            <button class="secondary-button" onclick="mudarMesBloqueio(1)">Próximo Mês</button>
-        </div>
-
-        <div id="calendarioBloqueios" class="bloqueio-calendario"></div>
-        <div id="listaBloqueiosAgenda" class="bloqueio-list bloqueio-list-hidden"></div>
+        <section class="schedule-upcoming-panel">
+            <div class="schedule-upcoming-head"><div><span>PRÓXIMOS EVENTOS</span><h3>Bloqueios programados</h3></div><button type="button" class="secondary-button" onclick="abrirComposerBloqueio()">Adicionar</button></div>
+            <div id="listaBloqueiosAgenda" class="schedule-upcoming-list"></div>
+        </section>
     </section>
-
 
 
     

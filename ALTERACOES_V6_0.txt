@@ -1,0 +1,14 @@
+PETLYNE V6.0 — CENTRO DE CONTROLE DE DIAS E HORÁRIOS
+
+- Redesign completo do módulo Dias e Horários.
+- Cockpit mensal com bloqueios, horas indisponíveis, dias afetados, disponibilidade e próximo bloqueio.
+- Calendário inteligente com diferenciação visual entre dias livres, com agendamentos, bloqueios ou ambos.
+- Painel lateral do dia com timeline completa de 30 em 30 minutos.
+- Visualização conjunta de atendimentos LYNE, PACK, almoço, horários livres e bloqueios.
+- Novo compositor recolhível para bloqueios, com seleção de tipo, múltiplas datas e ações rápidas.
+- Tipos rápidos: Compromisso, Folga, Férias, Manutenção e Outro.
+- Lista premium de próximos bloqueios com desbloqueio direto.
+- Atalho Hoje e navegação mensal aprimorada.
+- Layout responsivo otimizado para celular.
+- Mantidas as coleções e regras atuais do Firebase.
+- Mantida a proteção contra bloqueio sobre horários já agendados.

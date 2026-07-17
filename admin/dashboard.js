@@ -17,6 +17,7 @@ const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca":
 let bloqueiosAgenda = [];
 let mesBloqueioReferencia = new Date();
 let diasSelecionadosBloqueio = [];
+let tipoBloqueioSelecionado = "Compromisso";
 let filtroAgendaPeriodo = "todos";
 let filtroFaturamentoAtual = "todos";
 
@@ -94,6 +95,11 @@ function abrirSecao(secao) {
 
     if (secao === "clube") {
         atualizarClubePetlyne();
+    }
+
+    if (secao === "dias-horarios") {
+        renderizarCalendarioBloqueios();
+        renderizarBloqueiosAgenda();
     }
 }
 
@@ -1842,6 +1848,7 @@ function selecionarDataBloqueio(dataISO) {
 
     atualizarTextoDiasSelecionados();
     renderizarCalendarioBloqueios();
+    renderizarDetalheDiaAgenda(dataISO);
 }
 
 function selecionarDataManualBloqueio() {
@@ -1854,6 +1861,7 @@ function selecionarDataManualBloqueio() {
 
     atualizarTextoDiasSelecionados();
     renderizarCalendarioBloqueios();
+    renderizarDetalheDiaAgenda(dataISO);
 }
 
 function limparSelecaoDiasBloqueio() {
@@ -1868,15 +1876,12 @@ function limparSelecaoDiasBloqueio() {
 function renderizarCalendarioBloqueios() {
     const container = document.getElementById("calendarioBloqueios");
     const titulo = document.getElementById("tituloMesBloqueio");
-
     if (!container || !titulo) return;
 
     const ano = mesBloqueioReferencia.getFullYear();
     const mes = mesBloqueioReferencia.getMonth();
     const selecionada = document.getElementById("bloqueioData")?.value || "";
-
     titulo.textContent = obterNomeMes(mesBloqueioReferencia);
-
     container.innerHTML = "";
 
     ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"].forEach(dia => {
@@ -1888,6 +1893,7 @@ function renderizarCalendarioBloqueios() {
 
     const primeiroDia = new Date(ano, mes, 1).getDay();
     const totalDias = new Date(ano, mes + 1, 0).getDate();
+    const hoje = hojeISO();
 
     for (let i = 0; i < primeiroDia; i++) {
         const vazio = document.createElement("div");
@@ -1898,19 +1904,116 @@ function renderizarCalendarioBloqueios() {
     for (let dia = 1; dia <= totalDias; dia++) {
         const dataISO = dataISOAnoMesDia(ano, mes, dia);
         const bloqueiosDia = bloqueiosAgenda.filter(b => b.status === "Ativo" && b.data === dataISO);
+        const agendamentosDia = agendamentos.filter(a => a.data === dataISO && normalizarTexto(a.status || "") !== "cancelado");
+        const temBloqueio = bloqueiosDia.length > 0;
+        const temAgendamento = agendamentosDia.length > 0;
+        const classeEstado = temBloqueio && temAgendamento ? "dia-misto" : temBloqueio ? "com-bloqueio" : temAgendamento ? "com-agendamento" : "dia-livre";
 
         const celula = document.createElement("button");
         celula.type = "button";
-        celula.className = `bloqueio-dia ${(selecionada === dataISO || diasSelecionadosBloqueio.includes(dataISO)) ? "selecionado" : ""} ${bloqueiosDia.length ? "com-bloqueio" : ""}`;
+        celula.className = `bloqueio-dia ${classeEstado} ${dataISO === hoje ? "dia-hoje" : ""} ${(selecionada === dataISO || diasSelecionadosBloqueio.includes(dataISO)) ? "selecionado" : ""}`;
         celula.onclick = () => selecionarDataBloqueio(dataISO);
-
         celula.innerHTML = `
-            <strong>${dia}</strong>
-            ${bloqueiosDia.length ? `<span>${bloqueiosDia.length} bloqueio(s)</span>` : ""}
-        `;
-
+            <div class="schedule-day-number"><strong>${dia}</strong>${dataISO === hoje ? '<em>Hoje</em>' : ''}</div>
+            <div class="schedule-day-signals">
+                ${temAgendamento ? `<span class="signal-booked">${agendamentosDia.length} atend.</span>` : ""}
+                ${temBloqueio ? `<span class="signal-blocked">${bloqueiosDia.length} bloq.</span>` : ""}
+                ${!temAgendamento && !temBloqueio ? '<span class="signal-free">Livre</span>' : ""}
+            </div>`;
         container.appendChild(celula);
     }
+
+    atualizarCockpitDiasHorarios();
+    const diaPainel = selecionada || diasSelecionadosBloqueio[diasSelecionadosBloqueio.length - 1];
+    if (diaPainel) renderizarDetalheDiaAgenda(diaPainel);
+}
+
+function obterBloqueiosMesAtual() {
+    const ano = mesBloqueioReferencia.getFullYear();
+    const mes = mesBloqueioReferencia.getMonth();
+    return bloqueiosAgenda.filter(item => {
+        if (item.status !== "Ativo" || !item.data) return false;
+        const data = new Date(item.data + "T00:00:00");
+        return data.getFullYear() === ano && data.getMonth() === mes;
+    });
+}
+
+function atualizarCockpitDiasHorarios() {
+    const bloqueiosMes = obterBloqueiosMesAtual();
+    const diasUnicos = new Set(bloqueiosMes.map(item => item.data));
+    const minutosBloqueados = bloqueiosMes.reduce((total, item) => total + Math.max(0, horarioParaMinutos(item.fim) - horarioParaMinutos(item.inicio)), 0);
+    const totalDiasMes = new Date(mesBloqueioReferencia.getFullYear(), mesBloqueioReferencia.getMonth() + 1, 0).getDate();
+    const diasOperacionais = Array.from({ length: totalDiasMes }, (_, i) => new Date(mesBloqueioReferencia.getFullYear(), mesBloqueioReferencia.getMonth(), i + 1)).filter(d => ![0,3].includes(d.getDay())).length;
+    const minutosDisponiveis = Math.max(1, diasOperacionais * 14 * 30);
+    const disponibilidade = Math.max(0, Math.round((1 - minutosBloqueados / minutosDisponiveis) * 100));
+    const proximos = bloqueiosAgenda.filter(item => item.status === "Ativo" && item.data >= hojeISO()).sort((a,b) => `${a.data}${a.inicio}`.localeCompare(`${b.data}${b.inicio}`));
+    const proximo = proximos[0];
+
+    const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+    setText("agendaKpiBloqueios", bloqueiosMes.length);
+    setText("agendaKpiHoras", `${(minutosBloqueados / 60).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}h`);
+    setText("agendaKpiDias", diasUnicos.size);
+    setText("agendaKpiDisponibilidade", `${disponibilidade}%`);
+    setText("agendaKpiProximo", proximo ? formatarDataCurta(proximo.data) : "—");
+    setText("agendaKpiProximoDetalhe", proximo ? `${proximo.inicio}–${proximo.fim} · ${proximo.motivo || "Bloqueio"}` : "Agenda livre");
+}
+
+function renderizarDetalheDiaAgenda(dataISO) {
+    const titulo = document.getElementById("agendaDiaTitulo");
+    const resumo = document.getElementById("agendaDiaResumo");
+    const stats = document.getElementById("agendaDiaStats");
+    const timeline = document.getElementById("agendaDiaTimeline");
+    if (!titulo || !timeline) return;
+
+    const data = new Date(dataISO + "T00:00:00");
+    titulo.textContent = data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+    const atendimentos = agendamentos.filter(a => a.data === dataISO && normalizarTexto(a.status || "") !== "cancelado");
+    const bloqueios = bloqueiosAgenda.filter(b => b.status === "Ativo" && b.data === dataISO);
+    const ocupados = new Set(atendimentos.map(a => a.horario));
+    const bloqueados = new Set();
+    bloqueios.forEach(b => horasAgenda.forEach(h => {
+        const min = horarioParaMinutos(h);
+        if (min >= horarioParaMinutos(b.inicio) && min < horarioParaMinutos(b.fim)) bloqueados.add(h);
+    }));
+    const livres = horasAgenda.filter(h => h !== "12:00" && h !== "12:30" && !ocupados.has(h) && !bloqueados.has(h)).length;
+    resumo.textContent = `${atendimentos.length} atendimento(s), ${bloqueios.length} bloqueio(s) e ${livres} horário(s) livre(s).`;
+    if (stats) stats.innerHTML = `<span><strong>${atendimentos.length}</strong> Atendimentos</span><span><strong>${bloqueios.length}</strong> Bloqueios</span><span><strong>${livres}</strong> Livres</span>`;
+
+    timeline.innerHTML = horasAgenda.map(hora => {
+        if (hora === "12:00" || hora === "12:30") return `<div class="schedule-slot slot-lunch"><time>${hora}</time><div><strong>Almoço</strong><span>Indisponível</span></div></div>`;
+        const atendimento = atendimentos.find(a => a.horario === hora);
+        const bloqueio = bloqueios.find(b => horarioParaMinutos(hora) >= horarioParaMinutos(b.inicio) && horarioParaMinutos(hora) < horarioParaMinutos(b.fim));
+        if (atendimento) return `<div class="schedule-slot slot-booked"><time>${hora}</time><div><strong>${atendimento.pet || "Atendimento"}</strong><span>${atendimento.cliente || "Cliente"} · ${atendimento.protocolo || ""}</span></div><em>${String(atendimento.protocolo || "").startsWith("PACK") ? "Pacote" : "Avulso"}</em></div>`;
+        if (bloqueio) return `<div class="schedule-slot slot-blocked"><time>${hora}</time><div><strong>${bloqueio.motivo || "Bloqueio"}</strong><span>${bloqueio.inicio} até ${bloqueio.fim}</span></div>${bloqueio.inicio === hora ? `<button type="button" onclick="excluirBloqueioAgenda('${bloqueio.id}')">Desbloquear</button>` : ""}</div>`;
+        return `<div class="schedule-slot slot-free"><time>${hora}</time><div><strong>Livre</strong><span>Disponível para agendamento</span></div></div>`;
+    }).join("");
+}
+
+function abrirComposerBloqueio() {
+    document.getElementById("composerBloqueio")?.classList.add("open");
+    document.getElementById("bloqueioData")?.focus();
+}
+function fecharComposerBloqueio() { document.getElementById("composerBloqueio")?.classList.remove("open"); }
+function abrirComposerParaDiaSelecionado() {
+    const data = document.getElementById("bloqueioData")?.value;
+    abrirComposerBloqueio();
+    if (!data) document.getElementById("bloqueioData")?.focus();
+}
+function selecionarTipoBloqueio(botao) {
+    tipoBloqueioSelecionado = botao.dataset.tipo || "Compromisso";
+    document.querySelectorAll("#bloqueioTipoChips button").forEach(item => item.classList.toggle("active", item === botao));
+    const motivo = document.getElementById("bloqueioMotivo");
+    if (motivo && !motivo.value.trim() && tipoBloqueioSelecionado !== "Outro") motivo.value = tipoBloqueioSelecionado;
+}
+function irParaHojeBloqueio() {
+    mesBloqueioReferencia = new Date();
+    const hoje = hojeISO();
+    const input = document.getElementById("bloqueioData");
+    if (input) input.value = hoje;
+    diasSelecionadosBloqueio = [hoje];
+    atualizarTextoDiasSelecionados();
+    renderizarCalendarioBloqueios();
+    renderizarDetalheDiaAgenda(hoje);
 }
 
 async function salvarBloqueioAgenda() {
@@ -1946,7 +2049,7 @@ async function bloquearDiasSelecionadosDiaTodo() {
         return;
     }
 
-    await criarBloqueiosAgenda(datas, "09:00", "17:30", motivo, true);
+    await criarBloqueiosAgenda(datas, "09:00", "17:00", motivo, true);
 }
 
 async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false) {
@@ -2022,6 +2125,7 @@ async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false)
     renderizarBloqueiosAgenda();
     renderizarCalendarioBloqueios();
     preencherHorariosPacote();
+    fecharComposerBloqueio();
 
     await mostrarAvisoAdmin({
         titulo: "Agenda bloqueada",
@@ -2034,7 +2138,23 @@ async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false)
 
 function renderizarBloqueiosAgenda() {
     const lista = document.getElementById("listaBloqueiosAgenda");
-    if (lista) lista.innerHTML = "";
+    if (!lista) return;
+    const proximos = bloqueiosAgenda
+        .filter(item => item.status === "Ativo" && item.data >= hojeISO())
+        .sort((a,b) => `${a.data}${a.inicio}`.localeCompare(`${b.data}${b.inicio}`))
+        .slice(0, 8);
+    if (!proximos.length) {
+        lista.innerHTML = '<div class="schedule-empty-upcoming">Nenhum bloqueio futuro. A agenda está totalmente disponível.</div>';
+        return;
+    }
+    lista.innerHTML = proximos.map(item => {
+        const data = new Date(item.data + "T00:00:00");
+        return `<article class="schedule-upcoming-item">
+            <div class="schedule-upcoming-date"><strong>${String(data.getDate()).padStart(2,"0")}</strong><span>${data.toLocaleDateString("pt-BR", { month: "short" }).replace(".","")}</span></div>
+            <div><strong>${item.motivo || "Bloqueio"}</strong><span>${data.toLocaleDateString("pt-BR", { weekday: "long" })} · ${item.inicio}–${item.fim}</span></div>
+            <button type="button" class="secondary-button" onclick="excluirBloqueioAgenda('${item.id}')">Desbloquear</button>
+        </article>`;
+    }).join("");
 }
 
 
@@ -2117,6 +2237,7 @@ async function excluirBloqueioAgenda(id) {
     renderizarBloqueiosAgenda();
     renderizarCalendarioBloqueios();
     preencherHorariosPacote();
+    fecharComposerBloqueio();
 }
 
 
