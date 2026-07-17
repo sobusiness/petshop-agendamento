@@ -1076,14 +1076,29 @@ function montarClienteAPartirAgendamento(item) {
 async function carregarClientesAdmin() {
     const mapa = new Map();
     const telefonesPetsJaSalvos = new Set();
+    const clientesExcluidos = new Set();
+
+    // Um cliente excluído do cadastro não deve ser recriado visualmente apenas
+    // porque ainda existem agendamentos históricos vinculados a ele.
+    try {
+        const snapshotExcluidos = await db.collection("clientesExcluidos").get();
+        snapshotExcluidos.docs.forEach(doc => {
+            const dados = doc.data() || {};
+            if (dados.chaveClientePet) clientesExcluidos.add(dados.chaveClientePet);
+        });
+    } catch (error) {
+        console.warn("Coleção de clientes excluídos ainda não disponível:", error);
+    }
 
     try {
         const snapshotClientes = await db.collection("clientes").get();
 
         snapshotClientes.docs.forEach(doc => {
-            const data = { id: doc.id, ...doc.data() };
+            const data = { id: doc.id, ...doc.data(), origemCadastro: "clientes" };
             const chave = chaveClientePet(data);
 
+            // Um cadastro principal existente sempre prevalece. Isso também
+            // permite que um cliente volte a aparecer caso seja cadastrado novamente.
             mapa.set(chave, data);
             telefonesPetsJaSalvos.add(chave);
         });
@@ -1093,10 +1108,14 @@ async function carregarClientesAdmin() {
 
     try {
         agendamentos.forEach(agendamento => {
-            const cliente = montarClienteAPartirAgendamento(agendamento);
+            const cliente = { ...montarClienteAPartirAgendamento(agendamento), origemCadastro: "agendamentos" };
             const chave = chaveClientePet(cliente);
 
-            if (!telefonesPetsJaSalvos.has(chave) && !mapa.has(chave)) {
+            if (
+                !clientesExcluidos.has(chave) &&
+                !telefonesPetsJaSalvos.has(chave) &&
+                !mapa.has(chave)
+            ) {
                 mapa.set(chave, cliente);
             }
         });
@@ -1478,6 +1497,16 @@ async function salvarClienteAdmin(idAtual) {
 
     await db.collection("clientes").doc(novoId).set(dados, { merge: true });
 
+    // Caso este cliente tenha sido excluído anteriormente, o novo salvamento
+    // reativa o cadastro e remove a marca que impedia sua reconstrução histórica.
+    const chaveAtualizada = chaveClientePet(dados);
+    const marcadorId = criarClienteId(dados.telefone, dados.pet);
+    try {
+        await db.collection("clientesExcluidos").doc(marcadorId).delete();
+    } catch (error) {
+        console.warn("Não foi necessário remover marcador de exclusão:", error);
+    }
+
     if (novoId !== idAtual) {
         try {
             await db.collection("clientes").doc(idAtual).delete();
@@ -1515,18 +1544,50 @@ async function excluirClienteAdmin(idAtual) {
 
     if (!confirmar) return;
 
-    await db.collection("clientes").doc(idAtual).delete();
+    try {
+        const chave = chaveClientePet(cliente);
+        const marcadorId = criarClienteId(cliente.telefone, cliente.pet);
+        const lote = db.batch();
 
-    clientesAdmin = clientesAdmin.filter(item => item.id !== idAtual);
-    clienteSelecionadoAdminId = null;
+        // Remove o documento principal, quando existir.
+        lote.delete(db.collection("clientes").doc(idAtual));
 
-    await mostrarAvisoAdmin({
-        titulo: "Cadastro excluído",
-        mensagem: "O cadastro principal foi removido com sucesso.",
-        icone: "✅"
-    });
+        // Registra que este cliente/pet não deve ser reconstruído na tela a
+        // partir de agendamentos antigos. Os agendamentos permanecem intactos.
+        lote.set(db.collection("clientesExcluidos").doc(marcadorId), {
+            chaveClientePet: chave,
+            cliente: cliente.cliente || "",
+            pet: cliente.pet || "",
+            telefone: cliente.telefone || "",
+            excluidoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-    await carregarClientesAdmin();
+        await lote.commit();
+
+        clientesAdmin = clientesAdmin.filter(item => chaveClientePet(item) !== chave);
+        clienteSelecionadoAdminId = null;
+
+        calcularCRM();
+        renderizarCRM();
+        renderizarClientesAdmin();
+
+        await mostrarAvisoAdmin({
+            titulo: "Cadastro excluído",
+            mensagem: "O cliente foi removido do cadastro. Os agendamentos históricos foram preservados.",
+            icone: "✅"
+        });
+
+        await carregarClientesAdmin();
+        calcularCRM();
+        renderizarCRM();
+    } catch (error) {
+        console.error("Erro ao excluir cadastro do cliente:", error);
+        await mostrarAvisoAdmin({
+            titulo: "Não foi possível excluir",
+            mensagem: "O cadastro não foi removido. Atualize a página e tente novamente. Se o problema continuar, verifique as permissões do Firestore.",
+            icone: "⚠️"
+        });
+    }
 }
 
 function preencherHorariosBloqueio() {
