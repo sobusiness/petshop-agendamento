@@ -441,14 +441,39 @@ function renderizarAgenda() {
                                 <span class="status-badge ${statusClasse}">${ehInicio ? status : "Bloqueado"}</span>
                             </div>
                             <div class="agenda-event-info">
-                                ${ehInicio ? `<span class="agenda-label">Cliente</span><strong>${clienteAgenda}</strong><br>` : ""}
-                                ${ehInicio ? `<span class="agenda-label">Telefone</span><strong>${telefoneAgenda}</strong><br>` : ""}
-                                ${ehInicio ? `<span class="agenda-label">Pet</span><strong>${agendamento.pet || "Pet"}</strong><br>` : ""}
-                                ${ehInicio ? `<span class="agenda-protocolo">${agendamento.protocolo || ""}</span><br>` : ""}
-                                ${ehInicio ? `<span class="agenda-label">Serviço</span>${servicos}<br>` : `Continuação de ${agendamento.horario}<br>`}
-                                ${ehInicio ? `<span class="agenda-label">Valor</span><strong>${valorServico}</strong><br>` : ""}
-                                ${ehInicio ? `<span class="agenda-label">Espécie</span>${agendamento.especie || ""}<br>` : ""}
-                                ${ehInicio ? `<span class="agenda-label">Obs.</span>${agendamento.observacaoPet || ""}` : ""}
+                                ${ehInicio ? `
+                                    <div class="agenda-info-grid">
+                                        <div class="agenda-info-item agenda-info-cliente">
+                                            <span class="agenda-label">Cliente</span>
+                                            <strong>${clienteAgenda}</strong>
+                                        </div>
+                                        <div class="agenda-info-item agenda-info-telefone">
+                                            <span class="agenda-label">Telefone</span>
+                                            <strong>${telefoneAgenda}</strong>
+                                        </div>
+                                        <div class="agenda-info-item agenda-info-pet">
+                                            <span class="agenda-label">Pet</span>
+                                            <strong>${agendamento.pet || "Pet"}</strong>
+                                        </div>
+                                        <div class="agenda-info-item agenda-info-especie">
+                                            <span class="agenda-label">Espécie</span>
+                                            <span>${agendamento.especie || "Não informada"}</span>
+                                        </div>
+                                        <div class="agenda-info-item agenda-info-servico">
+                                            <span class="agenda-label">Serviço</span>
+                                            <span title="${servicos.replace(/"/g, '&quot;')}">${servicos}</span>
+                                        </div>
+                                        <div class="agenda-info-item agenda-info-valor">
+                                            <span class="agenda-label">Valor</span>
+                                            <strong>${valorServico}</strong>
+                                        </div>
+                                        <div class="agenda-info-item agenda-info-observacao">
+                                            <span class="agenda-label">Observação</span>
+                                            <span>${agendamento.observacaoPet || "Sem observação"}</span>
+                                        </div>
+                                    </div>
+                                    <span class="agenda-protocolo">${agendamento.protocolo || ""}</span>
+                                ` : `Continuação de ${agendamento.horario}`}
                             </div>
                             ${ehInicio ? `
                                 <div class="agenda-event-actions">

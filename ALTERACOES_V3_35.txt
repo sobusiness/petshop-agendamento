@@ -1,0 +1,10 @@
+PETLYNE V3.35 - REMODELAGEM COMPACTA DA AGENDA ADMINISTRATIVA
+
+- Redução dos espaços verticais dos cartões de agendamento.
+- Cabeçalho do cartão reorganizado em uma única linha com pet e status.
+- Informações distribuídas em grade de duas colunas.
+- Serviço e observação mantidos em largura total com corte visual e tooltip no serviço.
+- Protocolo transformado em selo compacto.
+- Botões Concluir e Cancelar posicionados lado a lado.
+- Todas as informações existentes foram preservadas.
+- Layout responsivo mantido para telas menores.

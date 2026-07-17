@@ -2174,3 +2174,112 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .clube-historico ul { margin:10px 0 0; padding-left:20px; color:#765f68; }
 @media (max-width:1100px){.clube-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr));}.clube-list{grid-template-columns:1fr;}}
 @media (max-width:700px){.clube-kpi-grid{grid-template-columns:1fr 1fr;}.clube-toolbar{flex-direction:column;}.clube-card-head,.clube-beneficio-disponivel{align-items:stretch;flex-direction:column}.clube-total{text-align:left;}}
+
+/* V3.35 - Cards compactos na agenda administrativa */
+#secao-agendamentos .agenda-cell {
+    min-height: 58px;
+    padding: 6px;
+    vertical-align: top;
+}
+
+#secao-agendamentos .agenda-event {
+    padding: 9px;
+    border-radius: 11px;
+    line-height: 1.2;
+}
+
+#secao-agendamentos .agenda-event-header {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 7px;
+}
+
+#secao-agendamentos .agenda-event-header > strong {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+}
+
+#secao-agendamentos .status-badge {
+    flex: 0 0 auto;
+    padding: 3px 7px;
+    font-size: 10px;
+}
+
+#secao-agendamentos .agenda-event-info {
+    margin-bottom: 6px;
+}
+
+#secao-agendamentos .agenda-info-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 5px 10px;
+}
+
+#secao-agendamentos .agenda-info-item {
+    min-width: 0;
+}
+
+#secao-agendamentos .agenda-info-item > strong,
+#secao-agendamentos .agenda-info-item > span:last-child {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--pet-text);
+    font-size: 12px;
+}
+
+#secao-agendamentos .agenda-info-servico,
+#secao-agendamentos .agenda-info-observacao {
+    grid-column: 1 / -1;
+}
+
+#secao-agendamentos .agenda-label {
+    margin-top: 0;
+    margin-bottom: 1px;
+    font-size: 9px;
+    line-height: 1.1;
+}
+
+#secao-agendamentos .agenda-protocolo {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(203, 75, 114, .10);
+    color: var(--pet-primary-dark);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+#secao-agendamentos .agenda-event-actions {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin-top: 7px;
+}
+
+#secao-agendamentos .agenda-event-actions button {
+    min-height: 34px;
+    margin: 0;
+    padding: 7px 8px;
+    border-radius: 9px;
+    font-size: 11px;
+}
+
+@media (max-width: 900px) {
+    #secao-agendamentos .agenda-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #secao-agendamentos .agenda-info-servico,
+    #secao-agendamentos .agenda-info-observacao {
+        grid-column: auto;
+    }
+}
