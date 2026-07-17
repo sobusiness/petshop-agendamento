@@ -400,32 +400,42 @@
 </section>
 
 
-<section id="secao-clube" class="admin-section">
-  <div class="section-title-row clube-title-row">
+<section id="secao-clube" class="admin-section clube-premium-section">
+  <div class="section-title-row clube-title-row clube-hero-head">
     <div>
+      <span class="clube-eyebrow">FIDELIDADE E EXPERIÊNCIA</span>
       <h2>🐾 Clube PetLyne</h2>
-      <p>Programa interno de fidelidade com controle de ciclos, benefícios liberados e resgates.</p>
+      <p>Acompanhe conquistas, benefícios liberados e clientes que merecem atenção.</p>
     </div>
-    <button type="button" class="secondary-button" onclick="atualizarClubePetlyne()">Atualizar Clube</button>
+    <button type="button" class="secondary-button clube-refresh-button" onclick="atualizarClubePetlyne()">Atualizar Clube</button>
   </div>
 
-  <div class="clube-regra-alert">
-    <strong>Regra atual:</strong> a cada ciclo de 10 atendimentos avulsos LYNE concluídos, o cliente conquista uma hidratação no 5º banho e um banho grátis no 10º. Registros PACK não entram neste módulo.
+  <div class="clube-regra-alert clube-regra-premium">
+    <div class="clube-regra-icon">🏆</div>
+    <div><strong>Jornada de fidelidade</strong><p>A cada 10 atendimentos avulsos LYNE concluídos: hidratação no 5º banho e banho grátis no 10º. Pacotes PACK não participam desta jornada.</p></div>
   </div>
 
-  <div class="clube-kpi-grid" id="clubeIndicadores"></div>
+  <div class="clube-kpi-grid clube-kpi-premium" id="clubeIndicadores"></div>
+  <div id="clubeInteligencia" class="clube-inteligencia-grid"></div>
 
-  <div class="clube-toolbar">
-    <input id="clubeBusca" type="text" placeholder="Pesquisar cliente, pet ou telefone" oninput="renderizarClubePetlyne()">
-    <select id="clubeFiltro" onchange="renderizarClubePetlyne()">
-      <option value="todos">Todos os clientes</option>
-      <option value="beneficios">Com benefício disponível</option>
-      <option value="andamento">Ciclo em andamento</option>
-      <option value="resgatados">Com resgate registrado</option>
+  <div class="clube-command-bar">
+    <div class="clube-search-wrap"><span>⌕</span><input id="clubeBusca" type="text" placeholder="Pesquisar cliente, pet ou telefone" oninput="renderizarClubePetlyne()"></div>
+    <div class="clube-filter-chips" id="clubeChips">
+      <button type="button" class="active" data-clube-filtro="todos" onclick="definirFiltroClube('todos')">Todos</button>
+      <button type="button" data-clube-filtro="prioridade" onclick="definirFiltroClube('prioridade')">🔥 Prioridade</button>
+      <button type="button" data-clube-filtro="hidratacao" onclick="definirFiltroClube('hidratacao')">💧 Próx. hidratação</button>
+      <button type="button" data-clube-filtro="banhoGratis" onclick="definirFiltroClube('banhoGratis')">🎁 Próx. banho grátis</button>
+      <button type="button" data-clube-filtro="beneficios" onclick="definirFiltroClube('beneficios')">🏆 Liberados</button>
+      <button type="button" data-clube-filtro="inativos" onclick="definirFiltroClube('inativos')">⚠️ Sem retorno</button>
+      <button type="button" data-clube-filtro="resgatados" onclick="definirFiltroClube('resgatados')">Histórico</button>
+    </div>
+    <select id="clubeFiltro" class="clube-mobile-filter" onchange="definirFiltroClube(this.value)">
+      <option value="todos">Todos os clientes</option><option value="prioridade">Prioridade</option><option value="hidratacao">Próximos da hidratação</option><option value="banhoGratis">Próximos do banho grátis</option><option value="beneficios">Benefícios liberados</option><option value="inativos">Sem retorno</option><option value="resgatados">Com resgate registrado</option>
     </select>
   </div>
 
-  <div id="clubeLista" class="clube-list"></div>
+  <div class="clube-list-heading"><div><h3 id="clubeListaTitulo">Jornada dos clientes</h3><p id="clubeListaSubtitulo">Ordenados automaticamente por prioridade.</p></div><strong id="clubeContagemLista">0 clientes</strong></div>
+  <div id="clubeLista" class="clube-list clube-list-premium"></div>
 </section>
 
     <section id="secao-pacotes" class="admin-section">

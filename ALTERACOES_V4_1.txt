@@ -1,0 +1,13 @@
+PETLYNE V4.1 — CLUBE PETLYNE LOYALTY EXPERIENCE
+
+- Redesign premium completo do Clube PetLyne.
+- KPIs de participantes, clientes próximos do prêmio, benefícios, banhos e índice de fidelidade.
+- Prioridade inteligente automática.
+- Ranking dos clientes mais fiéis.
+- Filtros por estágio, benefícios, ausência e histórico.
+- Cards com jornada visual 1–10, marcos no 5º e 10º banho.
+- Destaque forte para benefícios liberados e registro de uso.
+- Última visita, cliente desde e alerta de ausência.
+- Histórico de benefícios em cada cliente.
+- Layout responsivo e otimizado para celular.
+- Nenhuma regra de negócio ou coleção Firebase foi alterada.
