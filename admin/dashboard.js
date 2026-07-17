@@ -1,6 +1,7 @@
 let agendamentos = [];
 let servicosAdmin = [];
 let pacotesAdmin = [];
+let filtroRapidoPacoteAtual = "todos";
 let clientesAdmin = [];
 let clienteSelecionadoAdminId = null;
 let crmHistorico = [];
@@ -2355,6 +2356,59 @@ async function salvarPacote() {
     });
 }
 
+function dataPacoteLocal(valor) {
+    if (!valor) return null;
+    const partes = String(valor).split("-").map(Number);
+    if (partes.length !== 3 || partes.some(Number.isNaN)) return null;
+    return new Date(partes[0], partes[1] - 1, partes[2], 12, 0, 0, 0);
+}
+
+function hojePacoteLocal() {
+    const agora = new Date();
+    return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 12, 0, 0, 0);
+}
+
+function diferencaDiasPacote(dataValor) {
+    const data = dataPacoteLocal(dataValor);
+    if (!data) return null;
+    return Math.ceil((data - hojePacoteLocal()) / 86400000);
+}
+
+function obterVisitasPacote(pacote) {
+    return Array.isArray(pacote?.visitas) ? pacote.visitas : [];
+}
+
+function obterProximaVisitaPacote(pacote) {
+    return obterVisitasPacote(pacote)
+        .filter(visita => visita.status !== "Realizado")
+        .sort((a, b) => String(a.data || "").localeCompare(String(b.data || "")))[0] || null;
+}
+
+function pacoteTemAtraso(pacote) {
+    return obterVisitasPacote(pacote).some(visita => visita.status !== "Realizado" && diferencaDiasPacote(visita.data) < 0);
+}
+
+function pacotePrecisaRenovar(pacote) {
+    if (pacote.status !== "Ativo") return false;
+    const dias = diferencaDiasPacote(pacote.dataFim);
+    return dias !== null && dias <= 7;
+}
+
+function pacoteTemProximoBanho(pacote) {
+    const proxima = obterProximaVisitaPacote(pacote);
+    const dias = diferencaDiasPacote(proxima?.data);
+    return dias !== null && dias >= 0 && dias <= 7;
+}
+
+function aplicarFiltroRapidoPacote(filtro, botao) {
+    filtroRapidoPacoteAtual = filtro || "todos";
+    document.querySelectorAll("[data-pacote-filter]").forEach(item => {
+        item.classList.toggle("active", item.dataset.pacoteFilter === filtroRapidoPacoteAtual);
+    });
+    if (botao) botao.classList.add("active");
+    renderizarPacotes();
+}
+
 function obterPacotesFiltrados() {
     const busca = (document.getElementById("filtroPacoteCliente")?.value || "").trim().toLowerCase();
     const status = document.getElementById("filtroPacoteStatus")?.value || "";
@@ -2362,13 +2416,54 @@ function obterPacotesFiltrados() {
     return pacotesAdmin.filter(pacote => {
         const buscaOk = !busca ||
             (pacote.nomeCliente || "").toLowerCase().includes(busca) ||
+            (pacote.nomePet || "").toLowerCase().includes(busca) ||
             (pacote.telefone || "").toLowerCase().includes(busca) ||
             (pacote.protocolo || "").toLowerCase().includes(busca);
 
         const statusOk = !status || pacote.status === status;
+        let rapidoOk = true;
 
-        return buscaOk && statusOk;
+        if (filtroRapidoPacoteAtual === "ativos") rapidoOk = pacote.status === "Ativo";
+        if (filtroRapidoPacoteAtual === "proximos") rapidoOk = pacoteTemProximoBanho(pacote);
+        if (filtroRapidoPacoteAtual === "atrasados") rapidoOk = pacoteTemAtraso(pacote);
+        if (filtroRapidoPacoteAtual === "renovar") rapidoOk = pacotePrecisaRenovar(pacote);
+        if (filtroRapidoPacoteAtual === "concluidos") rapidoOk = pacote.status === "Concluído";
+
+        return buscaOk && statusOk && rapidoOk;
     });
+}
+
+function atualizarCockpitPacotes() {
+    const ativos = pacotesAdmin.filter(pacote => pacote.status === "Ativo");
+    const pendentes = ativos.reduce((total, pacote) => total + obterVisitasPacote(pacote).filter(v => v.status !== "Realizado").length, 0);
+    const receita = ativos.reduce((total, pacote) => total + Number(pacote.valorPacote || 0), 0);
+    const renovar = ativos.filter(pacotePrecisaRenovar);
+    const atrasados = ativos.filter(pacoteTemAtraso);
+
+    definirTexto("pacoteKpiAtivos", ativos.length);
+    definirTexto("pacoteKpiPendentes", pendentes);
+    definirTexto("pacoteKpiReceita", formatarMoeda(receita));
+    definirTexto("pacoteKpiRenovar", renovar.length);
+    definirTexto("pacoteKpiAtrasados", atrasados.length);
+
+    const titulo = document.getElementById("pacoteRadarTitulo");
+    const texto = document.getElementById("pacoteRadarTexto");
+    const radar = document.getElementById("pacoteRadarRenovacao");
+    if (!titulo || !texto || !radar) return;
+
+    radar.classList.remove("atencao", "urgente");
+    if (atrasados.length) {
+        radar.classList.add("urgente");
+        titulo.textContent = `${atrasados.length} pacote${atrasados.length > 1 ? "s" : ""} com banho atrasado`;
+        texto.textContent = "Revise as datas pendentes e entre em contato com os clientes.";
+    } else if (renovar.length) {
+        radar.classList.add("atencao");
+        titulo.textContent = `${renovar.length} renovação${renovar.length > 1 ? "ões" : ""} nos próximos 7 dias`;
+        texto.textContent = "A carteira possui oportunidades de renovação próximas.";
+    } else {
+        titulo.textContent = "Carteira em dia";
+        texto.textContent = "Nenhum pacote exige contato imediato.";
+    }
 }
 
 
@@ -2383,117 +2478,131 @@ function renderizarPacotes() {
     const lista = document.getElementById("listaPacotesAdmin");
     if (!lista) return;
 
+    atualizarCockpitPacotes();
     const pacotes = obterPacotesFiltrados();
-
     lista.innerHTML = "";
 
     if (pacotes.length === 0) {
-        lista.innerHTML = `<p class="empty-state">Nenhum pacote encontrado.</p>`;
+        lista.innerHTML = `<div class="empty-state pacote-empty"><strong>Nenhum pacote encontrado.</strong><span>Ajuste os filtros ou cadastre um novo pacote.</span></div>`;
         return;
     }
 
     pacotes.forEach(pacote => {
-        const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+        const visitas = obterVisitasPacote(pacote);
         const realizadas = visitas.filter(v => v.status === "Realizado").length;
         const pendentes = visitas.length - realizadas;
-        const ultimaVisita = visitas[visitas.length - 1];
+        const progresso = visitas.length ? Math.round((realizadas / visitas.length) * 100) : 0;
+        const proximaVisita = obterProximaVisitaPacote(pacote);
+        const diasProximo = diferencaDiasPacote(proximaVisita?.data);
+        const diasFim = diferencaDiasPacote(pacote.dataFim);
+        const atrasado = pacoteTemAtraso(pacote);
+        const renovar = pacotePrecisaRenovar(pacote);
+        const concluido = pacote.status === "Concluído" || pendentes === 0;
+        const saudeClasse = atrasado ? "urgente" : renovar ? "atencao" : concluido ? "concluido" : "saudavel";
+        const saudeTexto = atrasado ? "Atrasado" : renovar ? "Renovar" : concluido ? "Concluído" : "Em dia";
+        const petIcone = "🐶";
+        const proximoTexto = proximaVisita
+            ? `${formatarDataCurta(proximaVisita.data)} às ${proximaVisita.horario || pacote.horario || ""}`
+            : "Todos os banhos realizados";
+        const prazoTexto = diasProximo === null
+            ? "Sem próxima data"
+            : diasProximo < 0
+                ? `${Math.abs(diasProximo)} dia${Math.abs(diasProximo) !== 1 ? "s" : ""} atrasado`
+                : diasProximo === 0
+                    ? "Hoje"
+                    : `Em ${diasProximo} dia${diasProximo !== 1 ? "s" : ""}`;
 
-        const div = document.createElement("div");
-        div.className = "pacote-card";
+        const div = document.createElement("article");
+        div.className = `pacote-card pacote-card-premium ${saudeClasse}`;
 
         div.innerHTML = `
-            <div class="pacote-card-header">
-                <div>
-                    <strong>${pacote.nomeCliente || "Cliente"}</strong>
-                    <span>${pacote.protocolo || ""}</span>
+            <div class="pacote-premium-header">
+                <div class="pacote-identidade">
+                    <span class="pacote-pet-avatar">${petIcone}</span>
+                    <div>
+                        <div class="pacote-title-line">
+                            <strong>${pacote.nomePet || "Pet"}</strong>
+                            <span class="pacote-health ${saudeClasse}">${saudeTexto}</span>
+                        </div>
+                        <span>${pacote.nomeCliente || "Cliente"} · ${pacote.telefone || "Sem telefone"}</span>
+                        <small>${pacote.protocolo || ""} · Pacote ${pacote.tipo || ""}</small>
+                    </div>
                 </div>
-
-                <span class="status-badge ${pacote.status === "Concluído" ? "status-concluido" : pacote.status === "Ativo" ? "status-confirmado" : "status-inativo"}">${pacote.status || "Ativo"}</span>
+                <div class="pacote-value-block">
+                    <span>Valor do pacote</span>
+                    <strong>${formatarMoeda(pacote.valorPacote || 0)}</strong>
+                </div>
             </div>
 
-            <div class="pacote-edit-grid pacote-edit-grid-v2">
-                <label>
-                    <span>Cliente</span>
-                    <input type="text" id="pacote-nome-${pacote.id}" value="${pacote.nomeCliente || ""}">
-                </label>
-
-                <label>
-                    <span>Telefone</span>
-                    <input type="text" id="pacote-telefone-${pacote.id}" value="${pacote.telefone || ""}">
-                </label>
-
-                <label>
-                    <span>Pet</span>
-                    <input type="text" id="pacote-pet-${pacote.id}" value="${pacote.nomePet || ""}">
-                </label>
-
-                <label>
-                    <span>Valor do Pacote</span>
-                    <input type="number" id="pacote-valor-${pacote.id}" value="${pacote.valorPacote || 0}" step="0.01">
-                </label>
-
-                <label>
-                    <span>Status</span>
-                    <select id="pacote-status-${pacote.id}">
-                        <option value="Ativo" ${pacote.status === "Ativo" ? "selected" : ""}>Ativo</option>
-                        <option value="Inativo" ${pacote.status === "Inativo" ? "selected" : ""}>Inativo</option>
-                        <option value="Concluído" ${pacote.status === "Concluído" ? "selected" : ""} disabled>Concluído automaticamente</option>
-                    </select>
-                </label>
+            <div class="pacote-progress-area">
+                <div class="pacote-progress-copy">
+                    <div><strong>${realizadas} de ${visitas.length}</strong><span> banhos realizados</span></div>
+                    <strong>${progresso}%</strong>
+                </div>
+                <div class="pacote-progress-track"><span style="width:${progresso}%"></span></div>
             </div>
 
-            <div class="pacote-info-grid">
-                <div><span>Tipo</span><strong>${pacote.tipo}</strong></div>
+            <div class="pacote-operational-grid">
+                <div class="pacote-next-card ${atrasado ? "late" : ""}">
+                    <span>Próximo banho</span>
+                    <strong>${proximoTexto}</strong>
+                    <small>${prazoTexto}</small>
+                </div>
                 <div><span>Início</span><strong>${formatarDataCurta(pacote.dataInicio)}</strong></div>
-                <div><span>Primeiro banho</span><strong>${formatarDataCurta(pacote.primeiroBanho)} às ${pacote.horario}</strong></div>
-                <div><span>Fim</span><strong>${formatarDataCurta(pacote.dataFim)}</strong></div>
-                <div><span>Valor</span><strong>${formatarMoeda(pacote.valorPacote || 0)}</strong></div>
-                <div><span>Realizados</span><strong>${realizadas}</strong></div>
+                <div><span>Fim do ciclo</span><strong>${formatarDataCurta(pacote.dataFim)}</strong><small>${diasFim !== null && diasFim >= 0 ? `faltam ${diasFim} dia${diasFim !== 1 ? "s" : ""}` : diasFim < 0 ? "ciclo encerrado" : ""}</small></div>
                 <div><span>Pendentes</span><strong>${pendentes}</strong></div>
             </div>
 
-            <div class="pacote-visitas">
-                ${visitas.map(visita => `
-                    <div class="pacote-visita ${visita.status === "Realizado" ? "realizada" : ""}">
-                        <div>
-                            <strong>${visita.numero}º banho</strong>
-                            <div class="pacote-visita-edicao">
-                                <label>
-                                    <span>Data</span>
-                                    <input type="date" id="visita-data-${pacote.id}-${visita.numero}" value="${visita.data || ""}">
-                                </label>
-                                <label>
-                                    <span>Horário</span>
-                                    <select id="visita-horario-${pacote.id}-${visita.numero}">
-                                        ${gerarOptionsHorarioVisitaPacote(visita.horario)}
-                                    </select>
-                                </label>
+            <div class="pacote-timeline" aria-label="Linha do tempo dos banhos">
+                ${visitas.map(visita => {
+                    const realizado = visita.status === "Realizado";
+                    const vencido = !realizado && diferencaDiasPacote(visita.data) < 0;
+                    return `<div class="pacote-timeline-item ${realizado ? "done" : vencido ? "late" : "pending"}">
+                        <span class="pacote-timeline-dot">${realizado ? "✓" : visita.numero}</span>
+                        <div><strong>${visita.numero}º banho</strong><small>${formatarDataCurta(visita.data)} · ${visita.horario || ""}</small></div>
+                    </div>`;
+                }).join("")}
+            </div>
+
+            <details class="pacote-manage-details">
+                <summary><span>Gerenciar pacote e datas</span><span>⌄</span></summary>
+                <div class="pacote-edit-grid pacote-edit-grid-v2 pacote-edit-premium">
+                    <label><span>Cliente</span><input type="text" id="pacote-nome-${pacote.id}" value="${pacote.nomeCliente || ""}"></label>
+                    <label><span>Telefone</span><input type="text" id="pacote-telefone-${pacote.id}" value="${pacote.telefone || ""}"></label>
+                    <label><span>Pet</span><input type="text" id="pacote-pet-${pacote.id}" value="${pacote.nomePet || ""}"></label>
+                    <label><span>Valor</span><input type="number" id="pacote-valor-${pacote.id}" value="${pacote.valorPacote || 0}" step="0.01"></label>
+                    <label><span>Status</span><select id="pacote-status-${pacote.id}"><option value="Ativo" ${pacote.status === "Ativo" ? "selected" : ""}>Ativo</option><option value="Inativo" ${pacote.status === "Inativo" ? "selected" : ""}>Inativo</option><option value="Concluído" ${pacote.status === "Concluído" ? "selected" : ""} disabled>Concluído automaticamente</option></select></label>
+                </div>
+
+                <div class="pacote-visitas pacote-visitas-premium">
+                    ${visitas.map(visita => `
+                        <div class="pacote-visita ${visita.status === "Realizado" ? "realizada" : ""}">
+                            <div class="pacote-visita-main">
+                                <span class="pacote-visit-number">${visita.status === "Realizado" ? "✓" : visita.numero}</span>
+                                <div><strong>${visita.numero}º banho</strong><small>${visita.status === "Realizado" ? "Realizado" : "Pendente"}</small></div>
+                                <div class="pacote-visita-edicao">
+                                    <label><span>Data</span><input type="date" id="visita-data-${pacote.id}-${visita.numero}" value="${visita.data || ""}"></label>
+                                    <label><span>Horário</span><select id="visita-horario-${pacote.id}-${visita.numero}">${gerarOptionsHorarioVisitaPacote(visita.horario)}</select></label>
+                                </div>
                             </div>
-                        </div>
-                        <div class="pacote-visita-actions">
-                            <button onclick="atualizarVisitaPacote('${pacote.id}', ${visita.numero})">Salvar Data</button>
-                            <button onclick="alternarStatusVisitaPacote('${pacote.id}', ${visita.numero})">
-                                ${visita.status === "Realizado" ? "Marcar Pendente" : "Marcar Realizado"}
-                            </button>
-                        </div>
-                    </div>
-                `).join("")}
-            </div>
+                            <div class="pacote-visita-actions">
+                                <button onclick="atualizarVisitaPacote('${pacote.id}', ${visita.numero})">Salvar data</button>
+                                <button class="${visita.status === "Realizado" ? "secondary-button" : ""}" onclick="alternarStatusVisitaPacote('${pacote.id}', ${visita.numero})">${visita.status === "Realizado" ? "Voltar para pendente" : "Marcar realizado"}</button>
+                            </div>
+                        </div>`).join("")}
+                </div>
 
-            <div class="pacote-renovacao">
-                <span>Último banho: ${ultimaVisita ? formatarDataCurta(ultimaVisita.data) + " às " + ultimaVisita.horario : "-"}</span>
-                <button class="whatsapp-renovacao ${pacote.renovacaoEnviada ? "renovacao-enviada" : ""}" onclick="enviarRenovacaoPacote('${pacote.id}')">
-                    <i class="fa-brands fa-whatsapp whatsapp-mini-icon"></i>
-                    ${pacote.renovacaoEnviada ? "Renovação já enviada" : "Enviar renovação WhatsApp"}
-                </button>
-            </div>
+                <div class="pacote-actions pacote-actions-premium">
+                    <button onclick="atualizarPacote('${pacote.id}')">Salvar alterações</button>
+                    <button class="secondary-button" onclick="excluirPacote('${pacote.id}')">Excluir pacote</button>
+                </div>
+            </details>
 
-            <div class="pacote-actions">
-                <button onclick="atualizarPacote('${pacote.id}')">Salvar Alterações</button>
-                <button class="secondary-button" onclick="excluirPacote('${pacote.id}')">Excluir Pacote</button>
+            <div class="pacote-renewal-bar ${renovar || concluido ? "show" : ""}">
+                <div><span>${concluido ? "Ciclo concluído" : renovar ? "Renovação próxima" : "Acompanhamento"}</span><strong>${concluido ? "Pronto para oferecer um novo pacote" : renovar ? `O ciclo termina ${diasFim === 0 ? "hoje" : diasFim < 0 ? "já terminou" : `em ${diasFim} dia${diasFim !== 1 ? "s" : ""}`}` : "Pacote em andamento"}</strong></div>
+                <button class="whatsapp-renovacao ${pacote.renovacaoEnviada ? "renovacao-enviada" : ""}" onclick="enviarRenovacaoPacote('${pacote.id}')"><i class="fa-brands fa-whatsapp whatsapp-mini-icon"></i>${pacote.renovacaoEnviada ? "Renovação enviada" : "Enviar renovação"}</button>
             </div>
         `;
-
         lista.appendChild(div);
     });
 }
@@ -2689,6 +2798,8 @@ async function excluirPacote(id) {
 }
 
 function limparFiltrosPacotes() {
+    filtroRapidoPacoteAtual = "todos";
+    document.querySelectorAll("[data-pacote-filter]").forEach(item => item.classList.toggle("active", item.dataset.pacoteFilter === "todos"));
     document.getElementById("filtroPacoteCliente").value = "";
     document.getElementById("filtroPacoteStatus").value = "";
     renderizarPacotes();

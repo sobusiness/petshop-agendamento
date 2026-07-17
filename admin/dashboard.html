@@ -436,6 +436,49 @@
             </div>
         </div>
 
+        <div class="pacotes-cockpit" aria-label="Resumo da carteira de pacotes">
+            <article class="pacote-kpi-card destaque">
+                <span>Pacotes ativos</span>
+                <strong id="pacoteKpiAtivos">0</strong>
+                <small>carteira atual</small>
+            </article>
+            <article class="pacote-kpi-card">
+                <span>Banhos pendentes</span>
+                <strong id="pacoteKpiPendentes">0</strong>
+                <small>a realizar</small>
+            </article>
+            <article class="pacote-kpi-card">
+                <span>Receita da carteira</span>
+                <strong id="pacoteKpiReceita">R$ 0,00</strong>
+                <small>pacotes ativos</small>
+            </article>
+            <article class="pacote-kpi-card alerta">
+                <span>Renovar em até 7 dias</span>
+                <strong id="pacoteKpiRenovar">0</strong>
+                <small>exigem contato</small>
+            </article>
+            <article class="pacote-kpi-card perigo">
+                <span>Atrasados</span>
+                <strong id="pacoteKpiAtrasados">0</strong>
+                <small>banhos pendentes vencidos</small>
+            </article>
+        </div>
+
+        <div class="pacote-radar" id="pacoteRadarRenovacao">
+            <div>
+                <span class="pacote-radar-eyebrow">Radar de renovação</span>
+                <strong id="pacoteRadarTitulo">Carteira em dia</strong>
+                <small id="pacoteRadarTexto">Nenhum pacote exige contato imediato.</small>
+            </div>
+            <button type="button" class="secondary-button" onclick="aplicarFiltroRapidoPacote('renovar')">Ver renovações</button>
+        </div>
+
+        <details class="pacote-cadastro-box">
+            <summary>
+                <span><strong>+ Cadastrar novo pacote</strong><small>Abra somente quando precisar incluir um novo plano.</small></span>
+                <span class="pacote-summary-icon">⌄</span>
+            </summary>
+
         <div class="pacote-form pacote-form-labeled">
             <label>
                 <span>Nome do Cliente</span>
@@ -493,6 +536,16 @@
         <div class="pacote-preview">
             <strong>Próximos banhos calculados:</strong>
             <div id="pacotePreviaDatas">Preencha o tipo, data do primeiro banho e horário.</div>
+        </div>
+        </details>
+
+        <div class="pacote-filter-chips" aria-label="Filtros rápidos">
+            <button type="button" class="active" data-pacote-filter="todos" onclick="aplicarFiltroRapidoPacote('todos', this)">Todos</button>
+            <button type="button" data-pacote-filter="ativos" onclick="aplicarFiltroRapidoPacote('ativos', this)">Ativos</button>
+            <button type="button" data-pacote-filter="proximos" onclick="aplicarFiltroRapidoPacote('proximos', this)">Próximo banho</button>
+            <button type="button" data-pacote-filter="atrasados" onclick="aplicarFiltroRapidoPacote('atrasados', this)">Atrasados</button>
+            <button type="button" data-pacote-filter="renovar" onclick="aplicarFiltroRapidoPacote('renovar', this)">Renovar</button>
+            <button type="button" data-pacote-filter="concluidos" onclick="aplicarFiltroRapidoPacote('concluidos', this)">Concluídos</button>
         </div>
 
         <div class="pacote-filters">

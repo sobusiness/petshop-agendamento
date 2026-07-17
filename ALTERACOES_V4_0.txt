@@ -1,0 +1,39 @@
+PETLYNE V4.0 — CENTRO DE GESTÃO DE RECEITA RECORRENTE
+
+Módulo Gestão de Pacotes redesenhado com foco em UX premium, operação móvel e acompanhamento comercial.
+
+NOVO COCKPIT
+- Pacotes ativos
+- Banhos pendentes
+- Receita da carteira ativa
+- Renovações em até 7 dias
+- Pacotes com banhos atrasados
+
+RADAR DE RENOVAÇÃO
+- Identifica carteira em dia, renovações próximas e atrasos
+- Atalho direto para a lista de renovações
+
+FILTROS RÁPIDOS
+- Todos
+- Ativos
+- Próximo banho
+- Atrasados
+- Renovar
+- Concluídos
+
+NOVOS CARTÕES
+- Pet e tutor em destaque
+- Saúde do pacote: Em dia, Renovar, Atrasado ou Concluído
+- Barra de progresso
+- Próximo banho e contagem de dias
+- Linha do tempo visual dos banhos
+- Valor do pacote em destaque
+- Gestão e edição recolhidas para reduzir poluição visual
+- Renovação via WhatsApp destacada no momento correto
+
+MOBILE
+- KPIs com rolagem horizontal
+- Cards responsivos
+- Operação e datas adaptadas para telas pequenas
+
+Nenhuma regra de Firebase, agendamento, conclusão, cancelamento ou WhatsApp foi removida.
