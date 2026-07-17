@@ -2999,7 +2999,11 @@ function renderizarCRMLista() {
                     ${item.totalLyne ? `<p><strong>Banhos LYNE concluídos:</strong> ${item.totalLyne}</p>` : ""}
                 </div>
                 <div class="crm-client-actions">
-                    <button type="button" onclick="abrirWhatsAppCRM('${chaveCodificada}')"><i class="fa-brands fa-whatsapp"></i> Abrir WhatsApp</button>
+                    ${item.categoria === "conhecer" ? `
+                        <button type="button" onclick="compartilharNovidadeCRM('${chaveCodificada}')"><i class="fa-solid fa-share-nodes"></i> Compartilhar imagem + texto</button>
+                    ` : `
+                        <button type="button" onclick="abrirWhatsAppCRM('${chaveCodificada}')"><i class="fa-brands fa-whatsapp"></i> Abrir WhatsApp</button>
+                    `}
                     <button type="button" class="secondary-button" onclick="marcarAcaoCRMEnviada('${chaveCodificada}')">Marcar como enviado</button>
                 </div>
             </article>
@@ -3011,15 +3015,69 @@ function montarMensagemCRM(item) {
     const cliente = item.cliente || "";
     const pet = item.pet || "seu pet";
 
+    // Os emojis são montados por código Unicode para evitar caracteres quebrados (�)
+    // quando o arquivo JavaScript é servido por algum ambiente com codificação incorreta.
+    const emoji = {
+        coracaoRosa: String.fromCodePoint(0x1FA77),
+        patas: String.fromCodePoint(0x1F43E),
+        cachorro: String.fromCodePoint(0x1F436),
+        banho: String.fromCodePoint(0x1F6C1),
+        calendario: String.fromCodePoint(0x1F4C5),
+        estrela: String.fromCodePoint(0x2B50)
+    };
+
     const mensagens = {
-        avaliacao: `Oi, ${cliente}! 🩷\n\nEsperamos que ${pet} tenha aproveitado bastante o banho!\n\nSe você gostou da experiência na PetLyne, poderia dedicar menos de 1 minuto para deixar sua avaliação? Ela ajuda outras famílias a conhecerem nosso trabalho e faz muita diferença para nós.\n\n⭐ Avalie aqui:\n${CRM_CONFIG.linkAvaliacao}\n\nMuito obrigado! 🐾`,
-        proximo: `Oi, ${cliente}! 🐶🛁\n\nJá está chegando o momento do próximo banho de ${pet}. Que tal garantir o melhor dia e horário?\n\n📅 Agende aqui:\n${CRM_CONFIG.linkAgendamento}\n\nVai ser um prazer receber vocês novamente! 🩷`,
-        atraso: `Oi, ${cliente}! 🐾\n\nPercebemos que já passou um pouquinho do período ideal para o próximo banho de ${pet}. Que tal garantir um horário para deixar ${pet} limpinho e cheiroso novamente?\n\n📅 Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
-        recuperacao: `Oi, ${cliente}! 🩷\n\nEstamos com saudades de ${pet} por aqui! Já faz mais de 30 dias desde o último banho. Temos horários disponíveis e será um prazer receber vocês novamente.\n\n📅 Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
-        conhecer: `Oi, ${cliente}! 🐾\n\nTemos uma novidade para facilitar seus próximos agendamentos na PetLyne! Agora você pode escolher o dia, o horário e o serviço diretamente pelo celular.\n\nQuando ${pet} precisar do próximo banho, é só acessar:\n${CRM_CONFIG.linkAgendamento}\n\nEsperamos vocês! 🩷`
+        avaliacao: `Oi, ${cliente}! ${emoji.coracaoRosa}\n\nEsperamos que ${pet} tenha aproveitado bastante o banho!\n\nSe você gostou da experiência na PetLyne, poderia dedicar menos de 1 minuto para deixar sua avaliação? Ela ajuda outras famílias a conhecerem nosso trabalho e faz muita diferença para nós.\n\n${emoji.estrela} Avalie aqui:\n${CRM_CONFIG.linkAvaliacao}\n\nMuito obrigado! ${emoji.patas}`,
+        proximo: `Oi, ${cliente}! ${emoji.cachorro}${emoji.banho}\n\nJá está chegando o momento do próximo banho de ${pet}. Que tal garantir o melhor dia e horário?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}\n\nVai ser um prazer receber vocês novamente! ${emoji.coracaoRosa}`,
+        atraso: `Oi, ${cliente}! ${emoji.patas}\n\nPercebemos que já passou um pouquinho do período ideal para o próximo banho de ${pet}. Que tal garantir um horário para deixar ${pet} limpinho e cheiroso novamente?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
+        recuperacao: `Oi, ${cliente}! ${emoji.coracaoRosa}\n\nEstamos com saudades de ${pet} por aqui! Já faz mais de 30 dias desde o último banho. Temos horários disponíveis e será um prazer receber vocês novamente.\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
+        conhecer: `Oi, ${cliente}! ${emoji.patas}\n\nTemos uma novidade para facilitar seus próximos agendamentos na PetLyne! Agora você pode escolher o dia, o horário e o serviço diretamente pelo celular.\n\nQuando ${pet} precisar do próximo banho, é só acessar:\n${CRM_CONFIG.linkAgendamento}\n\nEsperamos vocês! ${emoji.coracaoRosa}`
     };
 
     return mensagens[item.categoria] || "";
+}
+
+async function compartilharNovidadeCRM(chaveCodificada) {
+    const chave = decodeURIComponent(chaveCodificada);
+    const item = crmRegistrosPorChave.get(chave);
+    if (!item) return;
+
+    const mensagem = montarMensagemCRM(item);
+    const caminhoImagem = "../novidade-agendamento-petlyne.png";
+
+    try {
+        const resposta = await fetch(caminhoImagem, { cache: "no-store" });
+        if (!resposta.ok) throw new Error("Não foi possível carregar a imagem da novidade.");
+
+        const blob = await resposta.blob();
+        const arquivo = new File([blob], "novidade-agendamento-petlyne.png", {
+            type: blob.type || "image/png"
+        });
+
+        if (navigator.canShare && navigator.canShare({ files: [arquivo] }) && navigator.share) {
+            await navigator.share({
+                title: "Novidade na PetLyne",
+                text: mensagem,
+                files: [arquivo]
+            });
+            return;
+        }
+    } catch (erro) {
+        // Cancelar o compartilhamento pelo usuário não deve exibir erro.
+        if (erro && erro.name === "AbortError") return;
+        console.warn("Compartilhamento direto indisponível:", erro);
+    }
+
+    // Em navegadores sem suporte ao compartilhamento de arquivos, abre a imagem
+    // para salvar/enviar e, em seguida, abre o WhatsApp com o texto pronto.
+    window.open(caminhoImagem, "_blank", "noopener,noreferrer");
+    abrirWhatsAppCRM(chaveCodificada);
+
+    mostrarAvisoAdmin({
+        titulo: "Imagem aberta separadamente",
+        mensagem: "Seu navegador não permite anexar a imagem automaticamente. Salve ou compartilhe a imagem aberta e envie junto com a mensagem do WhatsApp.",
+        icone: "ℹ️"
+    });
 }
 
 function abrirWhatsAppCRM(chaveCodificada) {
