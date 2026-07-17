@@ -1840,11 +1840,10 @@ function selecionarDataBloqueio(dataISO) {
     const input = document.getElementById("bloqueioData");
     if (input) input.value = dataISO;
 
-    if (diasSelecionadosBloqueio.includes(dataISO)) {
-        diasSelecionadosBloqueio = diasSelecionadosBloqueio.filter(data => data !== dataISO);
-    } else {
-        diasSelecionadosBloqueio.push(dataISO);
-    }
+    // O calendário principal funciona como navegação de dia único.
+    // Seleções de vários dias devem ser feitas pelos modos Período ou Recorrência
+    // do criador de bloqueios, evitando a falsa impressão de multisseleção.
+    diasSelecionadosBloqueio = [dataISO];
 
     atualizarTextoDiasSelecionados();
     renderizarCalendarioBloqueios();
@@ -1855,9 +1854,7 @@ function selecionarDataManualBloqueio() {
     const dataISO = document.getElementById("bloqueioData").value;
     if (!dataISO) return;
 
-    if (!diasSelecionadosBloqueio.includes(dataISO)) {
-        diasSelecionadosBloqueio.push(dataISO);
-    }
+    diasSelecionadosBloqueio = [dataISO];
 
     atualizarTextoDiasSelecionados();
     renderizarCalendarioBloqueios();
@@ -1924,7 +1921,7 @@ function renderizarCalendarioBloqueios() {
 
             const celula = document.createElement("button");
             celula.type = "button";
-            celula.className = `bloqueio-dia ${classeEstado} ${pertenceMes ? "" : "outro-mes"} ${dataISO === hoje ? "dia-hoje" : ""} ${(selecionada === dataISO || diasSelecionadosBloqueio.includes(dataISO)) ? "selecionado" : ""}`;
+            celula.className = `bloqueio-dia ${classeEstado} ${pertenceMes ? "" : "outro-mes"} ${dataISO === hoje ? "dia-hoje" : ""} ${selecionada === dataISO ? "selecionado" : ""}`;
             celula.setAttribute("aria-label", `${dataCelula.toLocaleDateString("pt-BR")}: ${agendamentosDia.length} agendamento(s), ${bloqueiosDia.length} bloqueio(s)`);
             celula.onclick = () => {
                 if (!pertenceMes) {

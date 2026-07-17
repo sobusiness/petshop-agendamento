@@ -1,0 +1,8 @@
+PETLYNE V6.3 - SELEÇÃO ÚNICA NO CALENDÁRIO
+
+- Corrigido o destaque verde acumulado em vários dias do calendário.
+- Agora somente o dia atualmente selecionado permanece destacado.
+- Clicar em outro dia transfere imediatamente a seleção visual.
+- A seleção múltipla deixou de ser feita pelo calendário principal.
+- Bloqueios em várias datas continuam disponíveis pelos modos Período e Recorrência.
+- Nenhuma regra do Firebase ou do agendamento online foi alterada.
