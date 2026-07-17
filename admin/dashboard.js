@@ -1043,7 +1043,32 @@ function normalizarTextoCliente(valor) {
 }
 
 function normalizarTelefoneCliente(valor) {
-    return (valor || "").replace(/\D/g, "");
+    let numeros = (valor || "").replace(/\D/g, "");
+    if (numeros.startsWith("55") && (numeros.length === 12 || numeros.length === 13)) {
+        numeros = numeros.slice(2);
+    }
+    return numeros;
+}
+
+function telefoneBrasileiroValidoCliente(valor) {
+    const numeros = normalizarTelefoneCliente(valor);
+    return numeros.length === 10 || numeros.length === 11;
+}
+
+function variantesTelefoneCliente(valor) {
+    const numeros = normalizarTelefoneCliente(valor);
+    const variantes = new Set();
+    if (numeros.length === 10 || numeros.length === 11) variantes.add(numeros);
+    // Telefones celulares antigos podem estar salvos sem o nono dígito.
+    if (numeros.length === 10) variantes.add(`${numeros.slice(0, 2)}9${numeros.slice(2)}`);
+    if (numeros.length === 11 && numeros.charAt(2) === "9") variantes.add(`${numeros.slice(0, 2)}${numeros.slice(3)}`);
+    return variantes;
+}
+
+function telefonesEquivalentesCliente(a, b) {
+    const va = variantesTelefoneCliente(a);
+    const vb = variantesTelefoneCliente(b);
+    return Array.from(va).some(numero => vb.has(numero));
 }
 
 function criarClienteId(telefone, pet) {
@@ -1314,10 +1339,10 @@ async function gravarNovoCliente() {
 
     const telefoneNumeros = normalizarTelefoneCliente(dados.telefone);
 
-    if (telefoneNumeros.length !== 11) {
+    if (!telefoneBrasileiroValidoCliente(dados.telefone)) {
         await mostrarAvisoAdmin({
             titulo: "Telefone inválido",
-            mensagem: "Informe o telefone no formato (11) 99999-9999.",
+            mensagem: "Informe um telefone com DDD, com 8 ou 9 dígitos. Exemplos: (61) 8566-5654 ou (11) 99999-9999.",
             icone: "⚠️"
         });
         return;
@@ -1488,6 +1513,15 @@ async function salvarClienteAdmin(idAtual) {
         await mostrarAvisoAdmin({
             titulo: "Campos obrigatórios",
             mensagem: "Informe pelo menos nome do cliente, telefone e nome do pet.",
+            icone: "⚠️"
+        });
+        return;
+    }
+
+    if (!telefoneBrasileiroValidoCliente(dados.telefone)) {
+        await mostrarAvisoAdmin({
+            titulo: "Telefone inválido",
+            mensagem: "Informe um telefone com DDD, com 8 ou 9 dígitos.",
             icone: "⚠️"
         });
         return;
@@ -1977,10 +2011,9 @@ function configurarMascaraTelefonePacote() {
 
 function formatarTelefonePacote(valor) {
     const numeros = valor.replace(/\D/g, "").slice(0, 11);
-
     if (numeros.length <= 2) return numeros;
-    if (numeros.length <= 7) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
-
+    if (numeros.length <= 6) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+    if (numeros.length <= 10) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`;
     return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
 }
 
@@ -2807,31 +2840,11 @@ const CRM_CONFIG = {
 };
 
 const CRM_CATEGORIAS = {
-    avaliacao: {
-        titulo: "Avaliação Google",
-        descricao: "Último atendimento LYNE concluído há até 8 dias e avaliação ainda não solicitada.",
-        icone: "⭐"
-    },
-    proximo: {
-        titulo: "Hora do próximo banho",
-        descricao: "Clientes entre 15 e 20 dias desde o último banho avulso.",
-        icone: "🛁"
-    },
-    atraso: {
-        titulo: "Banho em atraso",
-        descricao: "Clientes entre 21 e 30 dias desde o último banho avulso.",
-        icone: "⚠️"
-    },
-    recuperacao: {
-        titulo: "Recuperar cliente",
-        descricao: "Clientes há mais de 30 dias sem banho avulso.",
-        icone: "❤️"
-    },
-    conhecer: {
-        titulo: "Conhecer agendamento online",
-        descricao: "Cadastros manuais sem histórico PACK e que ainda não fizeram agendamento LYNE.",
-        icone: "📱"
-    }
+    avaliacao: { titulo: "Avaliação Google", descricao: "Último atendimento LYNE concluído há até 8 dias e avaliação ainda não solicitada.", icone: "⭐" },
+    proximo: { titulo: "Hora do próximo banho", descricao: "Clientes entre 15 e 20 dias desde o último banho avulso.", icone: "🛁" },
+    atraso: { titulo: "Banho em atraso", descricao: "Clientes entre 21 e 30 dias desde o último banho avulso.", icone: "⚠️" },
+    recuperacao: { titulo: "Recuperar cliente", descricao: "Clientes há mais de 30 dias sem banho avulso.", icone: "❤️" },
+    conhecer: { titulo: "Conhecer agendamento online", descricao: "Cadastros manuais sem histórico PACK e que ainda não fizeram agendamento LYNE.", icone: "📱" }
 };
 
 async function carregarHistoricoCRM() {
@@ -2844,31 +2857,23 @@ async function carregarHistoricoCRM() {
     }
 }
 
-function protocoloEhPack(protocolo) {
-    return String(protocolo || "").trim().toUpperCase().startsWith("PACK-");
+function protocoloEhPack(protocolo) { return String(protocolo || "").trim().toUpperCase().startsWith("PACK-"); }
+function protocoloEhLyne(protocolo) { return String(protocolo || "").trim().toUpperCase().startsWith("LYNE-"); }
+function agendamentoConcluidoCRM(item) { return normalizarTextoCliente(item.status) === normalizarTextoCliente("Concluído"); }
+function agendamentoAtivoFuturoCRM(item) {
+    if (!protocoloEhLyne(item.protocolo) || !dataISOValidaCRM(item.data)) return false;
+    const status = normalizarTextoCliente(item.status);
+    if (["cancelado", "concluido"].includes(status)) return false;
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    return new Date(`${item.data}T00:00:00`) >= hoje;
 }
-
-function protocoloEhLyne(protocolo) {
-    return String(protocolo || "").trim().toUpperCase().startsWith("LYNE-");
-}
-
-function agendamentoConcluidoCRM(item) {
-    return normalizarTextoCliente(item.status) === normalizarTextoCliente("Concluído");
-}
-
-function dataISOValidaCRM(valor) {
-    return /^\d{4}-\d{2}-\d{2}$/.test(String(valor || ""));
-}
-
+function dataISOValidaCRM(valor) { return /^\d{4}-\d{2}-\d{2}$/.test(String(valor || "")); }
 function calcularDiasDesdeCRM(dataISO) {
     if (!dataISOValidaCRM(dataISO)) return null;
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const data = new Date(`${dataISO}T00:00:00`);
-    const diferenca = Math.floor((hoje - data) / 86400000);
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    const diferenca = Math.floor((hoje - new Date(`${dataISO}T00:00:00`)) / 86400000);
     return diferenca < 0 ? 0 : diferenca;
 }
-
 function dataFirestoreParaDateCRM(valor) {
     if (!valor) return null;
     if (typeof valor.toDate === "function") return valor.toDate();
@@ -2876,39 +2881,31 @@ function dataFirestoreParaDateCRM(valor) {
     const data = new Date(valor);
     return Number.isNaN(data.getTime()) ? null : data;
 }
+function formatarDataCRM(dataISO) { return dataISOValidaCRM(dataISO) ? new Date(`${dataISO}T00:00:00`).toLocaleDateString("pt-BR") : "Sem atendimento"; }
+function escaparHTMLCRM(valor) { return String(valor ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;"); }
 
-function formatarDataCRM(dataISO) {
-    if (!dataISOValidaCRM(dataISO)) return "Sem atendimento";
-    return new Date(`${dataISO}T00:00:00`).toLocaleDateString("pt-BR");
+function chaveDonoCRM(cliente, telefone) {
+    const nome = normalizarTextoCliente(cliente).replace(/[^a-z0-9]+/g, "-");
+    const tel = Array.from(variantesTelefoneCliente(telefone))[0] || "semtelefone";
+    return `dono:${nome || tel}`;
 }
-
-function escaparHTMLCRM(valor) {
-    return String(valor ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+function registroPertenceAoPetCRM(agendamento, cliente) {
+    const mesmoPet = normalizarTextoCliente(agendamento.pet) === normalizarTextoCliente(cliente.pet);
+    if (!mesmoPet) return false;
+    const mesmoDono = normalizarTextoCliente(agendamento.cliente) === normalizarTextoCliente(cliente.cliente);
+    return mesmoDono || telefonesEquivalentesCliente(agendamento.telefone, cliente.telefone);
 }
-
-function obterHistoricoClienteCRM(chave) {
-    return crmHistorico.filter(item => item.clienteChave === chave);
+function obterHistoricoClienteCRM(chaves) {
+    const lista = Array.isArray(chaves) ? chaves : [chaves];
+    return crmHistorico.filter(item => lista.includes(item.clienteChave));
 }
-
-function acaoCRMJaRegistrada(chave, tipo, permanente = false) {
-    const registros = obterHistoricoClienteCRM(chave).filter(item => item.tipoAcao === tipo);
-    if (registros.length === 0) return false;
+function acaoCRMJaRegistrada(chaves, tipo, permanente = false) {
+    const registros = obterHistoricoClienteCRM(chaves).filter(item => item.tipoAcao === tipo);
+    if (!registros.length) return false;
     if (permanente) return true;
-
-    const registroMaisRecente = registros
-        .map(item => dataFirestoreParaDateCRM(item.criadoEm || item.dataEnvio))
-        .filter(Boolean)
-        .sort((a, b) => b - a)[0];
-
-    if (!registroMaisRecente) return true;
-    return ((Date.now() - registroMaisRecente.getTime()) / 86400000) < CRM_CONFIG.repeticaoDias;
+    const recente = registros.map(item => dataFirestoreParaDateCRM(item.criadoEm || item.dataEnvio)).filter(Boolean).sort((a,b)=>b-a)[0];
+    return !recente || ((Date.now() - recente.getTime()) / 86400000) < CRM_CONFIG.repeticaoDias;
 }
-
 function categoriaPorDiasCRM(dias) {
     if (dias === null) return null;
     if (dias >= 0 && dias <= CRM_CONFIG.avaliacaoAteDias) return "avaliacao";
@@ -2917,256 +2914,120 @@ function categoriaPorDiasCRM(dias) {
     if (dias >= CRM_CONFIG.recuperacaoInicio) return "recuperacao";
     return null;
 }
+function prioridadeCategoriaCRM(categoria) {
+    return ({ avaliacao: 1, recuperacao: 2, atraso: 3, proximo: 4, conhecer: 5 })[categoria] || 99;
+}
 
 function calcularCRM() {
-    const gruposAgendamento = new Map();
-
-    agendamentos.forEach(item => {
-        const chave = chaveClientePet(item);
-        if (!chave || chave === "|") return;
-        if (!gruposAgendamento.has(chave)) gruposAgendamento.set(chave, []);
-        gruposAgendamento.get(chave).push(item);
+    const donos = new Map();
+    clientesAdmin.forEach(cliente => {
+        const chaveDono = chaveDonoCRM(cliente.cliente, cliente.telefone);
+        if (!donos.has(chaveDono)) donos.set(chaveDono, { chave: chaveDono, cliente: cliente.cliente || "Cliente", telefone: cliente.telefone || "", pets: [] });
+        const dono = donos.get(chaveDono);
+        if (!dono.telefone && cliente.telefone) dono.telefone = cliente.telefone;
+        if (!dono.pets.some(p => normalizarTextoCliente(p.pet) === normalizarTextoCliente(cliente.pet))) dono.pets.push(cliente);
     });
 
     const registros = [];
+    donos.forEach(dono => {
+        const candidatos = [];
+        let temPackDono = false;
+        const chavesHistoricas = [dono.chave];
 
-    clientesAdmin.forEach(cliente => {
-        const chave = chaveClientePet(cliente);
-        const historicoAgendamentos = gruposAgendamento.get(chave) || [];
-        const temPack = historicoAgendamentos.some(item => protocoloEhPack(item.protocolo));
-        const lynesConcluidos = historicoAgendamentos
-            .filter(item => protocoloEhLyne(item.protocolo) && agendamentoConcluidoCRM(item) && dataISOValidaCRM(item.data))
-            .sort((a, b) => String(b.data).localeCompare(String(a.data)));
+        dono.pets.forEach(petCadastro => {
+            const historico = agendamentos.filter(a => registroPertenceAoPetCRM(a, petCadastro));
+            chavesHistoricas.push(chaveClientePet(petCadastro));
+            if (historico.some(a => protocoloEhPack(a.protocolo))) temPackDono = true;
+            if (historico.some(agendamentoAtivoFuturoCRM)) return;
 
-        // Qualquer registro PACK exclui o cliente deste MVP.
-        if (temPack) return;
+            const concluidos = historico.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a) && dataISOValidaCRM(a.data)).sort((a,b)=>String(b.data).localeCompare(String(a.data)));
+            let categoria = null, ultimo = null, dias = null;
+            if (concluidos.length) {
+                ultimo = concluidos[0]; dias = calcularDiasDesdeCRM(ultimo.data); categoria = categoriaPorDiasCRM(dias);
+            } else if (petCadastro.criadoEm) categoria = "conhecer";
+            if (categoria) candidatos.push({ categoria, petCadastro, ultimo, dias, totalLyne: concluidos.length });
+        });
 
-        let categoria = null;
-        let ultimoAtendimento = null;
-        let diasSemBanho = null;
+        // O MVP PACK continua separado: se qualquer pet do dono tem PACK, o dono fica fora deste CRM.
+        if (temPackDono || !candidatos.length) return;
+        candidatos.sort((a,b) => prioridadeCategoriaCRM(a.categoria) - prioridadeCategoriaCRM(b.categoria) || (b.dias || 0) - (a.dias || 0));
+        const principal = candidatos[0];
+        const permanente = principal.categoria === "avaliacao" || principal.categoria === "conhecer";
+        if (acaoCRMJaRegistrada(chavesHistoricas, principal.categoria, permanente)) return;
 
-        if (lynesConcluidos.length > 0) {
-            ultimoAtendimento = lynesConcluidos[0];
-            diasSemBanho = calcularDiasDesdeCRM(ultimoAtendimento.data);
-            categoria = categoriaPorDiasCRM(diasSemBanho);
-        } else if (cliente.criadoEm) {
-            categoria = "conhecer";
-        }
-
-        if (!categoria) return;
-
-        const permanente = categoria === "avaliacao" || categoria === "conhecer";
-        if (acaoCRMJaRegistrada(chave, categoria, permanente)) return;
-
-        const registro = {
-            chave,
-            categoria,
-            cliente: cliente.cliente || ultimoAtendimento?.cliente || "Cliente",
-            pet: cliente.pet || ultimoAtendimento?.pet || "Pet",
-            telefone: cliente.telefone || ultimoAtendimento?.telefone || "",
-            ultimoAtendimento: ultimoAtendimento?.data || null,
-            diasSemBanho,
-            totalLyne: lynesConcluidos.length
-        };
-
-        registros.push(registro);
+        const pets = dono.pets.map(p => ({ pet: p.pet || "Pet", sexo: p.sexo || "", especie: p.especie || "" }));
+        registros.push({
+            chave: dono.chave,
+            chavesHistoricas,
+            categoria: principal.categoria,
+            cliente: dono.cliente,
+            telefone: dono.telefone || principal.ultimo?.telefone || "",
+            pets,
+            pet: pets.map(p => p.pet).join(", "),
+            ultimoAtendimento: principal.ultimo?.data || null,
+            diasSemBanho: principal.dias,
+            totalLyne: candidatos.reduce((s,c)=>s+c.totalLyne,0)
+        });
     });
 
-    const ordem = { avaliacao: 1, proximo: 2, atraso: 3, recuperacao: 4, conhecer: 5 };
-    crmRegistrosCalculados = registros.sort((a, b) => {
-        const porCategoria = (ordem[a.categoria] || 99) - (ordem[b.categoria] || 99);
-        if (porCategoria !== 0) return porCategoria;
-        return (b.diasSemBanho || 0) - (a.diasSemBanho || 0);
-    });
+    crmRegistrosCalculados = registros.sort((a,b) => prioridadeCategoriaCRM(a.categoria)-prioridadeCategoriaCRM(b.categoria) || (b.diasSemBanho||0)-(a.diasSemBanho||0));
     crmRegistrosPorChave = new Map(crmRegistrosCalculados.map(item => [item.chave, item]));
 }
 
-function renderizarCRM() {
-    renderizarCRMResumo();
-    renderizarCRMLista();
-}
-
+function renderizarCRM() { renderizarCRMResumo(); renderizarCRMLista(); }
 function renderizarCRMResumo() {
-    const container = document.getElementById("crmResumo");
-    if (!container) return;
-
-    container.innerHTML = Object.entries(CRM_CATEGORIAS).map(([chave, config]) => {
-        const quantidade = crmRegistrosCalculados.filter(item => item.categoria === chave).length;
-        return `
-            <button type="button" class="crm-summary-card crm-card-${chave} ${crmCategoriaSelecionada === chave ? "active" : ""}" onclick="selecionarCategoriaCRM('${chave}')">
-                <span class="crm-summary-icon">${config.icone}</span>
-                <span class="crm-summary-content">
-                    <strong>${config.titulo}</strong>
-                    <small>${config.descricao}</small>
-                </span>
-                <span class="crm-summary-number">${quantidade}</span>
-            </button>
-        `;
-    }).join("");
+    const container=document.getElementById("crmResumo"); if(!container)return;
+    container.innerHTML=Object.entries(CRM_CATEGORIAS).map(([chave,config])=>{const quantidade=crmRegistrosCalculados.filter(i=>i.categoria===chave).length;return `<button type="button" class="crm-summary-card crm-card-${chave} ${crmCategoriaSelecionada===chave?"active":""}" onclick="selecionarCategoriaCRM('${chave}')"><span class="crm-summary-icon">${config.icone}</span><span class="crm-summary-content"><strong>${config.titulo}</strong><small>${config.descricao}</small></span><span class="crm-summary-number">${quantidade}</span></button>`;}).join("");
+}
+function selecionarCategoriaCRM(categoria){crmCategoriaSelecionada=categoria;renderizarCRM();}
+function renderizarCRMLista(){
+    const lista=document.getElementById("crmLista"),titulo=document.getElementById("crmListaTitulo"),descricao=document.getElementById("crmListaDescricao");if(!lista)return;
+    const busca=normalizarTextoCliente(document.getElementById("crmBusca")?.value||"");let dados=crmRegistrosCalculados;
+    if(crmCategoriaSelecionada!=="todas")dados=dados.filter(i=>i.categoria===crmCategoriaSelecionada);
+    if(busca)dados=dados.filter(i=>[i.cliente,i.pet,i.telefone].some(v=>normalizarTextoCliente(v).includes(busca)));
+    if(crmCategoriaSelecionada==="todas"){if(titulo)titulo.textContent="Todas as ações pendentes";if(descricao)descricao.textContent="Cada cliente aparece uma única vez, mesmo quando possui vários pets.";}else{const c=CRM_CATEGORIAS[crmCategoriaSelecionada];if(titulo)titulo.textContent=`${c.icone} ${c.titulo}`;if(descricao)descricao.textContent=c.descricao;}
+    if(!dados.length){lista.innerHTML=`<p class="empty-state">Nenhum cliente pendente para este filtro.</p>`;return;}
+    lista.innerHTML=dados.map(item=>{const c=CRM_CATEGORIAS[item.categoria],chave=encodeURIComponent(item.chave),detalhe=item.ultimoAtendimento?`${formatarDataCRM(item.ultimoAtendimento)} • ${item.diasSemBanho} dia(s)`:"Ainda não usou o agendamento online";return `<article class="crm-client-card"><div class="crm-client-main"><span class="crm-client-badge crm-badge-${item.categoria}">${c.icone} ${c.titulo}</span><h4>${escaparHTMLCRM(item.cliente)}</h4><p><strong>Pets:</strong> ${escaparHTMLCRM(item.pet)}</p><p><strong>Telefone:</strong> ${escaparHTMLCRM(item.telefone)}</p><p><strong>Último atendimento de referência:</strong> ${detalhe}</p>${item.totalLyne?`<p><strong>Banhos LYNE concluídos:</strong> ${item.totalLyne}</p>`:""}</div><div class="crm-client-actions"><button type="button" onclick="abrirWhatsAppCRM('${chave}')"><i class="fa-brands fa-whatsapp"></i> Abrir WhatsApp</button><button type="button" class="secondary-button" onclick="marcarAcaoCRMEnviada('${chave}')">Marcar como enviado</button></div></article>`;}).join("");
 }
 
-function selecionarCategoriaCRM(categoria) {
-    crmCategoriaSelecionada = categoria;
-    renderizarCRM();
+function artigoPetCRM(pet) {
+    const sexo=normalizarTextoCliente(pet.sexo);
+    if(sexo.includes("femea")) return `a ${pet.pet}`;
+    if(sexo.includes("macho")) return `o ${pet.pet}`;
+    return pet.pet;
 }
-
-function renderizarCRMLista() {
-    const lista = document.getElementById("crmLista");
-    const titulo = document.getElementById("crmListaTitulo");
-    const descricao = document.getElementById("crmListaDescricao");
-    if (!lista) return;
-
-    const busca = normalizarTextoCliente(document.getElementById("crmBusca")?.value || "");
-    let dados = crmRegistrosCalculados;
-
-    if (crmCategoriaSelecionada !== "todas") {
-        dados = dados.filter(item => item.categoria === crmCategoriaSelecionada);
-    }
-
-    if (busca) {
-        dados = dados.filter(item => [item.cliente, item.pet, item.telefone]
-            .some(valor => normalizarTextoCliente(valor).includes(busca)));
-    }
-
-    if (crmCategoriaSelecionada === "todas") {
-        if (titulo) titulo.textContent = "Todas as ações pendentes";
-        if (descricao) descricao.textContent = "Clientes elegíveis ao CRM avulso LYNE, sem histórico PACK.";
-    } else {
-        const config = CRM_CATEGORIAS[crmCategoriaSelecionada];
-        if (titulo) titulo.textContent = `${config.icone} ${config.titulo}`;
-        if (descricao) descricao.textContent = config.descricao;
-    }
-
-    if (dados.length === 0) {
-        lista.innerHTML = `<p class="empty-state">Nenhum cliente pendente para este filtro.</p>`;
-        return;
-    }
-
-    lista.innerHTML = dados.map(item => {
-        const config = CRM_CATEGORIAS[item.categoria];
-        const chaveCodificada = encodeURIComponent(item.chave);
-        const detalheData = item.ultimoAtendimento
-            ? `${formatarDataCRM(item.ultimoAtendimento)} • ${item.diasSemBanho} dia(s)`
-            : "Ainda não usou o agendamento online";
-
-        return `
-            <article class="crm-client-card">
-                <div class="crm-client-main">
-                    <span class="crm-client-badge crm-badge-${item.categoria}">${config.icone} ${config.titulo}</span>
-                    <h4>${escaparHTMLCRM(item.cliente)}</h4>
-                    <p><strong>Pet:</strong> ${escaparHTMLCRM(item.pet)}</p>
-                    <p><strong>Telefone:</strong> ${escaparHTMLCRM(item.telefone)}</p>
-                    <p><strong>Último atendimento:</strong> ${detalheData}</p>
-                    ${item.totalLyne ? `<p><strong>Banhos LYNE concluídos:</strong> ${item.totalLyne}</p>` : ""}
-                </div>
-                <div class="crm-client-actions">
-                    <button type="button" onclick="abrirWhatsAppCRM('${chaveCodificada}')"><i class="fa-brands fa-whatsapp"></i> Abrir WhatsApp</button>
-                    <button type="button" class="secondary-button" onclick="marcarAcaoCRMEnviada('${chaveCodificada}')">Marcar como enviado</button>
-                </div>
-            </article>
-        `;
-    }).join("");
+function juntarNomesCRM(lista) {
+    if(lista.length<=1)return lista[0]||"seu pet";
+    return `${lista.slice(0,-1).join(", ")} e ${lista[lista.length-1]}`;
 }
-
-function montarMensagemCRM(item) {
-    const cliente = item.cliente || "";
-    const pet = item.pet || "seu pet";
-
-    // Emojis escritos com escapes Unicode ASCII. Isso evita qualquer dependência
-    // da codificação do arquivo, do Git, da Vercel ou do redirecionamento do wa.me.
-    // Foram escolhidos emojis clássicos, amplamente suportados pelo WhatsApp Web.
-    const emoji = {
-        coracao: "\u2764\uFE0F",
-        patas: "\uD83D\uDC3E",
-        cachorro: "\uD83D\uDC36",
-        banho: "\uD83D\uDEC1",
-        calendario: "\uD83D\uDCC5",
-        estrela: "\u2B50"
+function montarMensagemCRM(item){
+    const cliente=item.cliente||"";
+    const nomes=(item.pets||[]).map(artigoPetCRM);
+    const varios=nomes.length>1;
+    const pets=juntarNomesCRM(nomes);
+    const emoji={coracao:"\u2764\uFE0F",patas:"\uD83D\uDC3E",cachorro:"\uD83D\uDC36",banho:"\uD83D\uDEC1",calendario:"\uD83D\uDCC5",estrela:"\u2B50"};
+    const mensagens={
+      avaliacao: varios?`Oi, ${cliente}! ${emoji.coracao}\n\nEsperamos que seus pets tenham aproveitado bastante a experiência na PetLyne!\n\nSe você gostou do nosso trabalho, poderia dedicar menos de 1 minuto para deixar sua avaliação? Ela ajuda outras famílias a nos conhecer e faz muita diferença para nós.\n\n${emoji.estrela} Avalie aqui:\n${CRM_CONFIG.linkAvaliacao}\n\nMuito obrigado! ${emoji.patas}`:`Oi, ${cliente}! ${emoji.coracao}\n\nEsperamos que ${pets} tenha aproveitado bastante o banho!\n\nSe você gostou da experiência na PetLyne, poderia dedicar menos de 1 minuto para deixar sua avaliação? Ela ajuda outras famílias a conhecerem nosso trabalho e faz muita diferença para nós.\n\n${emoji.estrela} Avalie aqui:\n${CRM_CONFIG.linkAvaliacao}\n\nMuito obrigado! ${emoji.patas}`,
+      proximo: varios?`Oi, ${cliente}! ${emoji.cachorro}${emoji.banho}\n\nJá está chegando o momento de cuidar novamente dos seus pets. Que tal garantir o melhor dia e horário?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}\n\nVai ser um prazer receber vocês novamente! ${emoji.coracao}`:`Oi, ${cliente}! ${emoji.cachorro}${emoji.banho}\n\nJá está chegando o momento do próximo banho d${normalizarTextoCliente(item.pets[0]?.sexo).includes("femea")?"a":"o"} ${item.pets[0]?.pet||"seu pet"}. Que tal garantir o melhor dia e horário?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}\n\nVai ser um prazer receber vocês novamente! ${emoji.coracao}`,
+      atraso: varios?`Oi, ${cliente}! ${emoji.patas}\n\nPercebemos que já passou um pouquinho do período ideal para os próximos cuidados dos seus pets. Que tal garantir um horário para deixá-los limpinhos e cheirosos novamente?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`:`Oi, ${cliente}! ${emoji.patas}\n\nPercebemos que já passou um pouquinho do período ideal para o próximo banho d${normalizarTextoCliente(item.pets[0]?.sexo).includes("femea")?"a":"o"} ${item.pets[0]?.pet||"seu pet"}. Que tal garantir um horário para os próximos cuidados?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
+      recuperacao: varios?`Oi, ${cliente}! ${emoji.coracao}\n\nEstamos com saudades dos seus pets por aqui! Já faz um tempinho desde a última visita. Temos horários disponíveis e será um prazer receber vocês novamente.\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`:`Oi, ${cliente}! ${emoji.coracao}\n\nEstamos com saudades d${normalizarTextoCliente(item.pets[0]?.sexo).includes("femea")?"a":"o"} ${item.pets[0]?.pet||"seu pet"} por aqui! Já faz um tempinho desde a última visita. Temos horários disponíveis e será um prazer receber vocês novamente.\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
+      conhecer: varios?`Oi, ${cliente}! ${emoji.patas}\n\nTemos uma novidade para facilitar os próximos agendamentos dos seus pets na PetLyne! Agora você pode escolher o dia, o horário e o serviço diretamente pelo celular.\n\nQuando precisar, é só acessar:\n${CRM_CONFIG.linkAgendamento}\n\nEsperamos vocês! ${emoji.coracao}`:`Oi, ${cliente}! ${emoji.patas}\n\nTemos uma novidade para facilitar os próximos agendamentos na PetLyne! Agora você pode escolher o dia, o horário e o serviço diretamente pelo celular.\n\nQuando ${pets} precisar do próximo banho, é só acessar:\n${CRM_CONFIG.linkAgendamento}\n\nEsperamos vocês! ${emoji.coracao}`
     };
-
-    const mensagens = {
-        avaliacao: `Oi, ${cliente}! ${emoji.coracao}\n\nEsperamos que ${pet} tenha aproveitado bastante o banho!\n\nSe você gostou da experiência na PetLyne, poderia dedicar menos de 1 minuto para deixar sua avaliação? Ela ajuda outras famílias a conhecerem nosso trabalho e faz muita diferença para nós.\n\n${emoji.estrela} Avalie aqui:\n${CRM_CONFIG.linkAvaliacao}\n\nMuito obrigado! ${emoji.patas}`,
-        proximo: `Oi, ${cliente}! ${emoji.cachorro}${emoji.banho}\n\nJá está chegando o momento do próximo banho de ${pet}. Que tal garantir o melhor dia e horário?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}\n\nVai ser um prazer receber vocês novamente! ${emoji.coracao}`,
-        atraso: `Oi, ${cliente}! ${emoji.patas}\n\nPercebemos que já passou um pouquinho do período ideal para o próximo banho de ${pet}. Que tal garantir um horário para deixar ${pet} limpinho e cheiroso novamente?\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
-        recuperacao: `Oi, ${cliente}! ${emoji.coracao}\n\nEstamos com saudades de ${pet} por aqui! Já faz mais de 30 dias desde o último banho. Temos horários disponíveis e será um prazer receber vocês novamente.\n\n${emoji.calendario} Agende aqui:\n${CRM_CONFIG.linkAgendamento}`,
-        conhecer: `Oi, ${cliente}! ${emoji.patas}\n\nTemos uma novidade para facilitar seus próximos agendamentos na PetLyne! Agora você pode escolher o dia, o horário e o serviço diretamente pelo celular.\n\nQuando ${pet} precisar do próximo banho, é só acessar:\n${CRM_CONFIG.linkAgendamento}\n\nEsperamos vocês! ${emoji.coracao}`
-    };
-
-    return mensagens[item.categoria] || "";
+    return mensagens[item.categoria]||"";
 }
-
-function codificarMensagemWhatsApp(texto) {
-    // Normaliza o texto antes da codificação e impede que pares substitutos
-    // incompletos sejam transformados no caractere de substituição �.
-    const normalizado = String(texto || "").normalize("NFC");
-    return encodeURIComponent(normalizado);
+function codificarMensagemWhatsApp(texto){return encodeURIComponent(String(texto||"").normalize("NFC"));}
+function abrirWhatsAppCRM(chaveCodificada){
+    const chave=decodeURIComponent(chaveCodificada),item=crmRegistrosPorChave.get(chave);if(!item)return;
+    let telefone=normalizarTelefoneCliente(item.telefone);if(telefone.length===10||telefone.length===11)telefone=`55${telefone}`;
+    if(!telefone){mostrarAvisoAdmin({titulo:"Telefone não encontrado",mensagem:"Este cliente não possui um telefone válido para abrir o WhatsApp.",icone:"⚠️"});return;}
+    const texto=codificarMensagemWhatsApp(montarMensagemCRM(item)),movel=/Android|iPhone|iPad|iPod/i.test(navigator.userAgent),base=movel?"https://api.whatsapp.com/send":"https://web.whatsapp.com/send";
+    window.open(`${base}?phone=${telefone}&text=${texto}`,"_blank","noopener,noreferrer");
 }
-
-function abrirWhatsAppCRM(chaveCodificada) {
-    const chave = decodeURIComponent(chaveCodificada);
-    const item = crmRegistrosPorChave.get(chave);
-    if (!item) return;
-
-    let telefone = normalizarTelefoneCliente(item.telefone);
-    if (telefone.length === 11) telefone = `55${telefone}`;
-
-    if (!telefone) {
-        mostrarAvisoAdmin({
-            titulo: "Telefone não encontrado",
-            mensagem: "Este cliente não possui um telefone válido para abrir o WhatsApp.",
-            icone: "⚠️"
-        });
-        return;
-    }
-
-    const textoCodificado = codificarMensagemWhatsApp(montarMensagemCRM(item));
-    const usaDispositivoMovel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-    // O parâmetro text já chega percent-encoded em UTF-8. A URL é montada sem
-    // nova codificação para preservar emojis no aplicativo e no WhatsApp Web.
-    const baseWhatsApp = usaDispositivoMovel
-        ? "https://api.whatsapp.com/send"
-        : "https://web.whatsapp.com/send";
-    const url = `${baseWhatsApp}?phone=${telefone}&text=${textoCodificado}`;
-
-    window.open(url, "_blank", "noopener,noreferrer");
-}
-
-async function marcarAcaoCRMEnviada(chaveCodificada) {
-    const chave = decodeURIComponent(chaveCodificada);
-    const item = crmRegistrosPorChave.get(chave);
-    if (!item) return;
-
-    const confirmar = await mostrarConfirmacaoAdmin({
-        titulo: "Confirmar envio",
-        mensagem: `Confirma que a mensagem de ${CRM_CATEGORIAS[item.categoria].titulo.toLowerCase()} foi enviada para ${item.cliente}?`,
-        icone: "📲",
-        textoConfirmar: "Sim, foi enviada"
-    });
-
-    if (!confirmar) return;
-
-    await db.collection("crmHistorico").add({
-        clienteChave: item.chave,
-        cliente: item.cliente,
-        pet: item.pet,
-        telefone: item.telefone,
-        tipoAcao: item.categoria,
-        protocoloEscopo: "LYNE",
-        status: "Enviado",
-        ultimoAtendimento: item.ultimoAtendimento || null,
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await carregarHistoricoCRM();
-    calcularCRM();
-    renderizarCRM();
-
-    await mostrarAvisoAdmin({
-        titulo: "Ação registrada",
-        mensagem: "O envio foi salvo no histórico do CRM.",
-        icone: "✅"
-    });
+async function marcarAcaoCRMEnviada(chaveCodificada){
+    const chave=decodeURIComponent(chaveCodificada),item=crmRegistrosPorChave.get(chave);if(!item)return;
+    const confirmar=await mostrarConfirmacaoAdmin({titulo:"Confirmar envio",mensagem:`Confirma que a mensagem de ${CRM_CATEGORIAS[item.categoria].titulo.toLowerCase()} foi enviada para ${item.cliente}?`,icone:"📲",textoConfirmar:"Sim, foi enviada"});if(!confirmar)return;
+    await db.collection("crmHistorico").add({clienteChave:item.chave,cliente:item.cliente,pets:item.pets,pet:item.pet,telefone:item.telefone,tipoAcao:item.categoria,protocoloEscopo:"LYNE",status:"Enviado",ultimoAtendimento:item.ultimoAtendimento||null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()});
+    await carregarHistoricoCRM();calcularCRM();renderizarCRM();await mostrarAvisoAdmin({titulo:"Ação registrada",mensagem:"O envio foi salvo no histórico do CRM.",icone:"✅"});
 }
 
 async function atualizarCRM() {

@@ -686,6 +686,25 @@ function normalizarTelefone(valor) {
     return (valor || "").replace(/\D/g, "");
 }
 
+function variantesTelefone(valor) {
+    let numeros = normalizarTelefone(valor);
+    if (numeros.startsWith("55") && (numeros.length === 12 || numeros.length === 13)) numeros = numeros.slice(2);
+    const variantes = new Set();
+    if (numeros.length === 10 || numeros.length === 11) variantes.add(numeros);
+    if (numeros.length === 10) variantes.add(`${numeros.slice(0, 2)}9${numeros.slice(2)}`);
+    if (numeros.length === 11 && numeros.charAt(2) === "9") variantes.add(`${numeros.slice(0, 2)}${numeros.slice(3)}`);
+    return variantes;
+}
+function telefonesEquivalentes(a, b) {
+    const va = variantesTelefone(a), vb = variantesTelefone(b);
+    return Array.from(va).some(numero => vb.has(numero));
+}
+function telefoneBrasileiroValido(valor) {
+    const tamanho = normalizarTelefone(valor).length;
+    return tamanho === 10 || tamanho === 11;
+}
+
+
 function chavePetCadastro(item) {
     return [
         (item.pet || "").trim().toLowerCase(),
@@ -757,13 +776,13 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
 
         const telefoneNumeros = normalizarTelefone(telefoneDigitado);
 
-        if (telefoneNumeros.length !== 11) return [];
+        if (!telefoneBrasileiroValido(telefoneNumeros)) return [];
 
         const clientesSnapshot = await db.collection("clientes").get();
 
         const clientes = clientesSnapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(item => normalizarTelefone(item.telefone) === telefoneNumeros)
+            .filter(item => telefonesEquivalentes(item.telefone, telefoneNumeros))
             .sort((a, b) => (a.pet || "").localeCompare(b.pet || ""));
 
         if (clientes.length > 0) {
@@ -774,7 +793,7 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
 
         const registros = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(item => normalizarTelefone(item.telefone) === telefoneNumeros)
+            .filter(item => telefonesEquivalentes(item.telefone, telefoneNumeros))
             .sort((a, b) => {
                 const dataA = `${a.data || ""} ${a.horario || ""}`;
                 const dataB = `${b.data || ""} ${b.horario || ""}`;
@@ -802,7 +821,7 @@ async function preencherCadastroPorTelefone() {
     const telefone = document.getElementById("telefone").value;
     const telefoneNumeros = normalizarTelefone(telefone);
 
-    if (telefoneNumeros.length !== 11) {
+    if (!telefoneBrasileiroValido(telefoneNumeros)) {
         limparSeletorPetsCadastrados();
         return;
     }
@@ -836,13 +855,11 @@ function buscarCadastroTelefoneComDelay() {
 
 
 function formatarTelefoneCelular(valor) {
-    valor = valor.replace(/\D/g, "");
-
-    if (valor.length > 11) valor = valor.slice(0, 11);
-    if (valor.length <= 2) return valor;
-    if (valor.length <= 7) return `(${valor.slice(0, 2)}) ${valor.slice(2)}`;
-
-    return `(${valor.slice(0, 2)}) ${valor.slice(2, 7)}-${valor.slice(7, 11)}`;
+    const numeros = valor.replace(/\D/g, "").slice(0, 11);
+    if (numeros.length <= 2) return numeros;
+    if (numeros.length <= 6) return `(${numeros.slice(0, 2)}) ${numeros.slice(2)}`;
+    if (numeros.length <= 10) return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 6)}-${numeros.slice(6)}`;
+    return `(${numeros.slice(0, 2)}) ${numeros.slice(2, 7)}-${numeros.slice(7)}`;
 }
 
 popularSelectRacasCliente();
@@ -1340,8 +1357,8 @@ function validarAgendamento() {
         }
     }
 
-    if (telefoneNumeros.length !== 11) {
-        mostrarAlerta("Digite um telefone celular válido com DDD. Exemplo: (11) 99999-9999");
+    if (!telefoneBrasileiroValido(telefoneNumeros)) {
+        mostrarAlerta("Digite um telefone válido com DDD e 8 ou 9 dígitos. Exemplos: (61) 8566-5654 ou (11) 99999-9999");
         return false;
     }
 
@@ -1797,5 +1814,29 @@ async function iniciarPagina() {
     await carregarServicosPrincipaisCliente();
     atualizarResumoServicos();
 }
+
+let ultimaAtualizacaoAgendaEm = 0;
+let atualizacaoAgendaEmAndamento = false;
+
+async function atualizarAgendaAoRetornar(force = false) {
+    const dataSelecionada = document.getElementById("data")?.value;
+    if (!dataSelecionada || atualizacaoAgendaEmAndamento) return;
+    const agora = Date.now();
+    if (!force && agora - ultimaAtualizacaoAgendaEm < 30000) return;
+    atualizacaoAgendaEmAndamento = true;
+    try {
+        await carregarHorariosDisponiveis();
+        ultimaAtualizacaoAgendaEm = Date.now();
+    } finally {
+        atualizacaoAgendaEmAndamento = false;
+    }
+}
+
+window.addEventListener("pageshow", () => atualizarAgendaAoRetornar(true));
+window.addEventListener("focus", () => atualizarAgendaAoRetornar());
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") atualizarAgendaAoRetornar(true);
+});
+setInterval(() => atualizarAgendaAoRetornar(), 5 * 60 * 1000);
 
 iniciarPagina();

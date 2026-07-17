@@ -1,0 +1,30 @@
+PETLYNE V3.30 - AJUSTES CRM, TELEFONES E ATUALIZACAO DA AGENDA
+
+1. CRM agrupado por cliente
+- Cada dono aparece apenas uma vez, mesmo possuindo vários pets.
+- O cartão lista todos os pets do cliente.
+- As mensagens possuem versões específicas para um pet e para vários pets.
+
+2. Sexo do pet nas mensagens
+- Mensagens individuais usam do/da conforme o sexo cadastrado.
+- Textos foram revisados para não repetir desnecessariamente o nome do pet.
+- Mensagens de vários pets usam construções no plural.
+
+3. Telefones brasileiros
+- Aceita DDD + telefone com 8 ou 9 dígitos.
+- Reconhece números antigos sem o nono dígito e seus equivalentes com o nono dígito.
+- Máscaras ajustadas para os formatos (61) 8566-5654 e (11) 99999-9999.
+
+4. Alteração de telefone
+- O CRM relaciona cadastro e histórico também pelo nome do cliente e nome do pet.
+- Alterar o telefone no cadastro não remove mais o cliente do CRM.
+
+5. Atualização automática da agenda online
+- Atualiza os horários ao voltar para a página.
+- Atualiza ao retornar para a aba ou janela.
+- Atualiza automaticamente a cada 5 minutos enquanto houver uma data selecionada.
+- Mantém a validação final antes de confirmar o agendamento para impedir conflito de horário.
+
+6. Ciclo do CRM
+- Cliente com agendamento LYNE futuro ativo não recebe lembrete para o pet agendado.
+- O ciclo reinicia somente quando o novo atendimento for concluído.
