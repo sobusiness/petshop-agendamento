@@ -2909,6 +2909,327 @@ async function cancelarAgendamento(id) {
 }
 
 
+let catalogoAbaAtual = "caes-banho";
+let catalogoAlteracoes = new Map();
+
+function normalizarCatalogo(valor) {
+    return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+}
+
+function moedaCatalogo(valor) {
+    return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function escaparCatalogo(valor) {
+    return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function dadosEfetivosCatalogo(servico) {
+    return { ...servico, ...(catalogoAlteracoes.get(servico.id) || {}) };
+}
+
+function categoriaCatalogo(servicoOriginal) {
+    const servico = dadosEfetivosCatalogo(servicoOriginal);
+    const nome = normalizarCatalogo(servico.nome);
+    const especie = normalizarCatalogo(servico.especie);
+    const temVariacao = Boolean(servico.porte || servico.pelagem || servico.tipoTosa);
+
+    if (especie === "gato") return "gatos";
+    if (especie === "cao" && nome.includes("banho") && !nome.includes("seco") && (servico.pelagem || servico.porte)) return "caes-banho";
+    if (especie === "cao" && nome.includes("tosa") && servico.tipoTosa) return "caes-tosa";
+    if (!temVariacao || especie === "ambos" || nome.includes("avul") || nome.includes("hidrat") || nome.includes("parasita") || nome.includes("seco")) return "avulsos";
+    return "todos";
+}
+
+function servicosDaAbaCatalogo(aba = catalogoAbaAtual) {
+    const busca = normalizarCatalogo(document.getElementById("catalogoBusca")?.value);
+    return servicosAdmin.filter(item => {
+        const dados = dadosEfetivosCatalogo(item);
+        const categoria = categoriaCatalogo(item);
+        const bateAba = aba === "todos" || categoria === aba || (aba === "avulsos" && categoria === "todos");
+        const texto = normalizarCatalogo([dados.nome, dados.especie, dados.porte, dados.pelagem, dados.tipoTosa].join(" "));
+        return bateAba && (!busca || texto.includes(busca));
+    });
+}
+
+function selecionarAbaCatalogo(aba) {
+    catalogoAbaAtual = aba;
+    document.querySelectorAll("[data-catalog-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.catalogTab === aba));
+    renderizarServicosAdmin();
+    atualizarPreviaReajusteCatalogo();
+}
+
+function registrarAlteracaoCatalogo(id, campo, valor, elemento) {
+    const original = servicosAdmin.find(item => item.id === id);
+    if (!original) return;
+
+    const normalizado = campo === "preco" ? Number(valor || 0) : String(valor ?? "");
+    const atual = { ...(catalogoAlteracoes.get(id) || {}) };
+    const originalValor = campo === "preco" ? Number(original[campo] || 0) : String(original[campo] || "");
+
+    if (normalizado === originalValor) delete atual[campo];
+    else atual[campo] = normalizado;
+
+    if (Object.keys(atual).length) catalogoAlteracoes.set(id, atual);
+    else catalogoAlteracoes.delete(id);
+
+    if (elemento) elemento.classList.toggle("catalog-field-changed", normalizado !== originalValor);
+    atualizarEstadoAlteracoesCatalogo();
+    atualizarKpisCatalogo();
+}
+
+function atualizarEstadoAlteracoesCatalogo() {
+    const qtd = catalogoAlteracoes.size;
+    const bar = document.getElementById("catalogoAlteracoesBar");
+    const label = document.getElementById("catalogoAlteracoesQtd");
+    const salvar = document.getElementById("btnSalvarCatalogo");
+    const descartar = document.getElementById("btnDescartarCatalogo");
+    if (bar) bar.hidden = qtd === 0;
+    if (label) label.textContent = `${qtd} ${qtd === 1 ? "regra alterada" : "regras alteradas"}`;
+    if (salvar) salvar.disabled = qtd === 0;
+    if (descartar) descartar.disabled = qtd === 0;
+}
+
+function atualizarKpisCatalogo() {
+    const container = document.getElementById("catalogoKpis");
+    if (!container) return;
+    const efetivos = servicosAdmin.map(dadosEfetivosCatalogo);
+    const precos = efetivos.map(item => Number(item.preco || 0)).filter(v => v > 0);
+    const categorias = new Set(servicosAdmin.map(categoriaCatalogo));
+    const media = precos.length ? precos.reduce((a,b) => a+b, 0) / precos.length : 0;
+    const ultima = efetivos.map(item => item.atualizadoEm?.toDate?.() || item.criadoEm?.toDate?.()).filter(Boolean).sort((a,b)=>b-a)[0];
+    container.innerHTML = `
+        <article><span>◫</span><div><small>Regras ativas</small><strong>${efetivos.length}</strong><em>${categorias.size} grupos de catálogo</em></div></article>
+        <article><span>↓</span><div><small>Menor preço</small><strong>${moedaCatalogo(precos.length ? Math.min(...precos) : 0)}</strong><em>Entrada do catálogo</em></div></article>
+        <article><span>↑</span><div><small>Maior preço</small><strong>${moedaCatalogo(Math.max(...precos, 0))}</strong><em>Topo do catálogo</em></div></article>
+        <article><span>≈</span><div><small>Preço médio</small><strong>${moedaCatalogo(media)}</strong><em>Média das regras</em></div></article>
+        <article class="${catalogoAlteracoes.size ? "attention" : ""}"><span>✎</span><div><small>Alterações pendentes</small><strong>${catalogoAlteracoes.size}</strong><em>${ultima ? `Última edição ${ultima.toLocaleDateString("pt-BR")}` : "Catálogo sincronizado"}</em></div></article>
+    `;
+}
+
+function inputPrecoCatalogo(servico, classe = "") {
+    const dados = dadosEfetivosCatalogo(servico);
+    const alterado = catalogoAlteracoes.get(servico.id)?.preco !== undefined;
+    return `<div class="catalog-price-input ${classe}"><span>R$</span><input aria-label="Preço de ${escaparCatalogo(dados.nome)}" class="${alterado ? "catalog-field-changed" : ""}" type="number" min="0" step="0.01" value="${Number(dados.preco || 0)}" onchange="registrarAlteracaoCatalogo('${servico.id}','preco',this.value,this)" oninput="registrarAlteracaoCatalogo('${servico.id}','preco',this.value,this)"></div>`;
+}
+
+function encontrarRegraCatalogo(lista, porte, variacao, campoVariacao) {
+    return lista.find(item => {
+        const dados = dadosEfetivosCatalogo(item);
+        return normalizarCatalogo(dados.porte) === normalizarCatalogo(porte) && normalizarCatalogo(dados[campoVariacao]) === normalizarCatalogo(variacao);
+    });
+}
+
+function renderizarMatrizCatalogo(lista, titulo, subtitulo, variacoes, campoVariacao, icone) {
+    const portes = ["Pequeno", "Médio", "Grande"];
+    const linhas = portes.map(porte => `
+        <tr>
+            <th><span class="catalog-size-dot size-${normalizarCatalogo(porte)}"></span>${porte}</th>
+            ${variacoes.map(variacao => {
+                const regra = encontrarRegraCatalogo(lista, porte, variacao, campoVariacao);
+                return `<td>${regra ? inputPrecoCatalogo(regra) : `<button class="catalog-empty-cell" onclick="prepararNovaRegraCatalogo('${titulo.startsWith("Banho") ? "Banho" : "Tosa"}','Cão','${porte}','${campoVariacao === "pelagem" ? variacao : ""}','${campoVariacao === "tipoTosa" ? variacao : ""}')">＋ adicionar</button>`}</td>`;
+            }).join("")}
+        </tr>`).join("");
+
+    return `<section class="catalog-matrix-card">
+        <div class="catalog-section-heading">
+            <div class="catalog-section-icon">${icone}</div>
+            <div><span>TABELA DE PREÇOS</span><h3>${escaparCatalogo(titulo)}</h3><p>${escaparCatalogo(subtitulo)}</p></div>
+            <strong>${lista.length} regras</strong>
+        </div>
+        <div class="catalog-table-scroll">
+            <table class="catalog-price-matrix">
+                <thead><tr><th>Porte</th>${variacoes.map(v => `<th>${escaparCatalogo(v)}</th>`).join("")}</tr></thead>
+                <tbody>${linhas}</tbody>
+            </table>
+        </div>
+        <p class="catalog-table-hint">Toque no preço, digite o novo valor e use TAB para avançar. As mudanças ficam pendentes até o salvamento.</p>
+    </section>`;
+}
+
+function renderizarCardsCatalogo(lista, titulo, subtitulo, icone) {
+    if (!lista.length) return `<div class="catalog-empty-state"><b>${icone}</b><h3>Nenhuma regra encontrada</h3><p>Use “Adicionar nova regra” para cadastrar o primeiro item desta categoria.</p></div>`;
+    return `<section class="catalog-cards-section">
+        <div class="catalog-section-heading">
+            <div class="catalog-section-icon">${icone}</div>
+            <div><span>CATÁLOGO</span><h3>${escaparCatalogo(titulo)}</h3><p>${escaparCatalogo(subtitulo)}</p></div>
+            <strong>${lista.length} itens</strong>
+        </div>
+        <div class="catalog-service-cards">${lista.map(servico => {
+            const dados = dadosEfetivosCatalogo(servico);
+            const detalhe = [dados.especie, dados.porte, dados.pelagem, dados.tipoTosa].filter(Boolean).join(" • ") || "Preço único";
+            return `<article class="catalog-service-card">
+                <div class="catalog-card-icon">${normalizarCatalogo(dados.especie) === "gato" ? "🐱" : normalizarCatalogo(dados.nome).includes("tosa") ? "✂" : "＋"}</div>
+                <div class="catalog-card-copy"><input class="catalog-name-input ${catalogoAlteracoes.get(servico.id)?.nome !== undefined ? "catalog-field-changed" : ""}" value="${escaparCatalogo(dados.nome)}" onchange="registrarAlteracaoCatalogo('${servico.id}','nome',this.value,this)"><small>${escaparCatalogo(detalhe)}</small></div>
+                ${inputPrecoCatalogo(servico, "catalog-card-price")}
+                <button class="catalog-delete-icon" title="Excluir regra" onclick="excluirServico('${servico.id}')">×</button>
+            </article>`;
+        }).join("")}</div>
+    </section>`;
+}
+
+function renderizarTodasRegrasCatalogo(lista) {
+    if (!lista.length) return `<div class="catalog-empty-state"><b>⌕</b><h3>Nenhuma regra encontrada</h3><p>Tente mudar a busca ou adicionar uma nova regra.</p></div>`;
+    return `<section class="catalog-all-rules">
+        <div class="catalog-section-heading"><div class="catalog-section-icon">☷</div><div><span>VISÃO AVANÇADA</span><h3>Todas as regras</h3><p>Edite atributos completos ou exclua registros individualmente.</p></div><strong>${lista.length} regras</strong></div>
+        <div class="catalog-rule-list">${lista.map(servico => {
+            const d = dadosEfetivosCatalogo(servico);
+            const opts = (valores, atual, vazio) => `<option value="" ${!atual ? "selected" : ""}>${vazio}</option>` + valores.map(v => `<option value="${v}" ${atual === v ? "selected" : ""}>${v}</option>`).join("");
+            return `<article class="catalog-rule-row">
+                <input value="${escaparCatalogo(d.nome)}" onchange="registrarAlteracaoCatalogo('${servico.id}','nome',this.value,this)">
+                <select onchange="registrarAlteracaoCatalogo('${servico.id}','especie',this.value,this)">${["Cão","Gato","Ambos"].map(v=>`<option ${d.especie===v?"selected":""}>${v}</option>`).join("")}</select>
+                <select onchange="registrarAlteracaoCatalogo('${servico.id}','porte',this.value,this)">${opts(["Pequeno","Médio","Grande"],d.porte,"Sem porte")}</select>
+                <select onchange="registrarAlteracaoCatalogo('${servico.id}','pelagem',this.value,this)">${opts(["Curto","Médio","Longo"],d.pelagem,"Sem pelagem")}</select>
+                <select onchange="registrarAlteracaoCatalogo('${servico.id}','tipoTosa',this.value,this)">${opts(["Geral","Verão","Bebê","Tesoura"],d.tipoTosa,"Sem tipo")}</select>
+                ${inputPrecoCatalogo(servico)}
+                <button class="catalog-delete-icon" onclick="excluirServico('${servico.id}')">×</button>
+            </article>`;
+        }).join("")}</div>
+    </section>`;
+}
+
+function renderizarServicosAdmin() {
+    const lista = document.getElementById("listaServicosAdmin");
+    if (!lista) return;
+    const filtrados = servicosDaAbaCatalogo();
+
+    if (catalogoAbaAtual === "caes-banho") {
+        lista.innerHTML = renderizarMatrizCatalogo(filtrados, "Banho para cães", "Preços por porte e tipo de pelagem.", ["Curto", "Médio", "Longo"], "pelagem", "🛁");
+    } else if (catalogoAbaAtual === "caes-tosa") {
+        const variacoesExistentes = [...new Set(filtrados.map(item => dadosEfetivosCatalogo(item).tipoTosa).filter(Boolean))];
+        const variacoes = ["Verão", "Geral", "Bebê", "Tesoura"].filter(v => variacoesExistentes.includes(v) || ["Verão","Geral"].includes(v));
+        lista.innerHTML = renderizarMatrizCatalogo(filtrados, "Tosa para cães", "Preços por porte e técnica de tosa.", variacoes, "tipoTosa", "✂");
+    } else if (catalogoAbaAtual === "gatos") {
+        lista.innerHTML = renderizarCardsCatalogo(filtrados, "Serviços para gatos", "Valores específicos do catálogo felino.", "🐱");
+    } else if (catalogoAbaAtual === "avulsos") {
+        lista.innerHTML = renderizarCardsCatalogo(filtrados, "Serviços avulsos", "Adicionais e serviços de preço único.", "＋");
+    } else {
+        lista.innerHTML = renderizarTodasRegrasCatalogo(filtrados);
+    }
+
+    atualizarKpisCatalogo();
+    atualizarEstadoAlteracoesCatalogo();
+    renderizarHistoricoCatalogo();
+}
+
+function arredondarReajusteCatalogo(valor, tipo) {
+    if (tipo === "inteiro") return Math.round(valor);
+    if (tipo === "cinco") return Math.round(valor / 5) * 5;
+    return Math.round(valor * 100) / 100;
+}
+
+function calcularNovoPrecoCatalogo(preco) {
+    const valor = Number(document.getElementById("catalogoBulkValor")?.value || 0);
+    const tipo = document.getElementById("catalogoBulkTipo")?.value || "percentual";
+    const arredondamento = document.getElementById("catalogoBulkArredondamento")?.value || "centavos";
+    const ajustado = tipo === "percentual" ? preco * (1 + valor / 100) : preco + valor;
+    return Math.max(0, arredondarReajusteCatalogo(ajustado, arredondamento));
+}
+
+function atualizarPreviaReajusteCatalogo() {
+    const label = document.getElementById("catalogoBulkPreview");
+    if (!label) return;
+    const valor = Number(document.getElementById("catalogoBulkValor")?.value || 0);
+    const tipo = document.getElementById("catalogoBulkTipo")?.value || "percentual";
+    const escopo = document.getElementById("catalogoBulkEscopo")?.value || "aba";
+    const base = escopo === "todos" ? servicosAdmin : servicosDaAbaCatalogo();
+    if (!valor || !base.length) {
+        label.textContent = "Nenhuma simulação ativa";
+        return;
+    }
+    const exemplo = Number(dadosEfetivosCatalogo(base[0]).preco || 0);
+    label.textContent = `${base.length} regras • ${moedaCatalogo(exemplo)} → ${moedaCatalogo(calcularNovoPrecoCatalogo(exemplo))} (${tipo === "percentual" ? `${valor > 0 ? "+" : ""}${valor}%` : `${valor > 0 ? "+" : ""}${moedaCatalogo(valor)}`})`;
+}
+
+async function aplicarReajusteCatalogo() {
+    const valor = Number(document.getElementById("catalogoBulkValor")?.value || 0);
+    if (!valor) {
+        await mostrarAvisoAdmin({ titulo: "Informe o reajuste", mensagem: "Digite um percentual ou valor fixo para iniciar a simulação.", icone: "💲" });
+        return;
+    }
+    const escopo = document.getElementById("catalogoBulkEscopo")?.value || "aba";
+    const base = escopo === "todos" ? servicosAdmin : servicosDaAbaCatalogo();
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Aplicar reajuste à edição",
+        mensagem: `${base.length} regras serão recalculadas na tela. Nada será salvo no Firebase até você clicar em Salvar alterações.`,
+        icone: "📊",
+        textoConfirmar: "Aplicar",
+        textoCancelar: "Voltar"
+    });
+    if (!confirmar) return;
+    base.forEach(item => registrarAlteracaoCatalogo(item.id, "preco", calcularNovoPrecoCatalogo(Number(dadosEfetivosCatalogo(item).preco || 0))));
+    renderizarServicosAdmin();
+}
+
+async function salvarAlteracoesCatalogo() {
+    if (!catalogoAlteracoes.size) return;
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Salvar catálogo",
+        mensagem: `${catalogoAlteracoes.size} regras serão atualizadas no Firebase. Os novos preços passarão a valer imediatamente no agendamento online.`,
+        icone: "✓",
+        textoConfirmar: "Salvar tudo",
+        textoCancelar: "Revisar"
+    });
+    if (!confirmar) return;
+
+    const batch = db.batch();
+    const historico = [];
+    catalogoAlteracoes.forEach((alteracoes, id) => {
+        const original = servicosAdmin.find(item => item.id === id);
+        if (!original) return;
+        batch.update(db.collection("servicos").doc(id), {
+            ...alteracoes,
+            ativo: true,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        historico.push({ data: new Date().toISOString(), nome: original.nome, alteracoes: Object.keys(alteracoes) });
+    });
+
+    try {
+        await batch.commit();
+        salvarHistoricoCatalogoLocal(historico);
+        catalogoAlteracoes.clear();
+        await carregarServicosAdmin();
+        renderizarServicosAdmin();
+        await mostrarAvisoAdmin({ titulo: "Catálogo atualizado", mensagem: "Todas as alterações foram salvas e já estão disponíveis no sistema.", icone: "✅" });
+    } catch (error) {
+        console.error(error);
+        await mostrarAvisoAdmin({ titulo: "Erro ao salvar", mensagem: "Não foi possível salvar todas as alterações. Tente novamente.", icone: "⚠️" });
+    }
+}
+
+async function descartarAlteracoesCatalogo() {
+    if (!catalogoAlteracoes.size) return;
+    const confirmar = await mostrarConfirmacaoAdmin({ titulo: "Descartar alterações", mensagem: "Todos os preços e campos ainda não salvos voltarão aos valores atuais do Firebase.", icone: "↶", textoConfirmar: "Descartar", textoCancelar: "Continuar editando" });
+    if (!confirmar) return;
+    catalogoAlteracoes.clear();
+    renderizarServicosAdmin();
+}
+
+function salvarHistoricoCatalogoLocal(registros) {
+    const atual = JSON.parse(localStorage.getItem("petlyneCatalogoHistorico") || "[]");
+    localStorage.setItem("petlyneCatalogoHistorico", JSON.stringify([...registros, ...atual].slice(0, 30)));
+}
+
+function renderizarHistoricoCatalogo() {
+    const el = document.getElementById("catalogoHistorico");
+    if (!el) return;
+    const itens = JSON.parse(localStorage.getItem("petlyneCatalogoHistorico") || "[]");
+    el.innerHTML = itens.length ? itens.map(item => `<div><strong>${escaparCatalogo(item.nome)}</strong><span>${new Date(item.data).toLocaleString("pt-BR")}</span><small>${item.alteracoes.map(c => c === "preco" ? "Preço" : c).join(", ")}</small></div>`).join("") : "<p>Nenhuma alteração registrada neste navegador.</p>";
+}
+
+function prepararNovaRegraCatalogo(nome, especie, porte, pelagem, tipoTosa) {
+    const painel = document.querySelector(".catalog-create-panel");
+    if (painel) painel.open = true;
+    document.getElementById("nomeServico").value = nome;
+    document.getElementById("especieServico").value = especie;
+    document.getElementById("porteServico").value = porte;
+    document.getElementById("pelagemServico").value = pelagem;
+    document.getElementById("tipoTosaServico").value = tipoTosa;
+    document.getElementById("precoServico").focus();
+    painel?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
 async function salvarServico() {
     const nome = document.getElementById("nomeServico").value.trim();
     const preco = Number(document.getElementById("precoServico").value);
@@ -2917,165 +3238,43 @@ async function salvarServico() {
     const pelagem = document.getElementById("pelagemServico").value;
     const tipoTosa = document.getElementById("tipoTosaServico").value;
 
-    if (!nome || !preco) {
-        alert("Preencha o nome do serviço e o preço.");
+    if (!nome || preco <= 0) {
+        await mostrarAvisoAdmin({ titulo: "Regra incompleta", mensagem: "Preencha o nome do serviço e um preço maior que zero.", icone: "⚠️" });
         return;
     }
 
-    await db.collection("servicos").add({
-        nome,
-        preco,
-        especie,
-        porte,
-        pelagem,
-        tipoTosa,
-        ativo: true,
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
+    await db.collection("servicos").add({ nome, preco, especie, porte, pelagem, tipoTosa, ativo: true, criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
     document.getElementById("nomeServico").value = "";
     document.getElementById("precoServico").value = "";
     document.getElementById("especieServico").value = "Cão";
     document.getElementById("porteServico").value = "";
     document.getElementById("pelagemServico").value = "";
     document.getElementById("tipoTosaServico").value = "";
-
     await carregarServicosAdmin();
     renderizarServicosAdmin();
 }
 
-
-function valorFiltroServico(id) {
-    const elemento = document.getElementById(id);
-    return elemento ? elemento.value : "";
-}
-
-function campoBateFiltro(valorCampo, valorFiltro) {
-    if (!valorFiltro) return true;
-    if (valorFiltro === "__sem__") return !valorCampo;
-    return valorCampo === valorFiltro;
-}
-
-function obterServicosAdminFiltrados() {
-    const filtroNome = valorFiltroServico("filtroNomeServico").trim().toLowerCase();
-    const filtroPorte = valorFiltroServico("filtroPorteServico");
-    const filtroPelagem = valorFiltroServico("filtroPelagemServico");
-    const filtroTipoTosa = valorFiltroServico("filtroTipoTosaServico");
-
-    return servicosAdmin.filter(servico => {
-        const nomeOk = !filtroNome || (servico.nome || "").toLowerCase().includes(filtroNome);
-        const porteOk = campoBateFiltro(servico.porte || "", filtroPorte);
-        const pelagemOk = campoBateFiltro(servico.pelagem || "", filtroPelagem);
-        const tipoTosaOk = campoBateFiltro(servico.tipoTosa || "", filtroTipoTosa);
-
-        return nomeOk && porteOk && pelagemOk && tipoTosaOk;
-    });
-}
-
-function limparFiltrosServicos() {
-    document.getElementById("filtroNomeServico").value = "";
-    document.getElementById("filtroPorteServico").value = "";
-    document.getElementById("filtroPelagemServico").value = "";
-    document.getElementById("filtroTipoTosaServico").value = "";
-
-    renderizarServicosAdmin();
-}
-
-
-function renderizarServicosAdmin() {
-    const lista = document.getElementById("listaServicosAdmin");
-    lista.innerHTML = "";
-
-    const servicosFiltrados = obterServicosAdminFiltrados();
-
-    if (servicosAdmin.length === 0) {
-        lista.innerHTML = "<p>Nenhum serviço cadastrado ainda.</p>";
-        return;
-    }
-
-    if (servicosFiltrados.length === 0) {
-        lista.innerHTML = "<p>Nenhuma regra encontrada para os filtros selecionados.</p>";
-        return;
-    }
-
-    const contador = document.createElement("div");
-    contador.className = "service-filter-count";
-    contador.textContent = `Exibindo ${servicosFiltrados.length} de ${servicosAdmin.length} regras cadastradas.`;
-    lista.appendChild(contador);
-
-    servicosFiltrados.forEach(servico => {
-        const div = document.createElement("div");
-        div.className = "service-item service-item-pricing";
-
-        div.innerHTML = `
-            <input type="text" value="${servico.nome || ""}" id="nome-${servico.id}">
-
-            <select id="especie-${servico.id}">
-                <option value="Cão" ${servico.especie === "Cão" ? "selected" : ""}>Cão</option>
-                <option value="Gato" ${servico.especie === "Gato" ? "selected" : ""}>Gato</option>
-                <option value="Ambos" ${servico.especie === "Ambos" ? "selected" : ""}>Ambos</option>
-            </select>
-
-            <select id="porte-${servico.id}">
-                <option value="" ${!servico.porte ? "selected" : ""}>Sem porte</option>
-                <option value="Pequeno" ${servico.porte === "Pequeno" ? "selected" : ""}>Pequeno</option>
-                <option value="Médio" ${servico.porte === "Médio" ? "selected" : ""}>Médio</option>
-                <option value="Grande" ${servico.porte === "Grande" ? "selected" : ""}>Grande</option>
-            </select>
-
-            <select id="pelagem-${servico.id}">
-                <option value="" ${!servico.pelagem ? "selected" : ""}>Sem pelagem</option>
-                <option value="Curto" ${servico.pelagem === "Curto" ? "selected" : ""}>Curto</option>
-                <option value="Médio" ${servico.pelagem === "Médio" ? "selected" : ""}>Médio</option>
-                <option value="Longo" ${servico.pelagem === "Longo" ? "selected" : ""}>Longo</option>
-            </select>
-
-            <select id="tipoTosa-${servico.id}">
-                <option value="" ${!servico.tipoTosa ? "selected" : ""}>Sem tipo</option>
-                <option value="Geral" ${servico.tipoTosa === "Geral" ? "selected" : ""}>Geral</option>
-                <option value="Verão" ${servico.tipoTosa === "Verão" ? "selected" : ""}>Verão</option>
-                <option value="Bebê" ${servico.tipoTosa === "Bebê" ? "selected" : ""}>Bebê</option>
-                <option value="Tesoura" ${servico.tipoTosa === "Tesoura" ? "selected" : ""}>Tesoura</option>
-            </select>
-
-            <input type="number" value="${servico.preco || 0}" step="0.01" id="preco-${servico.id}">
-
-            <button onclick="atualizarServico('${servico.id}')">Salvar</button>
-            <button class="secondary-button" onclick="excluirServico('${servico.id}')">Excluir</button>
-        `;
-
-        lista.appendChild(div);
-    });
-}
-
 async function atualizarServico(id) {
-    const nome = document.getElementById(`nome-${id}`).value.trim();
-    const preco = Number(document.getElementById(`preco-${id}`).value);
-    const especie = document.getElementById(`especie-${id}`).value;
-    const porte = document.getElementById(`porte-${id}`).value;
-    const pelagem = document.getElementById(`pelagem-${id}`).value;
-    const tipoTosa = document.getElementById(`tipoTosa-${id}`).value;
-
-    await db.collection("servicos").doc(id).update({
-        nome,
-        preco,
-        especie,
-        porte,
-        pelagem,
-        tipoTosa,
-        ativo: true,
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
+    const alteracoes = catalogoAlteracoes.get(id);
+    if (!alteracoes) return;
+    await db.collection("servicos").doc(id).update({ ...alteracoes, ativo: true, atualizadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+    catalogoAlteracoes.delete(id);
     await carregarServicosAdmin();
     renderizarServicosAdmin();
 }
 
 async function excluirServico(id) {
-    if (!confirm("Deseja realmente excluir este serviço?")) return;
-
+    const servico = servicosAdmin.find(item => item.id === id);
+    const confirmar = await mostrarConfirmacaoAdmin({
+        titulo: "Excluir regra",
+        mensagem: `Deseja excluir “${servico?.nome || "esta regra"}”? Ela deixará de aparecer imediatamente no agendamento online.`,
+        icone: "🗑️",
+        textoConfirmar: "Excluir",
+        textoCancelar: "Voltar"
+    });
+    if (!confirmar) return;
     await db.collection("servicos").doc(id).delete();
-
+    catalogoAlteracoes.delete(id);
     await carregarServicosAdmin();
     renderizarServicosAdmin();
 }

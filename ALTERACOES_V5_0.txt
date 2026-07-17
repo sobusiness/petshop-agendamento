@@ -1,0 +1,18 @@
+PETLYNE V5.0 - EDITOR INTELIGENTE DE CATÁLOGO
+
+- Módulo Produtos / Serviços completamente redesenhado.
+- Mantida a mesma coleção "servicos" e a estrutura atual do Firebase.
+- Navegação por Banho para cães, Tosa para cães, Gatos, Avulsos e Todas as regras.
+- Matrizes de preços por porte, pelagem e tipo de tosa.
+- Edição inline com controle de alterações pendentes.
+- Salvamento em lote no Firebase usando batch.
+- Reajuste em massa por percentual ou valor fixo.
+- Arredondamento para centavos, reais inteiros ou múltiplos de R$ 5.
+- Simulação antes do salvamento definitivo.
+- Inclusão de combinações ausentes diretamente pela matriz.
+- Cadastro de nova regra em painel recolhível.
+- Exclusão com confirmação personalizada.
+- KPIs do catálogo: regras, mínimo, máximo, média e alterações pendentes.
+- Busca inteligente.
+- Histórico local das alterações recentes no navegador.
+- Layout responsivo para celular.

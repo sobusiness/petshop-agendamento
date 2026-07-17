@@ -572,93 +572,128 @@
     </section>
 
 
-    <section id="secao-servicos" class="admin-section">
-        <div class="section-title-row">
+    <section id="secao-servicos" class="admin-section catalog-premium">
+        <div class="catalog-hero">
             <div>
-                <h2>Configurações de Produtos / Serviços</h2>
-                <p>Cadastre, edite ou exclua regras de preço por serviço, porte, pelagem e tipo de tosa.</p>
+                <span class="catalog-eyebrow">EDITOR INTELIGENTE DE CATÁLOGO</span>
+                <h2>Produtos e Serviços</h2>
+                <p>Gerencie preços como uma planilha, aplique reajustes em massa e salve tudo de uma só vez.</p>
+            </div>
+            <div class="catalog-hero-actions">
+                <button class="secondary-button" onclick="descartarAlteracoesCatalogo()" id="btnDescartarCatalogo" disabled>Descartar</button>
+                <button onclick="salvarAlteracoesCatalogo()" id="btnSalvarCatalogo" disabled>Salvar alterações</button>
             </div>
         </div>
 
-        <div class="service-form service-form-pricing">
-            <input type="text" id="nomeServico" placeholder="Serviço principal. Ex: Banho ou Tosa">
+        <div class="catalog-kpis" id="catalogoKpis"></div>
 
-            <select id="especieServico">
-                <option value="Cão">Cão</option>
-                <option value="Gato">Gato</option>
-                <option value="Ambos">Ambos</option>
-            </select>
-
-            <select id="porteServico">
-                <option value="">Sem porte</option>
-                <option value="Pequeno">Pequeno</option>
-                <option value="Médio">Médio</option>
-                <option value="Grande">Grande</option>
-            </select>
-
-            <select id="pelagemServico">
-                <option value="">Sem pelagem</option>
-                <option value="Curto">Curto</option>
-                <option value="Médio">Médio</option>
-                <option value="Longo">Longo</option>
-            </select>
-
-            <select id="tipoTosaServico">
-                <option value="">Sem tipo de tosa</option>
-                <option value="Geral">Geral</option>
-                <option value="Verão">Verão</option>
-                <option value="Bebê">Bebê</option>
-                <option value="Tesoura">Tesoura</option>
-            </select>
-
-            <input type="number" id="precoServico" placeholder="Preço" step="0.01">
-
-            <button onclick="salvarServico()">Adicionar Regra</button>
+        <div class="catalog-command-center">
+            <div class="catalog-search-wrap">
+                <span>⌕</span>
+                <input type="text" id="catalogoBusca" placeholder="Buscar serviço, espécie, porte ou variação" oninput="renderizarServicosAdmin()">
+            </div>
+            <div class="catalog-view-tabs" id="catalogoTabs">
+                <button class="active" data-catalog-tab="caes-banho" onclick="selecionarAbaCatalogo('caes-banho')">Banho • Cães</button>
+                <button data-catalog-tab="caes-tosa" onclick="selecionarAbaCatalogo('caes-tosa')">Tosa • Cães</button>
+                <button data-catalog-tab="gatos" onclick="selecionarAbaCatalogo('gatos')">Gatos</button>
+                <button data-catalog-tab="avulsos" onclick="selecionarAbaCatalogo('avulsos')">Avulsos</button>
+                <button data-catalog-tab="todos" onclick="selecionarAbaCatalogo('todos')">Todas as regras</button>
+            </div>
         </div>
 
-        <div class="pricing-help">
-            <strong>Exemplos:</strong><br>
-            Banho &gt; Médio &gt; Curto &gt; R$ 60,00<br>
-            Tosa &gt; Médio &gt; Verão &gt; R$ 95,00<br>
-            Banho a Seco &gt; sem porte/pelagem/tosa &gt; R$ 80,00
+        <div class="catalog-bulk-panel">
+            <div class="catalog-bulk-heading">
+                <div>
+                    <span>REAJUSTE EM MASSA</span>
+                    <h3>Simule antes de aplicar</h3>
+                </div>
+                <strong id="catalogoBulkPreview">Nenhuma simulação ativa</strong>
+            </div>
+            <div class="catalog-bulk-grid">
+                <label>
+                    <span>Aplicar em</span>
+                    <select id="catalogoBulkEscopo">
+                        <option value="aba">Aba atual</option>
+                        <option value="todos">Catálogo inteiro</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Tipo de ajuste</span>
+                    <select id="catalogoBulkTipo" onchange="atualizarPreviaReajusteCatalogo()">
+                        <option value="percentual">Percentual</option>
+                        <option value="fixo">Valor fixo</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Valor</span>
+                    <input type="number" id="catalogoBulkValor" placeholder="Ex.: 10" step="0.01" oninput="atualizarPreviaReajusteCatalogo()">
+                </label>
+                <label>
+                    <span>Arredondar</span>
+                    <select id="catalogoBulkArredondamento" onchange="atualizarPreviaReajusteCatalogo()">
+                        <option value="centavos">Manter centavos</option>
+                        <option value="inteiro">Para real inteiro</option>
+                        <option value="cinco">Para múltiplos de R$ 5</option>
+                    </select>
+                </label>
+                <button class="catalog-simulate-button" onclick="aplicarReajusteCatalogo()">Aplicar à edição</button>
+            </div>
+            <p class="catalog-bulk-note">O reajuste só chega ao Firebase quando você clicar em <strong>Salvar alterações</strong>.</p>
         </div>
 
-        <div class="service-filters">
-            <h3>Filtrar regras cadastradas</h3>
+        <div id="catalogoAlteracoesBar" class="catalog-changes-bar" hidden>
+            <div>
+                <strong id="catalogoAlteracoesQtd">0 alterações pendentes</strong>
+                <span>Revise os campos destacados antes de salvar.</span>
+            </div>
+            <button class="secondary-button" onclick="descartarAlteracoesCatalogo()">Desfazer tudo</button>
+        </div>
 
-            <div class="service-filter-grid">
-                <input type="text" id="filtroNomeServico" placeholder="Filtrar por serviço. Ex: Banho" oninput="renderizarServicosAdmin()">
+        <div id="listaServicosAdmin" class="catalog-editor"></div>
 
-                <select id="filtroPorteServico" onchange="renderizarServicosAdmin()">
-                    <option value="">Todos os portes</option>
+        <details class="catalog-create-panel">
+            <summary>
+                <span>＋</span>
+                <div>
+                    <strong>Adicionar nova regra</strong>
+                    <small>Cadastre um serviço ou uma nova combinação de preço.</small>
+                </div>
+            </summary>
+            <div class="service-form service-form-pricing catalog-create-grid">
+                <input type="text" id="nomeServico" placeholder="Nome do serviço">
+                <select id="especieServico">
+                    <option value="Cão">Cão</option>
+                    <option value="Gato">Gato</option>
+                    <option value="Ambos">Ambos</option>
+                </select>
+                <select id="porteServico">
+                    <option value="">Sem porte</option>
                     <option value="Pequeno">Pequeno</option>
                     <option value="Médio">Médio</option>
                     <option value="Grande">Grande</option>
-                    <option value="__sem__">Sem porte</option>
                 </select>
-
-                <select id="filtroPelagemServico" onchange="renderizarServicosAdmin()">
-                    <option value="">Todas as pelagens</option>
+                <select id="pelagemServico">
+                    <option value="">Sem pelagem</option>
                     <option value="Curto">Curto</option>
                     <option value="Médio">Médio</option>
                     <option value="Longo">Longo</option>
-                    <option value="__sem__">Sem pelagem</option>
                 </select>
-
-                <select id="filtroTipoTosaServico" onchange="renderizarServicosAdmin()">
-                    <option value="">Todos os tipos de tosa</option>
+                <select id="tipoTosaServico">
+                    <option value="">Sem tipo de tosa</option>
                     <option value="Geral">Geral</option>
                     <option value="Verão">Verão</option>
                     <option value="Bebê">Bebê</option>
                     <option value="Tesoura">Tesoura</option>
-                    <option value="__sem__">Sem tipo</option>
                 </select>
-
-                <button class="secondary-button" onclick="limparFiltrosServicos()">Limpar Filtros</button>
+                <input type="number" id="precoServico" placeholder="Preço" step="0.01">
+                <button onclick="salvarServico()">Adicionar regra</button>
             </div>
-        </div>
+        </details>
 
-        <div id="listaServicosAdmin" class="service-list"></div>
+        <details class="catalog-history-panel">
+            <summary>Histórico local de alterações recentes</summary>
+            <div id="catalogoHistorico"></div>
+        </details>
     </section>
 
 </main>
