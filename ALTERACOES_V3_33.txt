@@ -1,0 +1,13 @@
+PETLYNE V3.33 - CLUBE PETLYNE
+
+- Clube PetLyne separado do CRM Growth em módulo próprio.
+- Cada cliente aparece uma única vez com todos os pets vinculados.
+- Contagem exclusiva de atendimentos LYNE concluídos; PACK permanece fora.
+- Ciclos de 10 banhos, com hidratação no 5º e banho grátis no 10º.
+- Nova coleção clubePetlyneResgates para registrar benefícios utilizados.
+- Botões de registro de utilização com confirmação.
+- Benefícios pendentes permanecem visíveis até o resgate ser registrado.
+- Histórico de resgates por cliente.
+- Filtros, pesquisa e indicadores do programa.
+- Alteração de telefone não perde o histórico, pois o agrupamento usa o nome normalizado do dono e atualiza o contato pelo cadastro atual.
+- O agendamento online permanece sem exibir o Clube PetLyne nesta etapa.

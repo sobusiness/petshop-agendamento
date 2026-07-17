@@ -9,6 +9,7 @@ let crmRegistrosCalculados = [];
 let crmRegistrosPorChave = new Map();
 let crmUltimaAtualizacao = null;
 let crmVisaoAtual = "pendentes";
+let clubePetlyneResgates = [];
 const racasPorteGatosPetlyneAdmin = [{"raca": "Abissínio", "porte": "Único"}, {"raca": "American Bobtail", "porte": "Único"}, {"raca": "American Curl", "porte": "Único"}, {"raca": "American Shorthair", "porte": "Único"}, {"raca": "Angorá Turco", "porte": "Único"}, {"raca": "Azul Russo", "porte": "Único"}, {"raca": "Balinês", "porte": "Único"}, {"raca": "Bengal", "porte": "Único"}, {"raca": "Birmanês", "porte": "Único"}, {"raca": "Bobtail Japonês", "porte": "Único"}, {"raca": "Bombay", "porte": "Único"}, {"raca": "British Longhair", "porte": "Único"}, {"raca": "British Shorthair", "porte": "Único"}, {"raca": "Burmilla", "porte": "Único"}, {"raca": "Burmês", "porte": "Único"}, {"raca": "Chartreux", "porte": "Único"}, {"raca": "Chausie", "porte": "Único"}, {"raca": "Cornish Rex", "porte": "Único"}, {"raca": "Cymric", "porte": "Único"}, {"raca": "Devon Rex", "porte": "Único"}, {"raca": "Egyptian Mau", "porte": "Único"}, {"raca": "Exótico", "porte": "Único"}, {"raca": "Havana Brown", "porte": "Único"}, {"raca": "Himalaio", "porte": "Único"}, {"raca": "Khao Manee", "porte": "Único"}, {"raca": "Kurilian Bobtail", "porte": "Único"}, {"raca": "LaPerm", "porte": "Único"}, {"raca": "Maine Coon", "porte": "Único"}, {"raca": "Manx", "porte": "Único"}, {"raca": "Munchkin", "porte": "Único"}, {"raca": "Norueguês da Floresta", "porte": "Único"}, {"raca": "Ocicat", "porte": "Único"}, {"raca": "Oriental Longhair", "porte": "Único"}, {"raca": "Oriental Shorthair", "porte": "Único"}, {"raca": "Persa", "porte": "Único"}, {"raca": "Peterbald", "porte": "Único"}, {"raca": "Ragdoll", "porte": "Único"}, {"raca": "Savannah", "porte": "Único"}, {"raca": "Scottish Fold", "porte": "Único"}, {"raca": "Selkirk Rex", "porte": "Único"}, {"raca": "Sem Raça Definida (SRD)", "porte": "Único"}, {"raca": "Siamês", "porte": "Único"}, {"raca": "Siberiano", "porte": "Único"}, {"raca": "Singapura", "porte": "Único"}, {"raca": "Somali", "porte": "Único"}, {"raca": "Sphynx", "porte": "Único"}, {"raca": "Tonquinês", "porte": "Único"}, {"raca": "Toyger", "porte": "Único"}];
 const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca": "Akita Americano", "porte": "Grande"}, {"raca": "Alaskan Malamute", "porte": "Grande"}, {"raca": "American Pit Bull Terrier", "porte": "Médio"}, {"raca": "American Staffordshire Terrier", "porte": "Médio"}, {"raca": "Australian Shepherd", "porte": "Médio"}, {"raca": "Basset Hound", "porte": "Médio"}, {"raca": "Beagle", "porte": "Médio"}, {"raca": "Bernese Mountain Dog", "porte": "Grande"}, {"raca": "Bichon Frisé", "porte": "Pequeno"}, {"raca": "Border Collie", "porte": "Médio"}, {"raca": "Boston Terrier", "porte": "Pequeno"}, {"raca": "Boxer", "porte": "Grande"}, {"raca": "Buldogue Francês", "porte": "Pequeno"}, {"raca": "Bulldog Inglês", "porte": "Médio"}, {"raca": "Bullmastiff", "porte": "Grande"}, {"raca": "Cane Corso", "porte": "Grande"}, {"raca": "Cavalier King Charles Spaniel", "porte": "Pequeno"}, {"raca": "Chihuahua", "porte": "Pequeno"}, {"raca": "Chow Chow", "porte": "Médio"}, {"raca": "Cocker Spaniel Americano", "porte": "Médio"}, {"raca": "Cocker Spaniel Inglês", "porte": "Médio"}, {"raca": "Coton de Tuléar", "porte": "Pequeno"}, {"raca": "Dachshund (Salsicha)", "porte": "Pequeno"}, {"raca": "Dobermann", "porte": "Grande"}, {"raca": "Dogue Alemão", "porte": "Grande"}, {"raca": "Dogue de Bordeaux", "porte": "Grande"}, {"raca": "Dálmata", "porte": "Grande"}, {"raca": "Fila Brasileiro", "porte": "Grande"}, {"raca": "Fox Paulistinha (Terrier Brasileiro)", "porte": "Pequeno"}, {"raca": "Golden Retriever", "porte": "Grande"}, {"raca": "Greyhound", "porte": "Grande"}, {"raca": "Husky Siberiano", "porte": "Médio"}, {"raca": "Jack Russell Terrier", "porte": "Pequeno"}, {"raca": "Komondor", "porte": "Grande"}, {"raca": "Kuvasz", "porte": "Grande"}, {"raca": "Labrador Retriever", "porte": "Grande"}, {"raca": "Leonberger", "porte": "Grande"}, {"raca": "Lhasa Apso", "porte": "Pequeno"}, {"raca": "Maltês", "porte": "Pequeno"}, {"raca": "Mastiff", "porte": "Grande"}, {"raca": "Mastino Napolitano", "porte": "Grande"}, {"raca": "Papillon", "porte": "Pequeno"}, {"raca": "Pastor Alemão", "porte": "Grande"}, {"raca": "Pastor Belga", "porte": "Grande"}, {"raca": "Pequinês", "porte": "Pequeno"}, {"raca": "Pinscher", "porte": "Pequeno"}, {"raca": "Poodle Mini", "porte": "Pequeno"}, {"raca": "Poodle Standard", "porte": "Médio"}, {"raca": "Poodle Toy", "porte": "Pequeno"}, {"raca": "Pug", "porte": "Pequeno"}, {"raca": "Rhodesian Ridgeback", "porte": "Grande"}, {"raca": "Rottweiler", "porte": "Grande"}, {"raca": "Samoieda", "porte": "Médio"}, {"raca": "Schnauzer Miniatura", "porte": "Pequeno"}, {"raca": "Schnauzer Standard", "porte": "Médio"}, {"raca": "Sem Raça Grande", "porte": "Grande"}, {"raca": "Sem Raça Médio", "porte": "Médio"}, {"raca": "Sem Raça Pequeno", "porte": "Pequeno"}, {"raca": "Setter Inglês", "porte": "Médio"}, {"raca": "Setter Irlandês", "porte": "Médio"}, {"raca": "Shar Pei", "porte": "Médio"}, {"raca": "Shiba Inu", "porte": "Pequeno"}, {"raca": "Shih Tzu", "porte": "Pequeno"}, {"raca": "Spitz Alemão (Lulu da Pomerânia)", "porte": "Pequeno"}, {"raca": "Springer Spaniel", "porte": "Médio"}, {"raca": "São Bernardo", "porte": "Grande"}, {"raca": "Terra Nova", "porte": "Grande"}, {"raca": "Weimaraner", "porte": "Médio"}, {"raca": "West Highland White Terrier", "porte": "Pequeno"}, {"raca": "Whippet", "porte": "Médio"}, {"raca": "Wolfhound Irlandês", "porte": "Grande"}, {"raca": "Yorkshire Terrier", "porte": "Pequeno"}];
 let bloqueiosAgenda = [];
@@ -46,6 +47,7 @@ async function iniciarDashboard() {
     await carregarPacotesAdmin();
     await carregarClientesAdmin();
     await carregarHistoricoCRM();
+    await carregarClubePetlyneResgates();
     await carregarBloqueiosAgenda();
     renderizarAgenda();
     atualizarFaturamento();
@@ -73,7 +75,7 @@ function abrirSecao(secao) {
 
     document.getElementById(`secao-${secao}`).classList.add("active");
 
-    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "pacotes", "servicos"];
+    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "clube", "pacotes", "servicos"];
     const indice = mapaSecoes.indexOf(secao);
     const botoes = document.querySelectorAll(".tab-button");
 
@@ -88,6 +90,10 @@ function abrirSecao(secao) {
 
     if (secao === "crm") {
         atualizarCRM();
+    }
+
+    if (secao === "clube") {
+        atualizarClubePetlyne();
     }
 }
 
@@ -3058,7 +3064,7 @@ async function atualizarCRM() {
 /* =========================================================
    CRM GROWTH - INTELIGÊNCIA, HISTÓRICO E FIDELIDADE (V3.32)
    ========================================================= */
-const CRM_FIDELIDADE = { metaBanhos: 10, marcoHidratacao: 5 };
+const CLUBE_CONFIG = { metaBanhos: 10, marcoHidratacao: 5 };
 
 function crmNumero(valor) {
     const numero = Number(valor);
@@ -3150,26 +3156,13 @@ function calcularRankingCRM(campo) {
     });
     return [...mapa.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
 }
-function calcularFidelidadeCRM() {
-    const mapa = new Map();
-    agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a)).forEach(a => {
-        const chave=crmChaveAgendamento(a);
-        if(!mapa.has(chave)) mapa.set(chave,{chave,cliente:a.cliente||'Cliente',telefone:a.telefone||'',banhos:0,valor:0,pets:new Set()});
-        const item=mapa.get(chave); item.banhos++; item.valor+=crmNumero(a.valorTotal); if(a.pet)item.pets.add(a.pet);
-    });
-    return [...mapa.values()].map(i => {
-        const ciclo = i.banhos % CRM_FIDELIDADE.metaBanhos;
-        const progresso = ciclo === 0 && i.banhos > 0 ? CRM_FIDELIDADE.metaBanhos : ciclo;
-        return {...i,pets:[...i.pets],progresso,paraHidratacao:Math.max(0,CRM_FIDELIDADE.marcoHidratacao-progresso),paraGratis:Math.max(0,CRM_FIDELIDADE.metaBanhos-progresso),premioDisponivel:i.banhos>0 && ciclo===0};
-    }).sort((a,b)=>b.banhos-a.banhos);
-}
+
 function setCRMVisao(visao) {
     crmVisaoAtual=visao;
     document.querySelectorAll('.crm-view-button').forEach(b=>b.classList.toggle('active',b.dataset.visao===visao));
-    ['pendentes','historico','metricas','fidelidade'].forEach(v=>document.getElementById(`crmPainel-${v}`)?.classList.toggle('active',v===visao));
+    ['pendentes','historico','metricas'].forEach(v=>document.getElementById(`crmPainel-${v}`)?.classList.toggle('active',v===visao));
     if(visao==='historico') renderizarHistoricoCRM();
     if(visao==='metricas') renderizarMetricasCRM();
-    if(visao==='fidelidade') renderizarFidelidadeCRM();
 }
 function renderizarCRMInteligencia() {
     const m=calcularMetricasCRMAvancadas();
@@ -3182,7 +3175,7 @@ function renderizarCRMInteligencia() {
       <article><span>📨</span><div><strong>${m.acoes.length}</strong><small>ações registradas</small></div></article>
       <article><span>🔁</span><div><strong>${m.taxaRetorno.toFixed(1)}%</strong><small>retorno após CRM</small></div></article>
       <article><span>⏳</span><div><strong>${proximo ? (proximo.faltam===0?'Hoje':`${proximo.faltam} dia(s)`) : 'Sem previsão'}</strong><small>${proximo ? `próximo follow-up: ${CRM_CATEGORIAS[proximo.categoria].titulo}` : 'nenhum ciclo próximo'}</small></div></article>`;
-    renderizarHistoricoCRM(); renderizarMetricasCRM(); renderizarFidelidadeCRM();
+    renderizarHistoricoCRM(); renderizarMetricasCRM();
 }
 function renderizarHistoricoCRM() {
     const alvo=document.getElementById('crmHistoricoLista'); if(!alvo)return;
@@ -3216,11 +3209,215 @@ function renderizarMetricasCRM() {
        <section><h4>Portes com mais atendimentos</h4>${barrasRankingCRM(calcularRankingCRM('porte'))}</section>
       </div>`;
 }
-function renderizarFidelidadeCRM() {
-    const alvo=document.getElementById('crmFidelidadeLista'); if(!alvo)return;
-    const busca=normalizarTextoCliente(document.getElementById('crmFidelidadeBusca')?.value||'');
-    let dados=calcularFidelidadeCRM();
-    if(busca) dados=dados.filter(i=>normalizarTextoCliente(`${i.cliente} ${i.telefone} ${i.pets.join(' ')}`).includes(busca));
-    if(!dados.length){alvo.innerHTML='<div class="crm-empty-state">Ainda não há atendimentos LYNE concluídos para o programa.</div>';return;}
-    alvo.innerHTML=dados.map(i=>{const pct=Math.min(100,(i.progresso/CRM_FIDELIDADE.metaBanhos)*100);return `<article class="crm-loyalty-card"><div class="crm-loyalty-head"><div><h4>${escaparHTMLCRM(i.cliente)}</h4><p>${escaparHTMLCRM(i.pets.join(', ')||'Pet')} • ${escaparHTMLCRM(i.telefone)}</p></div><strong>${i.banhos} banho(s)</strong></div><div class="crm-loyalty-progress"><i style="width:${pct}%"></i></div><div class="crm-loyalty-foot"><span>${i.premioDisponivel?'🎁 Banho grátis disponível':i.paraHidratacao>0?`${i.paraHidratacao} para hidratação`:`Hidratação conquistada neste ciclo`}</span><span>${i.premioDisponivel?'Novo ciclo começa após o resgate':`${i.paraGratis} para banho grátis`}</span></div></article>`}).join('');
+
+
+
+// ============================================================
+// CLUBE PETLYNE V3.33 - módulo interno com ciclos e resgates
+// ============================================================
+function clubeNormalizarNome(valor) {
+    return normalizarTextoCliente(String(valor || '').trim());
+}
+
+function clubeChaveCliente(nome) {
+    return `dono:${clubeNormalizarNome(nome)}`;
+}
+
+function clubeDataParaDate(valor) {
+    return dataFirestoreParaDateCRM(valor);
+}
+
+async function carregarClubePetlyneResgates() {
+    try {
+        const snapshot = await db.collection('clubePetlyneResgates').orderBy('criadoEm', 'desc').get();
+        clubePetlyneResgates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } catch (erro) {
+        console.warn('Não foi possível ordenar os resgates do Clube. Tentando consulta simples.', erro);
+        try {
+            const snapshot = await db.collection('clubePetlyneResgates').get();
+            clubePetlyneResgates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (erroSimples) {
+            console.error('Erro ao carregar resgates do Clube PetLyne:', erroSimples);
+            clubePetlyneResgates = [];
+        }
+    }
+}
+
+function calcularClientesClubePetlyne() {
+    const mapa = new Map();
+    const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a));
+
+    concluidos.forEach(a => {
+        const nome = String(a.cliente || 'Cliente').trim();
+        const chave = clubeChaveCliente(nome);
+        if (!mapa.has(chave)) {
+            mapa.set(chave, { chave, cliente: nome, telefone: a.telefone || '', banhos: 0, pets: new Set(), atendimentos: [] });
+        }
+        const item = mapa.get(chave);
+        item.banhos += 1;
+        item.atendimentos.push(a);
+        if (a.pet) item.pets.add(a.pet);
+        if (a.telefone) item.telefone = a.telefone;
+    });
+
+    // Atualiza telefone e pets com o cadastro atual para não perder o vínculo após edição.
+    clientesAdmin.forEach(c => {
+        const chave = clubeChaveCliente(c.cliente);
+        const item = mapa.get(chave);
+        if (!item) return;
+        if (c.telefone) item.telefone = c.telefone;
+        if (c.pet) item.pets.add(c.pet);
+    });
+
+    return [...mapa.values()].map(item => {
+        const ciclosCompletos = Math.floor(item.banhos / CLUBE_CONFIG.metaBanhos);
+        const cicloAtual = ciclosCompletos + 1;
+        const progressoBruto = item.banhos % CLUBE_CONFIG.metaBanhos;
+        const resgates = clubePetlyneResgates.filter(r => r.clienteChave === item.chave && r.status === 'Utilizado');
+
+        const beneficios = [];
+        for (let ciclo = 1; ciclo <= cicloAtual; ciclo++) {
+            const inicio = (ciclo - 1) * CLUBE_CONFIG.metaBanhos;
+            const hidratacaoLiberada = item.banhos >= inicio + CLUBE_CONFIG.marcoHidratacao;
+            const banhoGratisLiberado = item.banhos >= inicio + CLUBE_CONFIG.metaBanhos;
+            const hidratacaoUsada = resgates.some(r => r.ciclo === ciclo && r.tipoBeneficio === 'hidratacao');
+            const banhoGratisUsado = resgates.some(r => r.ciclo === ciclo && r.tipoBeneficio === 'banhoGratis');
+            if (hidratacaoLiberada) beneficios.push({ tipo: 'hidratacao', ciclo, liberado: true, utilizado: hidratacaoUsada });
+            if (banhoGratisLiberado) beneficios.push({ tipo: 'banhoGratis', ciclo, liberado: true, utilizado: banhoGratisUsado });
+        }
+
+        const pendentes = beneficios.filter(b => !b.utilizado);
+        let progresso = progressoBruto;
+        // Se acabou de completar o ciclo e o banho grátis ainda está pendente, mantém 10/10 visualmente.
+        const ultimoGratisPendente = pendentes.some(b => b.tipo === 'banhoGratis' && b.ciclo === ciclosCompletos);
+        if (progressoBruto === 0 && item.banhos > 0 && ultimoGratisPendente) progresso = CLUBE_CONFIG.metaBanhos;
+
+        return {
+            ...item,
+            pets: [...item.pets],
+            ciclosCompletos,
+            cicloAtual: progresso === CLUBE_CONFIG.metaBanhos ? ciclosCompletos : cicloAtual,
+            progresso,
+            beneficios,
+            beneficiosPendentes: pendentes,
+            resgates,
+            faltamHidratacao: progresso < CLUBE_CONFIG.marcoHidratacao ? CLUBE_CONFIG.marcoHidratacao - progresso : 0,
+            faltamBanhoGratis: Math.max(0, CLUBE_CONFIG.metaBanhos - progresso)
+        };
+    }).sort((a, b) => {
+        const prioridade = b.beneficiosPendentes.length - a.beneficiosPendentes.length;
+        return prioridade || b.banhos - a.banhos || a.cliente.localeCompare(b.cliente, 'pt-BR');
+    });
+}
+
+function nomeBeneficioClube(tipo) {
+    return tipo === 'hidratacao' ? 'Hidratação' : 'Banho grátis';
+}
+
+function renderizarIndicadoresClube(dados) {
+    const alvo = document.getElementById('clubeIndicadores');
+    if (!alvo) return;
+    const pendentes = dados.reduce((s, i) => s + i.beneficiosPendentes.length, 0);
+    const hidratacoes = dados.reduce((s, i) => s + i.beneficiosPendentes.filter(b => b.tipo === 'hidratacao').length, 0);
+    const banhosGratis = dados.reduce((s, i) => s + i.beneficiosPendentes.filter(b => b.tipo === 'banhoGratis').length, 0);
+    const resgatados = clubePetlyneResgates.filter(r => r.status === 'Utilizado').length;
+    alvo.innerHTML = `
+      <article><small>Clientes participantes</small><strong>${dados.length}</strong></article>
+      <article><small>Benefícios disponíveis</small><strong>${pendentes}</strong></article>
+      <article><small>Hidratações disponíveis</small><strong>${hidratacoes}</strong></article>
+      <article><small>Banhos grátis disponíveis</small><strong>${banhosGratis}</strong></article>
+      <article><small>Resgates registrados</small><strong>${resgatados}</strong></article>`;
+}
+
+function renderizarClubePetlyne() {
+    const alvo = document.getElementById('clubeLista');
+    if (!alvo) return;
+    const todos = calcularClientesClubePetlyne();
+    renderizarIndicadoresClube(todos);
+
+    const busca = normalizarTextoCliente(document.getElementById('clubeBusca')?.value || '');
+    const filtro = document.getElementById('clubeFiltro')?.value || 'todos';
+    let dados = todos;
+    if (busca) dados = dados.filter(i => normalizarTextoCliente(`${i.cliente} ${i.telefone} ${i.pets.join(' ')}`).includes(busca));
+    if (filtro === 'beneficios') dados = dados.filter(i => i.beneficiosPendentes.length > 0);
+    if (filtro === 'andamento') dados = dados.filter(i => i.progresso > 0 && i.progresso < CLUBE_CONFIG.metaBanhos);
+    if (filtro === 'resgatados') dados = dados.filter(i => i.resgates.length > 0);
+
+    if (!dados.length) {
+        alvo.innerHTML = '<div class="crm-empty-state">Nenhum cliente encontrado para este filtro.</div>';
+        return;
+    }
+
+    alvo.innerHTML = dados.map(i => {
+        const pct = Math.min(100, (i.progresso / CLUBE_CONFIG.metaBanhos) * 100);
+        const pendentes = i.beneficiosPendentes.map(b => `
+          <div class="clube-beneficio-disponivel">
+            <div><strong>${b.tipo === 'hidratacao' ? '💧' : '🎁'} ${nomeBeneficioClube(b.tipo)}</strong><span>Ciclo ${b.ciclo}</span></div>
+            <button type="button" onclick="registrarResgateClube('${i.chave.replace(/'/g, "\\'")}', '${b.tipo}', ${b.ciclo})">Registrar utilização</button>
+          </div>`).join('');
+        const historico = i.resgates.slice(0, 4).map(r => {
+            const data = clubeDataParaDate(r.criadoEm);
+            return `<li>${nomeBeneficioClube(r.tipoBeneficio)} — ciclo ${r.ciclo} — ${data ? data.toLocaleDateString('pt-BR') : 'data indisponível'}</li>`;
+        }).join('');
+        const status = i.beneficiosPendentes.length
+            ? `${i.beneficiosPendentes.length} benefício(s) aguardando utilização`
+            : i.faltamHidratacao > 0
+                ? `Faltam ${i.faltamHidratacao} banho(s) para a hidratação`
+                : `Faltam ${i.faltamBanhoGratis} banho(s) para o banho grátis`;
+        return `<article class="clube-card">
+          <div class="clube-card-head">
+            <div><h3>${escaparHTMLCRM(i.cliente)}</h3><p>${escaparHTMLCRM(i.pets.join(', ') || 'Pet não informado')} ${i.telefone ? `• ${escaparHTMLCRM(i.telefone)}` : ''}</p></div>
+            <div class="clube-total"><strong>${i.banhos}</strong><span>banhos LYNE</span></div>
+          </div>
+          <div class="clube-cycle-row"><span>Ciclo ${i.cicloAtual}</span><strong>${i.progresso} de ${CLUBE_CONFIG.metaBanhos}</strong></div>
+          <div class="clube-progress"><i style="width:${pct}%"></i></div>
+          <p class="clube-status">${escaparHTMLCRM(status)}</p>
+          ${pendentes ? `<div class="clube-beneficios">${pendentes}</div>` : ''}
+          ${historico ? `<details class="clube-historico"><summary>Ver resgates registrados</summary><ul>${historico}</ul></details>` : ''}
+        </article>`;
+    }).join('');
+}
+
+async function registrarResgateClube(clienteChave, tipoBeneficio, ciclo) {
+    const cliente = calcularClientesClubePetlyne().find(i => i.chave === clienteChave);
+    if (!cliente) {
+        alert('Não foi possível localizar o cliente no Clube PetLyne. Atualize a página e tente novamente.');
+        return;
+    }
+    const jaUtilizado = clubePetlyneResgates.some(r => r.clienteChave === clienteChave && r.tipoBeneficio === tipoBeneficio && r.ciclo === ciclo && r.status === 'Utilizado');
+    if (jaUtilizado) {
+        alert('Este benefício já possui utilização registrada.');
+        return;
+    }
+    const beneficio = nomeBeneficioClube(tipoBeneficio);
+    if (!confirm(`Confirmar a utilização de ${beneficio.toLowerCase()} para ${cliente.cliente}, referente ao ciclo ${ciclo}?`)) return;
+    try {
+        await db.collection('clubePetlyneResgates').add({
+            clienteChave,
+            cliente: cliente.cliente,
+            telefone: cliente.telefone || '',
+            pets: cliente.pets,
+            tipoBeneficio,
+            ciclo,
+            status: 'Utilizado',
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await carregarClubePetlyneResgates();
+        renderizarClubePetlyne();
+        alert(`${beneficio} registrada como utilizada com sucesso.`);
+    } catch (erro) {
+        console.error('Erro ao registrar utilização do benefício:', erro);
+        alert('Não foi possível registrar a utilização. Verifique as permissões do Firebase e tente novamente.');
+    }
+}
+
+async function atualizarClubePetlyne() {
+    const botao = document.querySelector('#secao-clube .secondary-button');
+    if (botao) { botao.disabled = true; botao.textContent = 'Atualizando...'; }
+    try {
+        await Promise.all([carregarAgendamentos(), carregarClientesAdmin(), carregarClubePetlyneResgates()]);
+        renderizarClubePetlyne();
+    } finally {
+        if (botao) { botao.disabled = false; botao.textContent = 'Atualizar Clube'; }
+    }
 }

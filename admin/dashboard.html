@@ -32,6 +32,7 @@
         <button class="tab-button" onclick="abrirSecao('dias-horarios')">Dias e Horários</button>
         <button class="tab-button" onclick="abrirSecao('clientes')">Clientes</button>
         <button class="tab-button" onclick="abrirSecao('crm')">CRM Growth</button>
+        <button class="tab-button" onclick="abrirSecao('clube')">Clube PetLyne</button>
         <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
     </nav>
@@ -354,7 +355,6 @@
         <button type="button" class="crm-view-button active" data-visao="pendentes" onclick="setCRMVisao('pendentes')">Pendentes</button>
         <button type="button" class="crm-view-button" data-visao="historico" onclick="setCRMVisao('historico')">Histórico</button>
         <button type="button" class="crm-view-button" data-visao="metricas" onclick="setCRMVisao('metricas')">Resultados e comportamento</button>
-        <button type="button" class="crm-view-button" data-visao="fidelidade" onclick="setCRMVisao('fidelidade')">Clube PetLyne</button>
     </div>
 
     <div id="crmPainel-pendentes" class="crm-view-panel active">
@@ -381,13 +381,36 @@
       <div class="crm-panel-heading"><div><h3>Resultados e comportamento</h3><p>Indicadores calculados com os atendimentos concluídos e o histórico do CRM.</p></div></div>
       <div id="crmMetricasConteudo"></div>
     </div>
-
-    <div id="crmPainel-fidelidade" class="crm-view-panel">
-      <div class="crm-panel-heading"><div><h3>🐾 Clube PetLyne</h3><p>Acompanhamento automático: 5 banhos alcançam o marco de hidratação e 10 banhos completam o ciclo para banho grátis.</p></div><input id="crmFidelidadeBusca" type="text" placeholder="Pesquisar cliente ou pet" oninput="renderizarFidelidadeCRM()"></div>
-      <div id="crmFidelidadeLista" class="crm-loyalty-list"></div>
-    </div>
 </section>
 
+
+<section id="secao-clube" class="admin-section">
+  <div class="section-title-row clube-title-row">
+    <div>
+      <h2>🐾 Clube PetLyne</h2>
+      <p>Programa interno de fidelidade com controle de ciclos, benefícios liberados e resgates.</p>
+    </div>
+    <button type="button" class="secondary-button" onclick="atualizarClubePetlyne()">Atualizar Clube</button>
+  </div>
+
+  <div class="clube-regra-alert">
+    <strong>Regra atual:</strong> a cada ciclo de 10 atendimentos avulsos LYNE concluídos, o cliente conquista uma hidratação no 5º banho e um banho grátis no 10º. Registros PACK não entram neste módulo.
+  </div>
+
+  <div class="clube-kpi-grid" id="clubeIndicadores"></div>
+
+  <div class="clube-toolbar">
+    <input id="clubeBusca" type="text" placeholder="Pesquisar cliente, pet ou telefone" oninput="renderizarClubePetlyne()">
+    <select id="clubeFiltro" onchange="renderizarClubePetlyne()">
+      <option value="todos">Todos os clientes</option>
+      <option value="beneficios">Com benefício disponível</option>
+      <option value="andamento">Ciclo em andamento</option>
+      <option value="resgatados">Com resgate registrado</option>
+    </select>
+  </div>
+
+  <div id="clubeLista" class="clube-list"></div>
+</section>
 
     <section id="secao-pacotes" class="admin-section">
         <div class="section-title-row">
