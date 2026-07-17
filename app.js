@@ -625,9 +625,9 @@ function minutosParaHorario(minutos) {
     return `${hora.toString().padStart(2, "0")}:${minuto.toString().padStart(2, "0")}`;
 }
 
-function obterSlotsBloqueadosPorPeriodo(horarioInicio, duracaoMinutos = 60) {
+function obterSlotsBloqueadosPorPeriodo(horarioInicio, duracaoMinutos = 30) {
     const inicio = horarioParaMinutos(horarioInicio);
-    const fim = inicio + Number(duracaoMinutos || 60);
+    const fim = inicio + Number(duracaoMinutos || 30);
     const slots = [];
 
     for (let minuto = inicio; minuto < fim; minuto += 30) {
@@ -638,21 +638,7 @@ function obterSlotsBloqueadosPorPeriodo(horarioInicio, duracaoMinutos = 60) {
 }
 
 function calcularDuracaoAgendamentoMinutos() {
-    const especie = document.getElementById("especie")?.value || "";
-    const raca = (document.getElementById("raca")?.value || "").toLowerCase();
-    const servicoPrincipal = document.getElementById("servicoPrincipal")?.value || "";
-    const servicoFirebase = obterServicoPrincipalSelecionado();
-    const nomeServico = (servicoFirebase?.nome || servicoPrincipal || "").toLowerCase();
-
-    const ehGolden = raca.includes("golden");
-    const ehBanhoGolden = ehGolden && nomeServico.includes("banho");
-    const ehTrimmingGolden = ehGolden && nomeServico.includes("trimming");
-
-    if (especie === "Cão" && (ehBanhoGolden || ehTrimmingGolden)) {
-        return 120;
-    }
-
-    return 60;
+    return 30;
 }
 
 function horarioEstaOcupadoPorPeriodo(horario, agendamentos) {
@@ -661,7 +647,7 @@ function horarioEstaOcupadoPorPeriodo(horario, agendamentos) {
 
     return agendamentos.some(agendamento => {
         const inicioExistente = horarioParaMinutos(agendamento.horario);
-        const duracaoExistente = Number(agendamento.duracaoMinutos || 60);
+        const duracaoExistente = 30;
         const fimExistente = inicioExistente + duracaoExistente;
 
         return inicio < fimExistente && fim > inicioExistente;
@@ -1521,9 +1507,9 @@ function atualizarBotaoWhatsappAgendamento(dados, protocolo) {
 
 function horariosSobrepostosPorDuracao(inicioA, duracaoA, inicioB, duracaoB) {
     const aInicio = horarioParaMinutos(inicioA);
-    const aFim = aInicio + Number(duracaoA || 60);
+    const aFim = aInicio + Number(duracaoA || 30);
     const bInicio = horarioParaMinutos(inicioB);
-    const bFim = bInicio + Number(duracaoB || 60);
+    const bFim = bInicio + Number(duracaoB || 30);
 
     return aInicio < bFim && aFim > bInicio;
 }
@@ -1536,7 +1522,7 @@ function horarioOcupadoPorPeriodoComDuracao(horario, duracaoMinutos, agendamento
             horario,
             duracaoMinutos,
             agendamento.horario,
-            Number(agendamento.duracaoMinutos || 60)
+            30
         );
     });
 }

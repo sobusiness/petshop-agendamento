@@ -1,0 +1,10 @@
+PETLYNE V3.34 - AGENDA EM INTERVALOS DE 30 MINUTOS
+
+- Removido o controle manual de duração dos cartões de agendamento no painel administrativo.
+- Todos os agendamentos LYNE e PACK passam a ocupar apenas o intervalo selecionado de 30 minutos.
+- Removida a regra padrão que bloqueava 1 hora ou mais conforme serviço/raça.
+- Horários disponíveis no agendamento online: 09:00 a 16:30, de 30 em 30 minutos.
+- Intervalo de almoço preservado: 12:00 e 12:30 indisponíveis.
+- Último horário permitido: 16:30.
+- A agenda administrativa também passa a exibir apenas os slots de 09:00 a 16:30.
+- O bloqueio administrativo permite usar 17:00 somente como horário final do período.

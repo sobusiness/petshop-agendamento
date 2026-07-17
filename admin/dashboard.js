@@ -24,12 +24,9 @@ let chartServico = null;
 
 const horasAgenda = [];
 
-for (let hora = 9; hora <= 17; hora++) {
+for (let hora = 9; hora <= 16; hora++) {
     horasAgenda.push(`${hora.toString().padStart(2, "0")}:00`);
-
-    if (hora < 17) {
-        horasAgenda.push(`${hora.toString().padStart(2, "0")}:30`);
-    }
+    horasAgenda.push(`${hora.toString().padStart(2, "0")}:30`);
 }
 
 auth.onAuthStateChanged(user => {
@@ -214,24 +211,24 @@ function minutosParaHorario(minutos) {
 
 function horariosSobrepostos(inicioA, duracaoA, inicioB, duracaoB) {
     const aInicio = horarioParaMinutos(inicioA);
-    const aFim = aInicio + Number(duracaoA || 60);
+    const aFim = aInicio + Number(duracaoA || 30);
     const bInicio = horarioParaMinutos(inicioB);
-    const bFim = bInicio + Number(duracaoB || 60);
+    const bFim = bInicio + Number(duracaoB || 30);
 
     return aInicio < bFim && aFim > bInicio;
 }
 
-function existeConflitoHorario(data, horario, duracaoMinutos = 60, ignorarAgendamentoId = null) {
+function existeConflitoHorario(data, horario, duracaoMinutos = 30, ignorarAgendamentoId = null) {
     return agendamentos.some(item => {
         if (item.id === ignorarAgendamentoId) return false;
         if (item.data !== data) return false;
 
-        return horariosSobrepostos(horario, duracaoMinutos, item.horario, Number(item.duracaoMinutos || 60));
+        return horariosSobrepostos(horario, duracaoMinutos, item.horario, 30);
     });
 }
 
 
-function existeBloqueioHorario(data, horario, duracaoMinutos = 60, ignorarBloqueioId = null) {
+function existeBloqueioHorario(data, horario, duracaoMinutos = 30, ignorarBloqueioId = null) {
     return bloqueiosAgenda.some(bloqueio => {
         if (bloqueio.id === ignorarBloqueioId) return false;
         if (bloqueio.status !== "Ativo") return false;
@@ -254,7 +251,7 @@ function obterBloqueioHorario(data, horario) {
     });
 }
 
-function existeConflitoAgendaOuBloqueio(data, horario, duracaoMinutos = 60) {
+function existeConflitoAgendaOuBloqueio(data, horario, duracaoMinutos = 30) {
     return existeConflitoHorario(data, horario, duracaoMinutos) || existeBloqueioHorario(data, horario, duracaoMinutos);
 }
 
@@ -421,7 +418,7 @@ function renderizarAgenda() {
                 const agendamento = agendamentos.find(item =>
                     item.data === data &&
                     agendamentoBateFiltroProtocolo(item) &&
-                    horariosSobrepostos(hora, 30, item.horario, Number(item.duracaoMinutos || 60))
+                    horariosSobrepostos(hora, 30, item.horario, 30)
                 );
 
                 if (agendamento) {
@@ -454,17 +451,6 @@ function renderizarAgenda() {
                                 ${ehInicio ? `<span class="agenda-label">Obs.</span>${agendamento.observacaoPet || ""}` : ""}
                             </div>
                             ${ehInicio ? `
-                                <div class="agenda-duration-control">
-                                    <label>Duração</label>
-                                    <select onchange="atualizarDuracaoAgendamento('${agendamento.id}', this.value)">
-                                        <option value="30" ${Number(agendamento.duracaoMinutos || 60) === 30 ? "selected" : ""}>30 min</option>
-                                        <option value="60" ${Number(agendamento.duracaoMinutos || 60) === 60 ? "selected" : ""}>1h</option>
-                                        <option value="90" ${Number(agendamento.duracaoMinutos || 60) === 90 ? "selected" : ""}>1h30</option>
-                                        <option value="120" ${Number(agendamento.duracaoMinutos || 60) === 120 ? "selected" : ""}>2h</option>
-                                        <option value="150" ${Number(agendamento.duracaoMinutos || 60) === 150 ? "selected" : ""}>2h30</option>
-                                        <option value="180" ${Number(agendamento.duracaoMinutos || 60) === 180 ? "selected" : ""}>3h</option>
-                                    </select>
-                                </div>
                                 <div class="agenda-event-actions">
                                     <button onclick="concluirAgendamento('${agendamento.id}')">Concluir</button>
                                     <button class="secondary-button" onclick="cancelarAgendamento('${agendamento.id}')">Cancelar</button>
@@ -1653,8 +1639,8 @@ function preencherHorariosBloqueio() {
         inicio.appendChild(optInicio);
     });
 
-    horasAgenda
-        .filter(horario => horario !== "12:00" && horario !== "12:30")
+    [...horasAgenda, "17:00"]
+        .filter(horario => horario !== "12:30")
         .forEach(horario => {
             const optFim = document.createElement("option");
             optFim.value = horario;
@@ -2082,7 +2068,7 @@ function existeConflitoPacote(datas, horario) {
         .map(data => {
             const agendamento = agendamentos.find(item => {
                 if (item.data !== data) return false;
-                return horariosSobrepostos(horario, 60, item.horario, Number(item.duracaoMinutos || 60));
+                return horariosSobrepostos(horario, 30, item.horario, 30);
             });
 
             if (agendamento) return { data, horario, agendamento };
@@ -2179,7 +2165,7 @@ async function salvarPacote() {
             data: visita.data,
             dataFormatada: formatarDataCurta(visita.data),
             horario: visita.horario,
-            duracaoMinutos: 60,
+            duracaoMinutos: 30,
             servicos: [{ nome: `Pacote ${tipo}`, valor: valorPorVisita }],
             valorTotal: valorPorVisita,
             status: "Pacote",
