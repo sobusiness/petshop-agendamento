@@ -1178,26 +1178,12 @@ function atualizarPorteClienteAdmin(id) {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 function alternarFormularioNovoCliente() {
-    const form = document.getElementById("formNovoCliente");
-    if (!form) return;
+    const formulario = document.getElementById("formNovoCliente");
+    if (!formulario) return;
 
-    const abrir = form.style.display === "none" || form.style.display === "";
-    form.style.display = abrir ? "block" : "none";
+    const abrir = formulario.style.display === "none" || formulario.style.display === "";
+    formulario.style.display = abrir ? "block" : "none";
 
     if (abrir) {
         configurarMascaraNovoCliente();
@@ -1225,7 +1211,9 @@ function atualizarRacasNovoCliente() {
 
     selectRaca.innerHTML = gerarOptionsRacasAdmin("", especie);
 
-    if (campoPorte) campoPorte.value = "";
+    if (campoPorte) {
+        campoPorte.value = "";
+    }
 }
 
 function atualizarPorteNovoCliente() {
@@ -1234,7 +1222,9 @@ function atualizarPorteNovoCliente() {
     const porte = obterPortePorRacaAdmin(raca, especie);
     const campoPorte = document.getElementById("novoClientePorte");
 
-    if (campoPorte) campoPorte.value = porte || "";
+    if (campoPorte) {
+        campoPorte.value = porte || "";
+    }
 }
 
 function limparFormularioNovoCliente() {
@@ -1248,11 +1238,16 @@ function limparFormularioNovoCliente() {
         if (campo) campo.value = "";
     });
 
-    const raca = document.getElementById("novoClienteRaca");
-    const porte = document.getElementById("novoClientePorte");
+    const selectRaca = document.getElementById("novoClienteRaca");
+    const campoPorte = document.getElementById("novoClientePorte");
 
-    if (raca) raca.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
-    if (porte) porte.value = "";
+    if (selectRaca) {
+        selectRaca.innerHTML = `<option value="">Selecione a espécie primeiro</option>`;
+    }
+
+    if (campoPorte) {
+        campoPorte.value = "";
+    }
 }
 
 async function gravarNovoCliente() {
@@ -1269,7 +1264,16 @@ async function gravarNovoCliente() {
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    if (!dados.cliente || !dados.telefone || !dados.pet || !dados.especie || !dados.sexo || !dados.raca || !dados.porte || !dados.observacaoPet) {
+    if (
+        !dados.cliente ||
+        !dados.telefone ||
+        !dados.pet ||
+        !dados.especie ||
+        !dados.sexo ||
+        !dados.raca ||
+        !dados.porte ||
+        !dados.observacaoPet
+    ) {
         await mostrarAvisoAdmin({
             titulo: "Campos obrigatórios",
             mensagem: "Preencha todos os campos do cadastro.",
@@ -1295,7 +1299,7 @@ async function gravarNovoCliente() {
     if (existente.exists) {
         await mostrarAvisoAdmin({
             titulo: "Cadastro já existente",
-            mensagem: "Já existe um cadastro para este telefone e pet.",
+            mensagem: "Já existe um cadastro para este telefone e pet. Use a pesquisa para editar o registro.",
             icone: "⚠️"
         });
         return;
@@ -1304,7 +1308,11 @@ async function gravarNovoCliente() {
     await db.collection("clientes").doc(clienteId).set(dados);
 
     limparFormularioNovoCliente();
-    document.getElementById("formNovoCliente").style.display = "none";
+
+    const formulario = document.getElementById("formNovoCliente");
+    if (formulario) {
+        formulario.style.display = "none";
+    }
 
     await carregarClientesAdmin();
 
@@ -1317,7 +1325,7 @@ async function gravarNovoCliente() {
 
     await mostrarAvisoAdmin({
         titulo: "Cliente cadastrado",
-        mensagem: "O novo cliente foi gravado com sucesso.",
+        mensagem: "O novo cliente foi gravado com sucesso e já está disponível no agendamento online.",
         icone: "✅"
     });
 }
