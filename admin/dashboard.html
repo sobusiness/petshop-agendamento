@@ -54,6 +54,35 @@
         </div>
 <div id="agendaFiltroInfo" class="filter-info"></div>
 
+        <div id="agendaPainelOperacional" class="agenda-ops-panel" aria-live="polite">
+            <div class="agenda-ops-heading">
+                <div>
+                    <span class="agenda-ops-eyebrow">Painel operacional</span>
+                    <strong id="agendaOpsData">Hoje</strong>
+                </div>
+                <div class="agenda-occupancy-summary">
+                    <span id="agendaOpsOcupacaoTexto">0 de 14 horários ocupados</span>
+                    <strong id="agendaOpsOcupacao">0%</strong>
+                </div>
+            </div>
+            <div class="agenda-occupancy-track" aria-hidden="true"><span id="agendaOpsOcupacaoBarra"></span></div>
+            <div class="agenda-ops-grid">
+                <article class="agenda-ops-card"><span>Agendamentos</span><strong id="agendaOpsTotal">0</strong></article>
+                <article class="agenda-ops-card"><span>Concluídos</span><strong id="agendaOpsConcluidos">0</strong></article>
+                <article class="agenda-ops-card"><span>Pendentes</span><strong id="agendaOpsPendentes">0</strong></article>
+                <article class="agenda-ops-card"><span>Previsto</span><strong id="agendaOpsPrevisto">R$ 0,00</strong></article>
+                <article class="agenda-ops-card"><span>Avulsos</span><strong id="agendaOpsLyne">0</strong></article>
+                <article class="agenda-ops-card"><span>Pacotes</span><strong id="agendaOpsPack">0</strong></article>
+            </div>
+        </div>
+
+        <div class="agenda-legend" aria-label="Legenda da agenda">
+            <span><i class="legend-dot legend-confirmado"></i>Agendado</span>
+            <span><i class="legend-dot legend-concluido"></i>Concluído</span>
+            <span><i class="legend-dot legend-pack"></i>Pacote</span>
+            <span><i class="legend-dot legend-bloqueio"></i>Bloqueio</span>
+        </div>
+
         <div class="agenda-scroll-tools">
             <button type="button" class="secondary-button" onclick="moverScrollAgenda(-450)">← Voltar datas</button>
             <button type="button" class="secondary-button" onclick="moverScrollAgenda(450)">Avançar datas →</button>

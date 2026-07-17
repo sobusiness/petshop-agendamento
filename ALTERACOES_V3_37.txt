@@ -1,0 +1,12 @@
+PETLYNE V3.37 - COCKPIT OPERACIONAL DA AGENDA
+
+- Painel operacional do dia com total, concluídos, pendentes, receita prevista, avulsos e pacotes.
+- Barra de ocupação diária considerando 14 horários disponíveis de 30 minutos.
+- Cabeçalhos com dia da semana e data em formato mais visual.
+- Destaque da coluna de hoje e do intervalo atual.
+- Identificação visual imediata de atendimento avulso e pacote.
+- Barra lateral por status: agendado, concluído, pacote e bloqueio.
+- Ícones compactos nas informações do cartão.
+- Valor com maior destaque.
+- Legenda visual e efeitos sutis de interação.
+- Nenhuma regra de negócio ou disponibilidade foi alterada.

@@ -2395,3 +2395,255 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
         gap: 3px;
     }
 }
+
+/* V3.37 - Cockpit operacional e leitura visual premium da agenda */
+#secao-agendamentos .agenda-ops-panel {
+    margin: 14px 0 10px;
+    padding: 13px 15px;
+    border: 1px solid rgba(202, 72, 113, .22);
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(255,241,246,.92));
+    box-shadow: 0 7px 20px rgba(121, 61, 80, .06);
+}
+
+#secao-agendamentos .agenda-ops-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+#secao-agendamentos .agenda-ops-heading > div:first-child {
+    display: grid;
+    gap: 2px;
+}
+
+#secao-agendamentos .agenda-ops-eyebrow {
+    color: var(--pet-primary-dark);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+#secao-agendamentos #agendaOpsData {
+    color: var(--pet-text);
+    font-size: 15px;
+    text-transform: capitalize;
+}
+
+#secao-agendamentos .agenda-occupancy-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    color: var(--pet-text-soft);
+    font-size: 10px;
+}
+
+#secao-agendamentos .agenda-occupancy-summary strong {
+    color: var(--pet-primary-dark);
+    font-size: 17px;
+}
+
+#secao-agendamentos .agenda-occupancy-track {
+    height: 7px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(202, 72, 113, .12);
+}
+
+#secao-agendamentos .agenda-occupancy-track span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #cf4b78, #e482a1);
+    transition: width .35s ease;
+}
+
+#secao-agendamentos .agenda-ops-grid {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 7px;
+    margin-top: 10px;
+}
+
+#secao-agendamentos .agenda-ops-card {
+    min-width: 0;
+    padding: 8px 10px;
+    border: 1px solid rgba(202, 72, 113, .14);
+    border-radius: 10px;
+    background: rgba(255,255,255,.72);
+}
+
+#secao-agendamentos .agenda-ops-card span {
+    display: block;
+    overflow: hidden;
+    color: var(--pet-text-soft);
+    font-size: 9px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#secao-agendamentos .agenda-ops-card strong {
+    display: block;
+    margin-top: 2px;
+    color: var(--pet-primary-dark);
+    font-size: 15px;
+}
+
+#secao-agendamentos .agenda-legend {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 4px 0 2px;
+    color: var(--pet-text-soft);
+    font-size: 9px;
+    font-weight: 700;
+}
+
+#secao-agendamentos .agenda-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+#secao-agendamentos .legend-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+}
+
+#secao-agendamentos .legend-confirmado { background: #d99a33; }
+#secao-agendamentos .legend-concluido { background: #37a86d; }
+#secao-agendamentos .legend-pack { background: #5f8fd4; }
+#secao-agendamentos .legend-bloqueio { background: #8d8588; }
+
+#secao-agendamentos .agenda-header {
+    display: grid;
+    align-content: center;
+    gap: 1px;
+}
+
+#secao-agendamentos .agenda-date-weekday {
+    color: var(--pet-text-soft);
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: .08em;
+}
+
+#secao-agendamentos .agenda-header strong {
+    color: var(--pet-primary-dark);
+    font-size: 11px;
+}
+
+#secao-agendamentos .agenda-header-today {
+    background: rgba(202, 72, 113, .13);
+    box-shadow: inset 0 -2px 0 var(--pet-primary);
+}
+
+#secao-agendamentos .agenda-cell-today {
+    background: rgba(255, 249, 251, .72);
+}
+
+#secao-agendamentos .agenda-cell-now {
+    position: relative;
+    background: rgba(255, 239, 245, .92);
+}
+
+#secao-agendamentos .agenda-cell-now::before {
+    content: "AGORA";
+    position: absolute;
+    z-index: 2;
+    top: -7px;
+    left: 4px;
+    padding: 1px 5px;
+    border-radius: 999px;
+    background: var(--pet-primary);
+    color: #fff;
+    font-size: 7px;
+    font-weight: 900;
+    letter-spacing: .06em;
+}
+
+#secao-agendamentos .agenda-event {
+    position: relative;
+    overflow: hidden;
+    border-width: 1px 1px 1px 4px;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+
+#secao-agendamentos .agenda-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 7px 16px rgba(112, 58, 77, .11);
+}
+
+#secao-agendamentos .agenda-event-lyne { border-left-color: #cf4b78; }
+#secao-agendamentos .agenda-event-pack { border-left-color: #5f8fd4; background: linear-gradient(135deg, #f3f7ff, #fff4f7); }
+#secao-agendamentos .agenda-event-done { border-left-color: #37a86d; }
+#secao-agendamentos .agenda-event-open:not(.agenda-event-pack) { border-left-color: #d99a33; }
+
+#secao-agendamentos .agenda-header-badges {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 3px;
+    min-width: 0;
+}
+
+#secao-agendamentos .agenda-type-badge {
+    padding: 2px 5px;
+    border-radius: 999px;
+    font-size: 7px;
+    font-weight: 900;
+    letter-spacing: .05em;
+}
+
+#secao-agendamentos .type-lyne {
+    background: rgba(207,75,120,.12);
+    color: #ac315e;
+}
+
+#secao-agendamentos .type-pack {
+    background: rgba(95,143,212,.14);
+    color: #3d6aa9;
+}
+
+#secao-agendamentos .agenda-value b {
+    color: #a92957;
+    font-size: 11px;
+}
+
+#secao-agendamentos .agenda-event-actions button {
+    transition: filter .15s ease, transform .15s ease;
+}
+
+#secao-agendamentos .agenda-event-actions button:hover {
+    filter: brightness(.97);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 1100px) {
+    #secao-agendamentos .agenda-ops-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    #secao-agendamentos .agenda-ops-heading {
+        align-items: start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    #secao-agendamentos .agenda-ops-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    #secao-agendamentos .agenda-legend {
+        justify-content: flex-start;
+    }
+}

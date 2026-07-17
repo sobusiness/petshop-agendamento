@@ -136,9 +136,15 @@ function formatarMoeda(valor) {
     });
 }
 
+function obterDataLocalISO(data = new Date()) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+}
+
 function hojeISO() {
-    const hoje = new Date();
-    return hoje.toISOString().slice(0, 10);
+    return obterDataLocalISO(new Date());
 }
 
 function adicionarDias(dataBase, dias) {
@@ -390,6 +396,39 @@ function moverScrollAgenda(delta) {
 }
 
 
+function formatarCabecalhoDataAgenda(dataISO) {
+    const data = new Date(`${dataISO}T12:00:00`);
+    const diaSemana = data.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "").toUpperCase();
+    const diaMes = data.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" }).replace(".", "").toUpperCase();
+    return `<span class="agenda-date-weekday">${diaSemana}</span><strong>${diaMes}</strong>`;
+}
+
+function atualizarPainelOperacionalAgenda() {
+    const hoje = obterDataLocalISO(new Date());
+    const doDia = agendamentos.filter(item => item.data === hoje && normalizarTextoCliente(item.status) !== "cancelado");
+    const concluidos = doDia.filter(item => normalizarTextoCliente(item.status) === "concluido");
+    const pendentes = doDia.length - concluidos.length;
+    const previsto = doDia.reduce((total, item) => total + Number(item.valorTotal || 0), 0);
+    const avulsos = doDia.filter(item => String(item.protocolo || "").toUpperCase().startsWith("LYNE-")).length;
+    const pacotes = doDia.filter(item => String(item.protocolo || "").toUpperCase().startsWith("PACK-")).length;
+    const totalSlots = horasAgenda.filter(h => h !== "12:00" && h !== "12:30").length;
+    const horariosOcupados = new Set(doDia.map(item => item.horario).filter(Boolean)).size;
+    const ocupacao = totalSlots ? Math.min(100, Math.round((horariosOcupados / totalSlots) * 100)) : 0;
+
+    const dataEl = document.getElementById("agendaOpsData");
+    if (!dataEl) return;
+    dataEl.textContent = new Date(`${hoje}T12:00:00`).toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
+    document.getElementById("agendaOpsTotal").textContent = doDia.length;
+    document.getElementById("agendaOpsConcluidos").textContent = concluidos.length;
+    document.getElementById("agendaOpsPendentes").textContent = pendentes;
+    document.getElementById("agendaOpsPrevisto").textContent = formatarMoeda(previsto);
+    document.getElementById("agendaOpsLyne").textContent = avulsos;
+    document.getElementById("agendaOpsPack").textContent = pacotes;
+    document.getElementById("agendaOpsOcupacao").textContent = `${ocupacao}%`;
+    document.getElementById("agendaOpsOcupacaoTexto").textContent = `${horariosOcupados} de ${totalSlots} horários ocupados`;
+    document.getElementById("agendaOpsOcupacaoBarra").style.width = `${ocupacao}%`;
+}
+
 function renderizarAgenda() {
     const calendario = document.getElementById("calendarioAgenda");
     const filtroInfo = document.getElementById("agendaFiltroInfo");
@@ -403,14 +442,20 @@ function renderizarAgenda() {
     calendario.appendChild(criarCelula("Hora", "agenda-cell agenda-header"));
 
     datas.forEach(data => {
-        calendario.appendChild(criarCelula(formatarDataCurta(data), "agenda-cell agenda-header"));
+        calendario.appendChild(criarCelula(formatarCabecalhoDataAgenda(data), `agenda-cell agenda-header ${data === obterDataLocalISO(new Date()) ? "agenda-header-today" : ""}`));
     });
 
     horasAgenda.forEach(hora => {
         calendario.appendChild(criarCelula(hora, "agenda-cell agenda-hour"));
 
         datas.forEach(data => {
-            const cell = criarCelula("", "agenda-cell");
+            const agora = new Date();
+            const hojeISO = obterDataLocalISO(agora);
+            const minutosAgora = agora.getHours() * 60 + agora.getMinutes();
+            const [horaParte, minutoParte] = hora.split(":").map(Number);
+            const minutosSlot = horaParte * 60 + minutoParte;
+            const slotAtual = data === hojeISO && minutosAgora >= minutosSlot && minutosAgora < minutosSlot + 30;
+            const cell = criarCelula("", `agenda-cell ${data === hojeISO ? "agenda-cell-today" : ""} ${slotAtual ? "agenda-cell-now" : ""}`);
 
             if (hora === "12:00" || hora === "12:30") {
                 cell.innerHTML = `<div class="agenda-event"><strong>Almoço</strong></div>`;
@@ -431,31 +476,38 @@ function renderizarAgenda() {
                     const telefoneAgenda = agendamento.telefone || "Telefone não informado";
 
                     const status = agendamento.status || "Confirmado";
-                    const statusClasse = status === "Concluído" ? "status-concluido" : "status-confirmado";
+                    const statusNormalizado = normalizarTextoCliente(status);
+                    const statusClasse = statusNormalizado === "concluido" ? "status-concluido" : statusNormalizado === "cancelado" ? "status-inativo" : "status-confirmado";
                     const ehInicio = agendamento.horario === hora;
+                    const protocolo = String(agendamento.protocolo || "");
+                    const ehPacote = protocolo.toUpperCase().startsWith("PACK-");
+                    const especieIcone = normalizarTextoCliente(agendamento.especie).includes("gato") ? "🐱" : "🐶";
 
                     cell.innerHTML = `
-                        <div class="agenda-event ${!ehInicio ? "agenda-event-bloqueio" : ""}">
+                        <div class="agenda-event ${ehPacote ? "agenda-event-pack" : "agenda-event-lyne"} ${statusNormalizado === "concluido" ? "agenda-event-done" : "agenda-event-open"} ${!ehInicio ? "agenda-event-bloqueio" : ""}">
                             <div class="agenda-event-header">
-                                <strong>${ehInicio ? (agendamento.pet || "Pet") : "Horário bloqueado"}</strong>
-                                <span class="status-badge ${statusClasse}">${ehInicio ? status : "Bloqueado"}</span>
+                                <strong>${ehInicio ? `${especieIcone} ${agendamento.pet || "Pet"}` : "Horário bloqueado"}</strong>
+                                <div class="agenda-header-badges">
+                                    ${ehInicio ? `<span class="agenda-type-badge ${ehPacote ? "type-pack" : "type-lyne"}">${ehPacote ? "PACOTE" : "AVULSO"}</span>` : ""}
+                                    <span class="status-badge ${statusClasse}">${ehInicio ? status : "Bloqueado"}</span>
+                                </div>
                             </div>
                             <div class="agenda-event-info">
                                 ${ehInicio ? `
                                     <div class="agenda-compact-line agenda-client-line">
-                                        <span title="${clienteAgenda.replace(/"/g, '&quot;')}"><b>Cliente:</b> ${clienteAgenda}</span>
-                                        <span title="${telefoneAgenda.replace(/"/g, '&quot;')}"><b>Tel.:</b> ${telefoneAgenda}</span>
+                                        <span title="${clienteAgenda.replace(/"/g, '&quot;')}"><b>👤</b> ${clienteAgenda}</span>
+                                        <span title="${telefoneAgenda.replace(/"/g, '&quot;')}"><b>☎</b> ${telefoneAgenda}</span>
                                     </div>
                                     <div class="agenda-compact-line agenda-service-line" title="${servicos.replace(/"/g, '&quot;')}">
-                                        <b>Serviço:</b> ${servicos}
+                                        <b>✂</b> ${servicos}
                                     </div>
                                     <div class="agenda-compact-line agenda-meta-line">
-                                        <span><b>${valorServico}</b></span>
+                                        <span class="agenda-value"><b>${valorServico}</b></span>
                                         <span>${agendamento.especie || "Não informada"}</span>
                                         <span class="agenda-protocolo">${agendamento.protocolo || ""}</span>
                                     </div>
                                     <div class="agenda-compact-line agenda-observation-line" title="${(agendamento.observacaoPet || "Sem observação").replace(/"/g, '&quot;')}">
-                                        <b>Obs.:</b> ${agendamento.observacaoPet || "Sem observação"}
+                                        <b>📝</b> ${agendamento.observacaoPet || "Sem observação"}
                                     </div>
                                 ` : `Continuação de ${agendamento.horario}`}
                             </div>
@@ -500,6 +552,7 @@ function renderizarAgenda() {
     };
 
     filtroInfo.textContent = textosPeriodo[filtroAgendaPeriodo] || textosPeriodo.todos;
+    atualizarPainelOperacionalAgenda();
 
     setTimeout(atualizarScrollSuperiorAgenda, 0);
     setTimeout(atualizarScrollSuperiorAgenda, 250);
