@@ -346,8 +346,18 @@
         <strong>Escopo atual:</strong> clientes sem histórico PACK e com atendimento avulso LYNE, além de cadastros manuais que ainda não usaram o agendamento online.
     </div>
 
+    <div class="crm-status-line"><span id="crmUltimaAtualizacao">Aguardando atualização</span></div>
+    <div id="crmIndicadoresGerais" class="crm-overview-grid"></div>
     <div id="crmResumo" class="crm-summary-grid"></div>
 
+    <div class="crm-view-tabs">
+        <button type="button" class="crm-view-button active" data-visao="pendentes" onclick="setCRMVisao('pendentes')">Pendentes</button>
+        <button type="button" class="crm-view-button" data-visao="historico" onclick="setCRMVisao('historico')">Histórico</button>
+        <button type="button" class="crm-view-button" data-visao="metricas" onclick="setCRMVisao('metricas')">Resultados e comportamento</button>
+        <button type="button" class="crm-view-button" data-visao="fidelidade" onclick="setCRMVisao('fidelidade')">Clube PetLyne</button>
+    </div>
+
+    <div id="crmPainel-pendentes" class="crm-view-panel active">
     <div class="crm-toolbar">
         <div>
             <h3 id="crmListaTitulo">Todas as ações</h3>
@@ -360,6 +370,22 @@
     </div>
 
     <div id="crmLista" class="crm-list"></div>
+    </div>
+
+    <div id="crmPainel-historico" class="crm-view-panel">
+      <div class="crm-panel-heading"><div><h3>Histórico de ações</h3><p>Consulte todas as mensagens que foram marcadas como enviadas.</p></div><input id="crmHistoricoBusca" type="text" placeholder="Pesquisar histórico" oninput="renderizarHistoricoCRM()"></div>
+      <div id="crmHistoricoLista" class="crm-history-list"></div>
+    </div>
+
+    <div id="crmPainel-metricas" class="crm-view-panel">
+      <div class="crm-panel-heading"><div><h3>Resultados e comportamento</h3><p>Indicadores calculados com os atendimentos concluídos e o histórico do CRM.</p></div></div>
+      <div id="crmMetricasConteudo"></div>
+    </div>
+
+    <div id="crmPainel-fidelidade" class="crm-view-panel">
+      <div class="crm-panel-heading"><div><h3>🐾 Clube PetLyne</h3><p>Acompanhamento automático: 5 banhos alcançam o marco de hidratação e 10 banhos completam o ciclo para banho grátis.</p></div><input id="crmFidelidadeBusca" type="text" placeholder="Pesquisar cliente ou pet" oninput="renderizarFidelidadeCRM()"></div>
+      <div id="crmFidelidadeLista" class="crm-loyalty-list"></div>
+    </div>
 </section>
 
 

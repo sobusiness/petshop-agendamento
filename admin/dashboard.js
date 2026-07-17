@@ -7,6 +7,8 @@ let crmHistorico = [];
 let crmCategoriaSelecionada = "todas";
 let crmRegistrosCalculados = [];
 let crmRegistrosPorChave = new Map();
+let crmUltimaAtualizacao = null;
+let crmVisaoAtual = "pendentes";
 const racasPorteGatosPetlyneAdmin = [{"raca": "Abissínio", "porte": "Único"}, {"raca": "American Bobtail", "porte": "Único"}, {"raca": "American Curl", "porte": "Único"}, {"raca": "American Shorthair", "porte": "Único"}, {"raca": "Angorá Turco", "porte": "Único"}, {"raca": "Azul Russo", "porte": "Único"}, {"raca": "Balinês", "porte": "Único"}, {"raca": "Bengal", "porte": "Único"}, {"raca": "Birmanês", "porte": "Único"}, {"raca": "Bobtail Japonês", "porte": "Único"}, {"raca": "Bombay", "porte": "Único"}, {"raca": "British Longhair", "porte": "Único"}, {"raca": "British Shorthair", "porte": "Único"}, {"raca": "Burmilla", "porte": "Único"}, {"raca": "Burmês", "porte": "Único"}, {"raca": "Chartreux", "porte": "Único"}, {"raca": "Chausie", "porte": "Único"}, {"raca": "Cornish Rex", "porte": "Único"}, {"raca": "Cymric", "porte": "Único"}, {"raca": "Devon Rex", "porte": "Único"}, {"raca": "Egyptian Mau", "porte": "Único"}, {"raca": "Exótico", "porte": "Único"}, {"raca": "Havana Brown", "porte": "Único"}, {"raca": "Himalaio", "porte": "Único"}, {"raca": "Khao Manee", "porte": "Único"}, {"raca": "Kurilian Bobtail", "porte": "Único"}, {"raca": "LaPerm", "porte": "Único"}, {"raca": "Maine Coon", "porte": "Único"}, {"raca": "Manx", "porte": "Único"}, {"raca": "Munchkin", "porte": "Único"}, {"raca": "Norueguês da Floresta", "porte": "Único"}, {"raca": "Ocicat", "porte": "Único"}, {"raca": "Oriental Longhair", "porte": "Único"}, {"raca": "Oriental Shorthair", "porte": "Único"}, {"raca": "Persa", "porte": "Único"}, {"raca": "Peterbald", "porte": "Único"}, {"raca": "Ragdoll", "porte": "Único"}, {"raca": "Savannah", "porte": "Único"}, {"raca": "Scottish Fold", "porte": "Único"}, {"raca": "Selkirk Rex", "porte": "Único"}, {"raca": "Sem Raça Definida (SRD)", "porte": "Único"}, {"raca": "Siamês", "porte": "Único"}, {"raca": "Siberiano", "porte": "Único"}, {"raca": "Singapura", "porte": "Único"}, {"raca": "Somali", "porte": "Único"}, {"raca": "Sphynx", "porte": "Único"}, {"raca": "Tonquinês", "porte": "Único"}, {"raca": "Toyger", "porte": "Único"}];
 const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca": "Akita Americano", "porte": "Grande"}, {"raca": "Alaskan Malamute", "porte": "Grande"}, {"raca": "American Pit Bull Terrier", "porte": "Médio"}, {"raca": "American Staffordshire Terrier", "porte": "Médio"}, {"raca": "Australian Shepherd", "porte": "Médio"}, {"raca": "Basset Hound", "porte": "Médio"}, {"raca": "Beagle", "porte": "Médio"}, {"raca": "Bernese Mountain Dog", "porte": "Grande"}, {"raca": "Bichon Frisé", "porte": "Pequeno"}, {"raca": "Border Collie", "porte": "Médio"}, {"raca": "Boston Terrier", "porte": "Pequeno"}, {"raca": "Boxer", "porte": "Grande"}, {"raca": "Buldogue Francês", "porte": "Pequeno"}, {"raca": "Bulldog Inglês", "porte": "Médio"}, {"raca": "Bullmastiff", "porte": "Grande"}, {"raca": "Cane Corso", "porte": "Grande"}, {"raca": "Cavalier King Charles Spaniel", "porte": "Pequeno"}, {"raca": "Chihuahua", "porte": "Pequeno"}, {"raca": "Chow Chow", "porte": "Médio"}, {"raca": "Cocker Spaniel Americano", "porte": "Médio"}, {"raca": "Cocker Spaniel Inglês", "porte": "Médio"}, {"raca": "Coton de Tuléar", "porte": "Pequeno"}, {"raca": "Dachshund (Salsicha)", "porte": "Pequeno"}, {"raca": "Dobermann", "porte": "Grande"}, {"raca": "Dogue Alemão", "porte": "Grande"}, {"raca": "Dogue de Bordeaux", "porte": "Grande"}, {"raca": "Dálmata", "porte": "Grande"}, {"raca": "Fila Brasileiro", "porte": "Grande"}, {"raca": "Fox Paulistinha (Terrier Brasileiro)", "porte": "Pequeno"}, {"raca": "Golden Retriever", "porte": "Grande"}, {"raca": "Greyhound", "porte": "Grande"}, {"raca": "Husky Siberiano", "porte": "Médio"}, {"raca": "Jack Russell Terrier", "porte": "Pequeno"}, {"raca": "Komondor", "porte": "Grande"}, {"raca": "Kuvasz", "porte": "Grande"}, {"raca": "Labrador Retriever", "porte": "Grande"}, {"raca": "Leonberger", "porte": "Grande"}, {"raca": "Lhasa Apso", "porte": "Pequeno"}, {"raca": "Maltês", "porte": "Pequeno"}, {"raca": "Mastiff", "porte": "Grande"}, {"raca": "Mastino Napolitano", "porte": "Grande"}, {"raca": "Papillon", "porte": "Pequeno"}, {"raca": "Pastor Alemão", "porte": "Grande"}, {"raca": "Pastor Belga", "porte": "Grande"}, {"raca": "Pequinês", "porte": "Pequeno"}, {"raca": "Pinscher", "porte": "Pequeno"}, {"raca": "Poodle Mini", "porte": "Pequeno"}, {"raca": "Poodle Standard", "porte": "Médio"}, {"raca": "Poodle Toy", "porte": "Pequeno"}, {"raca": "Pug", "porte": "Pequeno"}, {"raca": "Rhodesian Ridgeback", "porte": "Grande"}, {"raca": "Rottweiler", "porte": "Grande"}, {"raca": "Samoieda", "porte": "Médio"}, {"raca": "Schnauzer Miniatura", "porte": "Pequeno"}, {"raca": "Schnauzer Standard", "porte": "Médio"}, {"raca": "Sem Raça Grande", "porte": "Grande"}, {"raca": "Sem Raça Médio", "porte": "Médio"}, {"raca": "Sem Raça Pequeno", "porte": "Pequeno"}, {"raca": "Setter Inglês", "porte": "Médio"}, {"raca": "Setter Irlandês", "porte": "Médio"}, {"raca": "Shar Pei", "porte": "Médio"}, {"raca": "Shiba Inu", "porte": "Pequeno"}, {"raca": "Shih Tzu", "porte": "Pequeno"}, {"raca": "Spitz Alemão (Lulu da Pomerânia)", "porte": "Pequeno"}, {"raca": "Springer Spaniel", "porte": "Médio"}, {"raca": "São Bernardo", "porte": "Grande"}, {"raca": "Terra Nova", "porte": "Grande"}, {"raca": "Weimaraner", "porte": "Médio"}, {"raca": "West Highland White Terrier", "porte": "Pequeno"}, {"raca": "Whippet", "porte": "Médio"}, {"raca": "Wolfhound Irlandês", "porte": "Grande"}, {"raca": "Yorkshire Terrier", "porte": "Pequeno"}];
 let bloqueiosAgenda = [];
@@ -57,6 +59,7 @@ async function iniciarDashboard() {
     preencherHorariosPacote();
     atualizarPreviaPacote();
     calcularCRM();
+    crmUltimaAtualizacao = new Date();
     renderizarCRM();
 }
 
@@ -1605,6 +1608,7 @@ async function excluirClienteAdmin(idAtual) {
         clienteSelecionadoAdminId = null;
 
         calcularCRM();
+        crmUltimaAtualizacao = new Date();
         renderizarCRM();
         renderizarClientesAdmin();
 
@@ -2977,7 +2981,7 @@ function calcularCRM() {
     crmRegistrosPorChave = new Map(crmRegistrosCalculados.map(item => [item.chave, item]));
 }
 
-function renderizarCRM() { renderizarCRMResumo(); renderizarCRMLista(); }
+function renderizarCRM() { renderizarCRMResumo(); renderizarCRMLista(); renderizarCRMInteligencia(); }
 function renderizarCRMResumo() {
     const container=document.getElementById("crmResumo"); if(!container)return;
     container.innerHTML=Object.entries(CRM_CATEGORIAS).map(([chave,config])=>{const quantidade=crmRegistrosCalculados.filter(i=>i.categoria===chave).length;return `<button type="button" class="crm-summary-card crm-card-${chave} ${crmCategoriaSelecionada===chave?"active":""}" onclick="selecionarCategoriaCRM('${chave}')"><span class="crm-summary-icon">${config.icone}</span><span class="crm-summary-content"><strong>${config.titulo}</strong><small>${config.descricao}</small></span><span class="crm-summary-number">${quantidade}</span></button>`;}).join("");
@@ -3048,4 +3052,175 @@ async function atualizarCRM() {
             icone: "⚠️"
         });
     }
+}
+
+
+/* =========================================================
+   CRM GROWTH - INTELIGÊNCIA, HISTÓRICO E FIDELIDADE (V3.32)
+   ========================================================= */
+const CRM_FIDELIDADE = { metaBanhos: 10, marcoHidratacao: 5 };
+
+function crmNumero(valor) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero : 0;
+}
+function crmMoeda(valor) {
+    return crmNumero(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+function crmDataAgendamento(item) {
+    if (dataISOValidaCRM(item?.data)) return new Date(`${item.data}T12:00:00`);
+    return null;
+}
+function crmChaveAgendamento(item) {
+    return chaveDonoCRM(item?.cliente, item?.telefone);
+}
+function crmHistoricoOrdenado() {
+    return [...crmHistorico].sort((a,b) => {
+        const da = dataFirestoreParaDateCRM(a.criadoEm || a.dataEnvio)?.getTime() || 0;
+        const dbb = dataFirestoreParaDateCRM(b.criadoEm || b.dataEnvio)?.getTime() || 0;
+        return dbb - da;
+    });
+}
+function crmAcoesComRetorno() {
+    const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a) && crmDataAgendamento(a));
+    return crmHistoricoOrdenado().map(acao => {
+        const dataAcao = dataFirestoreParaDateCRM(acao.criadoEm || acao.dataEnvio);
+        const chaves = new Set([acao.clienteChave, chaveDonoCRM(acao.cliente, acao.telefone)]);
+        const retorno = concluidos.find(a => {
+            const data = crmDataAgendamento(a);
+            return dataAcao && data > dataAcao && chaves.has(crmChaveAgendamento(a));
+        });
+        return { ...acao, dataAcao, retorno };
+    });
+}
+function calcularMetricasCRMAvancadas() {
+    const concluidosLyne = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a) && dataISOValidaCRM(a.data));
+    const clientesUnicos = new Set(clientesAdmin.map(c => chaveDonoCRM(c.cliente, c.telefone))).size;
+    const acoes = crmAcoesComRetorno();
+    const retornos = acoes.filter(a => a.retorno).length;
+    const recuperacoes = acoes.filter(a => a.tipoAcao === 'recuperacao');
+    const recuperados = recuperacoes.filter(a => a.retorno).length;
+    const solicitacoesAvaliacao = acoes.filter(a => a.tipoAcao === 'avaliacao').length;
+    const receita = concluidosLyne.reduce((s,a) => s + crmNumero(a.valorTotal), 0);
+    const ticket = concluidosLyne.length ? receita / concluidosLyne.length : 0;
+    const donosAtendidos = new Set(concluidosLyne.map(crmChaveAgendamento)).size;
+    const recorrentes = [...new Set(concluidosLyne.map(crmChaveAgendamento))].filter(chave => concluidosLyne.filter(a => crmChaveAgendamento(a) === chave).length >= 2).length;
+    const taxaRetorno = acoes.length ? retornos / acoes.length * 100 : 0;
+    const taxaRecuperacao = recuperacoes.length ? recuperados / recuperacoes.length * 100 : 0;
+    const taxaRecorrencia = donosAtendidos ? recorrentes / donosAtendidos * 100 : 0;
+    return { clientesUnicos, concluidosLyne, acoes, retornos, recuperados, solicitacoesAvaliacao, ticket, receita, taxaRetorno, taxaRecuperacao, taxaRecorrencia };
+}
+function calcularProximoFollowCRM() {
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    let melhor = null;
+    const donos = new Map();
+    clientesAdmin.forEach(c => {
+        const chave = chaveDonoCRM(c.cliente,c.telefone);
+        if (!donos.has(chave)) donos.set(chave, []);
+        donos.get(chave).push(c);
+    });
+    donos.forEach((pets,chave) => {
+        if (crmRegistrosPorChave.has(chave)) return;
+        const historico = agendamentos.filter(a => pets.some(p => registroPertenceAoPetCRM(a,p)));
+        if (historico.some(a => protocoloEhPack(a.protocolo)) || historico.some(agendamentoAtivoFuturoCRM)) return;
+        const ultimo = historico.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a) && dataISOValidaCRM(a.data)).sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0];
+        if (!ultimo) return;
+        const dias = calcularDiasDesdeCRM(ultimo.data);
+        let faltam = null, categoria = null;
+        if (dias < 0) return;
+        if (dias <= CRM_CONFIG.avaliacaoAteDias) { faltam = 0; categoria='avaliacao'; }
+        else if (dias < CRM_CONFIG.proximoBanhoInicio) { faltam = CRM_CONFIG.proximoBanhoInicio-dias; categoria='proximo'; }
+        else if (dias < CRM_CONFIG.atrasoInicio) { faltam = CRM_CONFIG.atrasoInicio-dias; categoria='atraso'; }
+        else if (dias < CRM_CONFIG.recuperacaoInicio) { faltam = CRM_CONFIG.recuperacaoInicio-dias; categoria='recuperacao'; }
+        if (faltam !== null && (!melhor || faltam < melhor.faltam)) melhor={faltam,categoria,cliente:pets[0]?.cliente||'Cliente'};
+    });
+    return melhor;
+}
+function calcularRankingCRM(campo) {
+    const mapa = new Map();
+    const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a));
+    concluidos.forEach(a => {
+        let valor = a[campo];
+        if (!valor) {
+            const cadastro = clientesAdmin.find(c => registroPertenceAoPetCRM(a,c));
+            valor = cadastro?.[campo];
+        }
+        valor = String(valor || 'Não informado').trim();
+        mapa.set(valor, (mapa.get(valor)||0)+1);
+    });
+    return [...mapa.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5);
+}
+function calcularFidelidadeCRM() {
+    const mapa = new Map();
+    agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a)).forEach(a => {
+        const chave=crmChaveAgendamento(a);
+        if(!mapa.has(chave)) mapa.set(chave,{chave,cliente:a.cliente||'Cliente',telefone:a.telefone||'',banhos:0,valor:0,pets:new Set()});
+        const item=mapa.get(chave); item.banhos++; item.valor+=crmNumero(a.valorTotal); if(a.pet)item.pets.add(a.pet);
+    });
+    return [...mapa.values()].map(i => {
+        const ciclo = i.banhos % CRM_FIDELIDADE.metaBanhos;
+        const progresso = ciclo === 0 && i.banhos > 0 ? CRM_FIDELIDADE.metaBanhos : ciclo;
+        return {...i,pets:[...i.pets],progresso,paraHidratacao:Math.max(0,CRM_FIDELIDADE.marcoHidratacao-progresso),paraGratis:Math.max(0,CRM_FIDELIDADE.metaBanhos-progresso),premioDisponivel:i.banhos>0 && ciclo===0};
+    }).sort((a,b)=>b.banhos-a.banhos);
+}
+function setCRMVisao(visao) {
+    crmVisaoAtual=visao;
+    document.querySelectorAll('.crm-view-button').forEach(b=>b.classList.toggle('active',b.dataset.visao===visao));
+    ['pendentes','historico','metricas','fidelidade'].forEach(v=>document.getElementById(`crmPainel-${v}`)?.classList.toggle('active',v===visao));
+    if(visao==='historico') renderizarHistoricoCRM();
+    if(visao==='metricas') renderizarMetricasCRM();
+    if(visao==='fidelidade') renderizarFidelidadeCRM();
+}
+function renderizarCRMInteligencia() {
+    const m=calcularMetricasCRMAvancadas();
+    const proximo=calcularProximoFollowCRM();
+    const atualizado=document.getElementById('crmUltimaAtualizacao');
+    if(atualizado) atualizado.textContent=crmUltimaAtualizacao ? `Última atualização: ${crmUltimaAtualizacao.toLocaleString('pt-BR')}` : 'Aguardando atualização';
+    const resumo=document.getElementById('crmIndicadoresGerais');
+    if(resumo) resumo.innerHTML=`
+      <article><span>👥</span><div><strong>${m.clientesUnicos}</strong><small>clientes monitorados</small></div></article>
+      <article><span>📨</span><div><strong>${m.acoes.length}</strong><small>ações registradas</small></div></article>
+      <article><span>🔁</span><div><strong>${m.taxaRetorno.toFixed(1)}%</strong><small>retorno após CRM</small></div></article>
+      <article><span>⏳</span><div><strong>${proximo ? (proximo.faltam===0?'Hoje':`${proximo.faltam} dia(s)`) : 'Sem previsão'}</strong><small>${proximo ? `próximo follow-up: ${CRM_CATEGORIAS[proximo.categoria].titulo}` : 'nenhum ciclo próximo'}</small></div></article>`;
+    renderizarHistoricoCRM(); renderizarMetricasCRM(); renderizarFidelidadeCRM();
+}
+function renderizarHistoricoCRM() {
+    const alvo=document.getElementById('crmHistoricoLista'); if(!alvo)return;
+    const busca=normalizarTextoCliente(document.getElementById('crmHistoricoBusca')?.value||'');
+    let dados=crmHistoricoOrdenado();
+    if(busca) dados=dados.filter(i=>normalizarTextoCliente(`${i.cliente} ${i.pet} ${i.telefone} ${i.tipoAcao}`).includes(busca));
+    if(!dados.length){alvo.innerHTML='<div class="crm-empty-state">Nenhuma ação encontrada no histórico.</div>';return;}
+    alvo.innerHTML=dados.map(i=>{const data=dataFirestoreParaDateCRM(i.criadoEm||i.dataEnvio);const cfg=CRM_CATEGORIAS[i.tipoAcao]||{icone:'📌',titulo:i.tipoAcao||'Ação'};return `<article class="crm-history-row"><div><strong>${cfg.icone} ${escaparHTMLCRM(cfg.titulo)}</strong><h4>${escaparHTMLCRM(i.cliente||'Cliente')}</h4><p>${escaparHTMLCRM(i.pet||'')} ${i.telefone?`• ${escaparHTMLCRM(i.telefone)}`:''}</p></div><time>${data?data.toLocaleString('pt-BR'):'Data indisponível'}</time></article>`}).join('');
+}
+function barrasRankingCRM(lista) {
+    const max=Math.max(1,...lista.map(x=>x[1]));
+    return lista.length?lista.map(([nome,qtd])=>`<div class="crm-ranking-row"><span>${escaparHTMLCRM(nome)}</span><div><i style="width:${Math.max(8,qtd/max*100)}%"></i></div><strong>${qtd}</strong></div>`).join(''):'<p class="crm-muted">Sem dados suficientes.</p>';
+}
+function renderizarMetricasCRM() {
+    const alvo=document.getElementById('crmMetricasConteudo'); if(!alvo)return;
+    const m=calcularMetricasCRMAvancadas();
+    const inativos=new Set(m.concluidosLyne.filter(a=>(calcularDiasDesdeCRM(a.data)||0)>30).map(crmChaveAgendamento)).size;
+    alvo.innerHTML=`
+      <div class="crm-kpi-grid">
+       <article><small>Mensagens enviadas</small><strong>${m.acoes.length}</strong></article>
+       <article><small>Avaliações solicitadas</small><strong>${m.solicitacoesAvaliacao}</strong></article>
+       <article><small>Clientes recuperados</small><strong>${m.recuperados}</strong></article>
+       <article><small>Taxa de recuperação</small><strong>${m.taxaRecuperacao.toFixed(1)}%</strong></article>
+       <article><small>Taxa de recorrência</small><strong>${m.taxaRecorrencia.toFixed(1)}%</strong></article>
+       <article><small>Ticket médio LYNE</small><strong>${crmMoeda(m.ticket)}</strong></article>
+       <article><small>Receita LYNE concluída</small><strong>${crmMoeda(m.receita)}</strong></article>
+       <article><small>Clientes há +30 dias</small><strong>${inativos}</strong></article>
+      </div>
+      <div class="crm-analysis-grid">
+       <section><h4>Raças com mais atendimentos</h4>${barrasRankingCRM(calcularRankingCRM('raca'))}</section>
+       <section><h4>Portes com mais atendimentos</h4>${barrasRankingCRM(calcularRankingCRM('porte'))}</section>
+      </div>`;
+}
+function renderizarFidelidadeCRM() {
+    const alvo=document.getElementById('crmFidelidadeLista'); if(!alvo)return;
+    const busca=normalizarTextoCliente(document.getElementById('crmFidelidadeBusca')?.value||'');
+    let dados=calcularFidelidadeCRM();
+    if(busca) dados=dados.filter(i=>normalizarTextoCliente(`${i.cliente} ${i.telefone} ${i.pets.join(' ')}`).includes(busca));
+    if(!dados.length){alvo.innerHTML='<div class="crm-empty-state">Ainda não há atendimentos LYNE concluídos para o programa.</div>';return;}
+    alvo.innerHTML=dados.map(i=>{const pct=Math.min(100,(i.progresso/CRM_FIDELIDADE.metaBanhos)*100);return `<article class="crm-loyalty-card"><div class="crm-loyalty-head"><div><h4>${escaparHTMLCRM(i.cliente)}</h4><p>${escaparHTMLCRM(i.pets.join(', ')||'Pet')} • ${escaparHTMLCRM(i.telefone)}</p></div><strong>${i.banhos} banho(s)</strong></div><div class="crm-loyalty-progress"><i style="width:${pct}%"></i></div><div class="crm-loyalty-foot"><span>${i.premioDisponivel?'🎁 Banho grátis disponível':i.paraHidratacao>0?`${i.paraHidratacao} para hidratação`:`Hidratação conquistada neste ciclo`}</span><span>${i.premioDisponivel?'Novo ciclo começa após o resgate':`${i.paraGratis} para banho grátis`}</span></div></article>`}).join('');
 }

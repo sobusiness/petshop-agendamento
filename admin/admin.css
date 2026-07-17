@@ -2121,3 +2121,22 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
     .crm-client-actions { justify-content: stretch; }
     .crm-client-actions button { flex: 1; }
 }
+
+
+/* CRM Growth V3.32 - visão gerencial, histórico e fidelidade */
+.crm-status-line{display:flex;justify-content:flex-end;margin:-12px 0 12px;color:#806e74;font-size:13px}
+.crm-overview-grid{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:12px;margin:0 0 18px}
+.crm-overview-grid article{display:flex;gap:12px;align-items:center;padding:15px 16px;border:1px solid #efd0da;border-radius:16px;background:#fff;box-shadow:0 7px 20px rgba(115,60,80,.05)}
+.crm-overview-grid article>span{font-size:24px}.crm-overview-grid strong{display:block;color:#b94469;font-size:21px}.crm-overview-grid small{color:#806e74}
+.crm-view-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px;padding:6px;background:#fff5f8;border:1px solid #f2ccd7;border-radius:16px}
+.crm-view-button{border:0;background:transparent;color:#765d66;padding:11px 15px;border-radius:11px;font-weight:800}.crm-view-button.active{background:#c94d75;color:#fff;box-shadow:0 6px 15px rgba(201,77,117,.22)}
+.crm-view-panel{display:none}.crm-view-panel.active{display:block}
+.crm-panel-heading{display:flex;justify-content:space-between;gap:18px;align-items:center;margin-bottom:16px;padding:18px;border-radius:16px;background:#fff5f8;border:1px solid #f2ccd7}.crm-panel-heading h3{margin:0 0 5px;color:#b94469}.crm-panel-heading p{margin:0;color:#806e74}.crm-panel-heading input{min-width:290px}
+.crm-history-list,.crm-loyalty-list{display:grid;gap:12px}.crm-history-row{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:16px 18px;border:1px solid #efd0da;border-radius:15px;background:#fff}.crm-history-row h4{margin:6px 0 3px;color:#4f4247}.crm-history-row p{margin:0;color:#806e74}.crm-history-row time{color:#806e74;font-size:13px;white-space:nowrap}
+.crm-empty-state{padding:24px;border:1px dashed #efc5d1;border-radius:16px;color:#9a7c86;background:#fff;text-align:center}
+.crm-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(170px,1fr));gap:12px;margin-bottom:18px}.crm-kpi-grid article{padding:17px;border:1px solid #efd0da;border-radius:16px;background:#fff}.crm-kpi-grid small{display:block;color:#806e74;margin-bottom:7px}.crm-kpi-grid strong{font-size:22px;color:#b94469}
+.crm-analysis-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.crm-analysis-grid section{padding:18px;border:1px solid #efd0da;border-radius:16px;background:#fff}.crm-analysis-grid h4{margin:0 0 16px;color:#5d4850}
+.crm-ranking-row{display:grid;grid-template-columns:minmax(110px,1fr) 2fr 36px;gap:10px;align-items:center;margin:10px 0;color:#695a5f}.crm-ranking-row>div{height:9px;background:#f7e5eb;border-radius:999px;overflow:hidden}.crm-ranking-row i{display:block;height:100%;background:#c94d75;border-radius:999px}.crm-ranking-row strong{text-align:right;color:#b94469}.crm-muted{color:#806e74}
+.crm-loyalty-card{padding:18px;border:1px solid #efd0da;border-radius:17px;background:#fff}.crm-loyalty-head,.crm-loyalty-foot{display:flex;justify-content:space-between;gap:16px}.crm-loyalty-head h4{margin:0 0 5px;color:#4f4247;font-size:19px}.crm-loyalty-head p{margin:0;color:#806e74}.crm-loyalty-head>strong{color:#b94469}.crm-loyalty-progress{height:12px;background:#f7e5eb;border-radius:999px;overflow:hidden;margin:15px 0 10px}.crm-loyalty-progress i{display:block;height:100%;background:linear-gradient(90deg,#d7668b,#c94d75);border-radius:999px}.crm-loyalty-foot{font-size:13px;color:#806e74}
+@media(max-width:1100px){.crm-overview-grid,.crm-kpi-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.crm-overview-grid,.crm-kpi-grid,.crm-analysis-grid{grid-template-columns:1fr}.crm-panel-heading,.crm-history-row,.crm-loyalty-head,.crm-loyalty-foot{flex-direction:column;align-items:stretch}.crm-panel-heading input{min-width:0;width:100%}.crm-history-row time{white-space:normal}}

@@ -1,0 +1,12 @@
+PETLYNE V3.32
+
+- Última atualização do CRM
+- Total de clientes monitorados
+- Próximo follow-up previsto
+- Histórico pesquisável de mensagens enviadas
+- Dashboard de resultados do CRM
+- Taxas de retorno, recuperação e recorrência
+- Ticket médio e receita LYNE
+- Rankings de raça e porte
+- Clube PetLyne com progresso de 5 e 10 banhos
+- Sem envio automático de WhatsApp
