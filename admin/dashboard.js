@@ -1904,12 +1904,12 @@ function renderizarCalendarioBloqueios() {
             const dataISO = dataISOAnoMesDia(dataCelula.getFullYear(), dataCelula.getMonth(), dataCelula.getDate());
             const pertenceMes = dataCelula.getMonth() === mes;
 
-            const bloqueiosDia = bloqueiosAgenda.filter(item =>
+            const bloqueiosDia = (Array.isArray(bloqueiosAgenda) ? bloqueiosAgenda : []).filter(item =>
                 item && item.status === "Ativo" && String(item.data || "") === dataISO
             );
-            const agendamentosDia = agendamentos.filter(item => {
+            const agendamentosDia = (Array.isArray(agendamentos) ? agendamentos : []).filter(item => {
                 if (!item || String(item.data || "") !== dataISO) return false;
-                return normalizarTexto(String(item.status || "")) !== "cancelado";
+                return normalizarTextoCliente(String(item.status || "")) !== "cancelado";
             });
 
             const temBloqueio = bloqueiosDia.length > 0;
@@ -1954,7 +1954,7 @@ function renderizarCalendarioBloqueios() {
 function obterBloqueiosMesAtual() {
     const ano = mesBloqueioReferencia.getFullYear();
     const mes = mesBloqueioReferencia.getMonth();
-    return bloqueiosAgenda.filter(item => {
+    return (Array.isArray(bloqueiosAgenda) ? bloqueiosAgenda : []).filter(item => {
         if (item.status !== "Ativo" || !item.data) return false;
         const data = new Date(item.data + "T00:00:00");
         return data.getFullYear() === ano && data.getMonth() === mes;
@@ -1969,7 +1969,7 @@ function atualizarCockpitDiasHorarios() {
     const diasOperacionais = Array.from({ length: totalDiasMes }, (_, i) => new Date(mesBloqueioReferencia.getFullYear(), mesBloqueioReferencia.getMonth(), i + 1)).filter(d => ![0,3].includes(d.getDay())).length;
     const minutosDisponiveis = Math.max(1, diasOperacionais * 14 * 30);
     const disponibilidade = Math.max(0, Math.round((1 - minutosBloqueados / minutosDisponiveis) * 100));
-    const proximos = bloqueiosAgenda.filter(item => item.status === "Ativo" && item.data >= hojeISO()).sort((a,b) => `${a.data}${a.inicio}`.localeCompare(`${b.data}${b.inicio}`));
+    const proximos = (Array.isArray(bloqueiosAgenda) ? bloqueiosAgenda : []).filter(item => item && item.status === "Ativo" && item.data && item.data >= hojeISO()).sort((a,b) => `${a.data}${a.inicio}`.localeCompare(`${b.data}${b.inicio}`));
     const proximo = proximos[0];
 
     const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
@@ -1990,7 +1990,7 @@ function renderizarDetalheDiaAgenda(dataISO) {
 
     const data = new Date(dataISO + "T00:00:00");
     titulo.textContent = data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" });
-    const atendimentos = agendamentos.filter(a => a.data === dataISO && normalizarTexto(a.status || "") !== "cancelado");
+    const atendimentos = (Array.isArray(agendamentos) ? agendamentos : []).filter(a => a && String(a.data || "") === dataISO && normalizarTextoCliente(a.status || "") !== "cancelado");
     const bloqueios = bloqueiosAgenda.filter(b => b.status === "Ativo" && b.data === dataISO);
     const ocupados = new Set(atendimentos.map(a => a.horario));
     const bloqueados = new Set();

@@ -1,0 +1,10 @@
+PETLYNE V6.2 — CORREÇÃO DEFINITIVA DO CENTRO DE CONTROLE DA AGENDA
+
+Correções:
+- Corrigida a referência inexistente `normalizarTexto`, que interrompia a montagem do calendário.
+- Padronizada a normalização de status com `normalizarTextoCliente`.
+- Adicionadas proteções para listas ainda não carregadas ou registros incompletos.
+- Calendário mensal mantém 42 células (6 semanas), dias adjacentes e navegação mensal.
+- Detalhe do dia continua exibindo horários livres, agendamentos, pacotes, almoço e bloqueios.
+- Mantidos bloqueios por período, dia inteiro, múltiplos dias, período contínuo e recorrência semanal.
+- Nenhuma coleção ou regra do Firebase foi alterada.
