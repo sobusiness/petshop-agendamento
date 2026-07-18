@@ -557,6 +557,29 @@ function criarErroPetlyne(codigo, mensagem, causa = null) {
     return erro;
 }
 
+function abrirSeletorDataSeguro(input, event) {
+    // showPicker só pode ser chamado durante uma ação direta do usuário.
+    if (!input || typeof input.showPicker !== "function" || !event?.isTrusted) return;
+    try {
+        input.showPicker();
+    } catch (error) {
+        // O campo continua funcionando pelo comportamento nativo do navegador.
+        if (error?.name !== "NotAllowedError") {
+            registrarLogSistema({
+                modulo: "Interface",
+                funcao: "abrirSeletorDataSeguro",
+                nivel: "aviso",
+                codigo: error?.name || "show-picker",
+                mensagem: error?.message || String(error)
+            });
+        }
+    }
+}
+
+function erroNavegadorIgnoravel(mensagem = "") {
+    return /showPicker\(\).*requires a user gesture|ResizeObserver loop|Script error\.?$/i.test(String(mensagem));
+}
+
 function codigoErroNormalizado(error) {
     const codigo = String(error?.code || error?.message || "unknown").toLowerCase();
     return codigo.replace(/^firestore\//, "");
@@ -657,7 +680,17 @@ async function registrarLogSistema(dados = {}) {
     }
 }
 
-window.addEventListener("error", event => registrarLogSistema({ modulo:"JavaScript", funcao:"window.error", mensagem:event.message, detalhes:`${event.filename || ""}:${event.lineno || ""}:${event.colno || ""}` }));
+window.addEventListener("error", event => {
+    if (erroNavegadorIgnoravel(event.message)) return;
+    registrarLogSistema({
+        modulo: "JavaScript",
+        funcao: "window.error",
+        nivel: "erro",
+        codigo: event.error?.name || "javascript-error",
+        mensagem: event.message,
+        detalhes: `${event.filename || ""}:${event.lineno || ""}:${event.colno || ""}`
+    });
+});
 window.addEventListener("unhandledrejection", event => {
     const motivo = event.reason || {};
     registrarLogSistema({ modulo:"JavaScript", funcao:"unhandledrejection", mensagem:motivo.message || String(motivo), codigo:motivo.code || "" });

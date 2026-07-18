@@ -747,6 +747,38 @@
             </div>
             <button type="button" onclick="atualizarLogsSistema()">Atualizar logs</button>
         </div>
+        <div id="painelSaudeSistema" class="system-health-grid">
+            <article class="system-health-card status-card">
+                <span>Status atual</span>
+                <strong id="saudeStatusAtual">Calculando...</strong>
+                <small id="saudeStatusDescricao">Analisando os registros recentes</small>
+            </article>
+            <article class="system-health-card">
+                <span>Erros nas últimas 24h</span>
+                <strong id="saudeErros24h">0</strong>
+                <small>Falhas classificadas como erro</small>
+            </article>
+            <article class="system-health-card">
+                <span>Avisos nas últimas 24h</span>
+                <strong id="saudeAvisos24h">0</strong>
+                <small>Ocorrências sem bloqueio total</small>
+            </article>
+            <article class="system-health-card">
+                <span>Retentativas registradas</span>
+                <strong id="saudeRetentativas24h">0</strong>
+                <small>Recuperações automáticas nas últimas 24h</small>
+            </article>
+            <article class="system-health-card">
+                <span>Módulo mais afetado</span>
+                <strong id="saudeModuloCritico">Nenhum</strong>
+                <small id="saudeModuloCriticoQtd">Sem ocorrências recentes</small>
+            </article>
+            <article class="system-health-card">
+                <span>Último incidente</span>
+                <strong id="saudeUltimoIncidente">Nenhum</strong>
+                <small id="saudeUltimoIncidenteData">Sistema sem falhas recentes</small>
+            </article>
+        </div>
         <div class="logs-filter-card">
             <input id="buscaLogsSistema" type="text" placeholder="Pesquisar mensagem, função ou código" oninput="renderizarLogsSistema()">
             <select id="filtroModuloLogs" onchange="renderizarLogsSistema()">
@@ -766,6 +798,11 @@
                 <option value="erro">Erro</option>
                 <option value="aviso">Aviso</option>
                 <option value="info">Informação</option>
+            </select>
+            <select id="filtroStatusLogs" onchange="renderizarLogsSistema()">
+                <option value="">Todos os status</option>
+                <option value="pendente">Pendentes</option>
+                <option value="resolvido">Resolvidos</option>
             </select>
         </div>
         <div id="listaLogsSistema" class="system-logs-list"></div>

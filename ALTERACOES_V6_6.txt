@@ -1,0 +1,12 @@
+PETLYNE V6.6 — PAINEL DE SAÚDE E LOGS REFINADOS
+
+- Corrigido o erro showPicker requires a user gesture.
+- Removida abertura automática do calendário ao receber foco.
+- Implementada abertura segura somente em clique real do usuário.
+- Erros benignos conhecidos do navegador deixam de poluir os logs.
+- Painel de Saúde criado com indicadores das últimas 24 horas.
+- Indicadores: status, erros, avisos, retentativas, módulo mais afetado e último incidente.
+- Filtro por status pendente/resolvido.
+- Ação para marcar uma ocorrência como resolvida ou reabri-la.
+- Conteúdo dos logs protegido com escape de HTML.
+- Nenhuma consulta adicional foi criada: os indicadores usam os 100 logs já carregados.

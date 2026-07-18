@@ -2870,3 +2870,21 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .system-log-body pre { white-space:pre-wrap; word-break:break-word; background:#f8edf1; border-radius:10px; padding:10px; }
 .logs-empty { padding:28px; text-align:center; border:1px dashed var(--pet-border); border-radius:16px; color:var(--pet-text-muted); }
 @media(max-width:800px){.logs-filter-card{grid-template-columns:1fr}.system-log-head{display:grid}}
+
+
+/* V6.6 - Painel de Saúde e tratamento dos logs */
+.system-health-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:22px 0}
+.system-health-card{background:#fff;border:1px solid #f0ccd7;border-radius:20px;padding:18px 20px;box-shadow:0 8px 24px rgba(151,55,88,.06);display:flex;flex-direction:column;gap:6px;min-height:118px}
+.system-health-card span{font-size:13px;color:#9b7180;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.system-health-card strong{font-size:25px;color:#b94168;line-height:1.15;overflow-wrap:anywhere}
+.system-health-card small{color:#80666f;line-height:1.35}
+.system-health-card.status-card.healthy{border-color:#a7dfc4;background:#f5fff9}.system-health-card.status-card.healthy strong{color:#23845b}
+.system-health-card.status-card.stable{border-color:#b9d5ef;background:#f7fbff}.system-health-card.status-card.stable strong{color:#397aa9}
+.system-health-card.status-card.attention{border-color:#efd59a;background:#fffaf0}.system-health-card.status-card.attention strong{color:#a86b12}
+.system-health-card.status-card.critical{border-color:#efadba;background:#fff5f7}.system-health-card.status-card.critical strong{color:#bd294d}
+.logs-filter-card{grid-template-columns:minmax(260px,2fr) repeat(3,minmax(180px,1fr))!important}
+.system-log-tags{display:flex;gap:8px;align-items:center;margin-bottom:8px}.system-log-status{font-size:12px;font-weight:800;padding:6px 11px;border-radius:999px;background:#fff0f4;color:#a83d60;text-transform:uppercase}
+.system-log-card.resolved{opacity:.72;border-left-color:#78b997}.system-log-card.resolved .system-log-status{background:#eaf8f0;color:#287c55}
+.system-log-resolve-button{margin-top:14px;padding:9px 14px;border-radius:12px;border:1px solid #cf5278;background:#fff;color:#b64066;font-weight:700;cursor:pointer}.system-log-resolve-button:hover{background:#fff1f5}
+@media(max-width:1050px){.system-health-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.logs-filter-card{grid-template-columns:1fr 1fr!important}}
+@media(max-width:650px){.system-health-grid{grid-template-columns:1fr}.logs-filter-card{grid-template-columns:1fr!important}}

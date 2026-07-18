@@ -4174,6 +4174,77 @@ async function atualizarClubePetlyne() {
 }
 
 
+function escaparHtmlLogs(valor) {
+    return String(valor ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function dataLogComoDate(valor) {
+    if (!valor) return null;
+    const data = valor.toDate ? valor.toDate() : new Date(valor);
+    return Number.isNaN(data.getTime()) ? null : data;
+}
+
+function atualizarPainelSaudeSistema() {
+    const limite24h = Date.now() - (24 * 60 * 60 * 1000);
+    const recentes = logsSistemaAdmin.filter(item => {
+        const data = dataLogComoDate(item.criadoEm);
+        return data && data.getTime() >= limite24h;
+    });
+    const erros = recentes.filter(item => (item.nivel || "erro") === "erro" && !item.resolvido);
+    const avisos = recentes.filter(item => item.nivel === "aviso" && !item.resolvido);
+    const retentativas = recentes.filter(item => Number(item.tentativa || 0) > 1 || /tentativa [2-9]/i.test(String(item.detalhes || "")));
+
+    const contagemModulo = {};
+    [...erros, ...avisos].forEach(item => {
+        const nome = item.modulo || "Sistema";
+        contagemModulo[nome] = (contagemModulo[nome] || 0) + 1;
+    });
+    const moduloCritico = Object.entries(contagemModulo).sort((a, b) => b[1] - a[1])[0];
+    const ultimo = recentes.find(item => !item.resolvido);
+
+    const statusEl = document.getElementById("saudeStatusAtual");
+    const descEl = document.getElementById("saudeStatusDescricao");
+    const card = statusEl?.closest(".status-card");
+    let status = "Saudável";
+    let descricao = "Nenhum erro pendente nas últimas 24 horas";
+    let classe = "healthy";
+    if (erros.length >= 5) { status = "Crítico"; descricao = `${erros.length} erros pendentes nas últimas 24 horas`; classe = "critical"; }
+    else if (erros.length > 0) { status = "Atenção"; descricao = `${erros.length} erro(s) pendente(s) nas últimas 24 horas`; classe = "attention"; }
+    else if (avisos.length > 0) { status = "Estável"; descricao = `${avisos.length} aviso(s) sem falha crítica`; classe = "stable"; }
+    if (statusEl) statusEl.textContent = status;
+    if (descEl) descEl.textContent = descricao;
+    if (card) card.className = `system-health-card status-card ${classe}`;
+
+    const setText = (id, valor) => { const el = document.getElementById(id); if (el) el.textContent = valor; };
+    setText("saudeErros24h", erros.length);
+    setText("saudeAvisos24h", avisos.length);
+    setText("saudeRetentativas24h", retentativas.length);
+    setText("saudeModuloCritico", moduloCritico?.[0] || "Nenhum");
+    setText("saudeModuloCriticoQtd", moduloCritico ? `${moduloCritico[1]} ocorrência(s) recente(s)` : "Sem ocorrências recentes");
+    setText("saudeUltimoIncidente", ultimo?.codigo || ultimo?.funcao || "Nenhum");
+    setText("saudeUltimoIncidenteData", ultimo ? dataLogParaTexto(ultimo.criadoEm) : "Sistema sem falhas recentes");
+}
+
+async function alternarResolucaoLog(id, resolvidoAtual) {
+    try {
+        await db.collection("logsSistema").doc(id).update({
+            resolvido: !resolvidoAtual,
+            resolvidoEm: !resolvidoAtual ? firebase.firestore.FieldValue.serverTimestamp() : null
+        });
+        const log = logsSistemaAdmin.find(item => item.id === id);
+        if (log) log.resolvido = !resolvidoAtual;
+        renderizarLogsSistema();
+    } catch (error) {
+        console.error("Erro ao atualizar status do log:", error);
+        alert("Não foi possível atualizar o status deste log.");
+    }
+}
+
 async function carregarLogsSistema(forcar = false) {
     if (!forcar && cacheModuloValido("logs")) {
         renderizarLogsSistema();
@@ -4186,6 +4257,7 @@ async function carregarLogsSistema(forcar = false) {
         .get();
 
     logsSistemaAdmin = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    atualizarPainelSaudeSistema();
     estadoCargaModulos.logs.carregado = true;
     estadoCargaModulos.logs.atualizadoEm = Date.now();
     renderizarLogsSistema();
@@ -4203,11 +4275,14 @@ function renderizarLogsSistema() {
 
     const filtroModulo = document.getElementById("filtroModuloLogs")?.value || "";
     const filtroNivel = document.getElementById("filtroNivelLogs")?.value || "";
+    const filtroStatus = document.getElementById("filtroStatusLogs")?.value || "";
     const busca = (document.getElementById("buscaLogsSistema")?.value || "").toLowerCase().trim();
 
     const dados = logsSistemaAdmin.filter(item => {
         if (filtroModulo && item.modulo !== filtroModulo) return false;
         if (filtroNivel && item.nivel !== filtroNivel) return false;
+        if (filtroStatus === "pendente" && item.resolvido) return false;
+        if (filtroStatus === "resolvido" && !item.resolvido) return false;
         if (!busca) return true;
         return [item.modulo, item.funcao, item.codigo, item.mensagem, item.origem]
             .some(valor => String(valor || "").toLowerCase().includes(busca));
@@ -4219,19 +4294,26 @@ function renderizarLogsSistema() {
     }
 
     lista.innerHTML = dados.map(item => `
-        <article class="system-log-card ${item.nivel || "erro"}">
+        <article class="system-log-card ${escaparHtmlLogs(item.nivel || "erro")} ${item.resolvido ? "resolved" : ""}">
             <div class="system-log-head">
-                <div><strong>${item.modulo || "Sistema"}</strong><span>${item.origem || "Aplicação"}</span></div>
-                <time>${dataLogParaTexto(item.criadoEm)}</time>
+                <div><strong>${escaparHtmlLogs(item.modulo || "Sistema")}</strong><span>${escaparHtmlLogs(item.origem || "Aplicação")}</span></div>
+                <time>${escaparHtmlLogs(dataLogParaTexto(item.criadoEm))}</time>
             </div>
             <div class="system-log-body">
-                <span class="system-log-level">${item.nivel || "erro"}</span>
-                <strong>${item.codigo || item.funcao || "Erro não classificado"}</strong>
-                <p>${item.mensagem || "Sem mensagem técnica."}</p>
-                ${item.detalhes ? `<details><summary>Detalhes técnicos</summary><pre>${item.detalhes}</pre></details>` : ""}
+                <div class="system-log-tags">
+                    <span class="system-log-level">${escaparHtmlLogs(item.nivel || "erro")}</span>
+                    <span class="system-log-status">${item.resolvido ? "Resolvido" : "Pendente"}</span>
+                </div>
+                <strong>${escaparHtmlLogs(item.codigo || item.funcao || "Erro não classificado")}</strong>
+                <p>${escaparHtmlLogs(item.mensagem || "Sem mensagem técnica.")}</p>
+                ${item.detalhes ? `<details><summary>Detalhes técnicos</summary><pre>${escaparHtmlLogs(item.detalhes)}</pre></details>` : ""}
+                <button type="button" class="system-log-resolve-button" onclick="alternarResolucaoLog('${item.id}', ${Boolean(item.resolvido)})">
+                    ${item.resolvido ? "Reabrir ocorrência" : "Marcar como resolvido"}
+                </button>
             </div>
         </article>
     `).join("");
+    atualizarPainelSaudeSistema();
 }
 
 async function atualizarLogsSistema() {
