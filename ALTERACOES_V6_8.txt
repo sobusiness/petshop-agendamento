@@ -1,0 +1,10 @@
+PETLYNE V6.8 — OBSERVABILIDADE DETALHADA
+
+- Corrigida identificação automática de coleções, eliminando a maior parte dos itens “desconhecida”.
+- Operações detalhadas por função, arquivo, linha, coleção, execuções, documentos e tempo médio.
+- Detecção local de consultas repetidas em até 2 minutos e resultados iguais.
+- Estimativa de documentos relidos e sugestões de cache ou bloqueio de recarga duplicada.
+- Instrumentação do agendamento público e do painel admin usando o mesmo localStorage da origem.
+- Captura de get, set, update, add, delete, transações e lotes quando disponíveis.
+- Nenhuma leitura extra é criada para medir; os dados são derivados da operação já executada.
+- Logs no Firestore continuam restritos a erros, avisos e retentativas relevantes.

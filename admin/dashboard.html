@@ -803,6 +803,10 @@
                 <article class="monitoring-table-card"><h3>Coleções mais acessadas</h3><div id="rankingColecoesFirestore"></div></article>
                 <article class="monitoring-table-card"><h3>Operações mais lentas</h3><div id="rankingOperacoesLentas"></div></article>
             </div>
+            <div class="monitoring-two-columns monitoring-detail-grid">
+                <article class="monitoring-table-card"><h3>Funções que mais consomem</h3><p class="monitoring-card-help">Detalha coleção, número de execuções, documentos retornados e tempo médio.</p><div id="rankingFuncoesFirestore"></div></article>
+                <article class="monitoring-table-card"><h3>Oportunidades de economia</h3><p class="monitoring-card-help">Detectadas por repetições em até dois minutos e resultados iguais.</p><div id="diagnosticoDesperdiciosFirestore"></div></article>
+            </div>
             <div class="monitoring-actions"><button type="button" class="secondary-button" onclick="exportarMetricasMonitoramento()">Exportar diagnóstico JSON</button><button type="button" class="danger-outline-button" onclick="limparMetricasMonitoramento()">Zerar métricas locais</button></div>
         </div>
 

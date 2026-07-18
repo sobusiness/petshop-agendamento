@@ -4345,72 +4345,143 @@ async function atualizarLogsSistema() {
 }
 
 
-// V6.7 - Centro de Monitoramento e instrumentação local do Firestore
-const MONITORAMENTO_STORAGE_KEY = 'petlyne_monitoramento_v67';
-const monitoramentoSessao = { leituras: 0, gravacoes: 0, exclusoes: 0, operacoes: 0, duracaoTotal: 0 };
+
+// V6.8 - Observabilidade detalhada do Firestore, sem leituras adicionais
+const MONITORAMENTO_STORAGE_KEY = 'petlyne_monitoramento_v68';
+const MONITORAMENTO_JANELA_REPETICAO_MS = 120000;
+const monitoramentoSessao = { leituras:0, gravacoes:0, exclusoes:0, operacoes:0, duracaoTotal:0 };
 let monitoramentoAutoRefresh = null;
 let monitoramentoInstrumentado = false;
 
-function dataChaveMonitoramento() { return new Date().toISOString().slice(0, 10); }
-function estruturaMetricasVazia() { return { data: dataChaveMonitoramento(), leituras: 0, gravacoes: 0, exclusoes: 0, operacoes: 0, duracaoTotal: 0, colecoes: {}, lentas: [], eventos: [] }; }
-function carregarMetricasMonitoramento() {
+function dataChaveMonitoramento(){ return new Date().toISOString().slice(0,10); }
+function estruturaMetricasVazia(){ return { versao:68, data:dataChaveMonitoramento(), leituras:0, gravacoes:0, exclusoes:0, operacoes:0, duracaoTotal:0, colecoes:{}, operacoesDetalhadas:{}, lentas:[], desperdicios:[], eventosRecentes:[] }; }
+function carregarMetricasMonitoramento(){
     try {
-        const dados = JSON.parse(localStorage.getItem(MONITORAMENTO_STORAGE_KEY) || 'null');
-        return dados && dados.data === dataChaveMonitoramento() ? dados : estruturaMetricasVazia();
-    } catch (_) { return estruturaMetricasVazia(); }
+        const d=JSON.parse(localStorage.getItem(MONITORAMENTO_STORAGE_KEY)||'null');
+        return d && d.data===dataChaveMonitoramento() ? d : estruturaMetricasVazia();
+    } catch(_){ return estruturaMetricasVazia(); }
 }
-function salvarMetricasMonitoramento(dados) { try { localStorage.setItem(MONITORAMENTO_STORAGE_KEY, JSON.stringify(dados)); } catch (_) {} }
-function nomeColecaoRef(ref) {
-    try { const partes = String(ref?.path || ref?._query?.path?.canonicalString?.() || 'desconhecida').split('/'); return partes[0] || 'desconhecida'; } catch (_) { return 'desconhecida'; }
+function salvarMetricasMonitoramento(d){ try{ localStorage.setItem(MONITORAMENTO_STORAGE_KEY,JSON.stringify(d)); }catch(_){} }
+function textoCaminhoFirestore(valor){
+    if(!valor) return '';
+    if(typeof valor==='string') return valor;
+    if(Array.isArray(valor.segments)) return valor.segments.join('/');
+    if(Array.isArray(valor._parts)) return valor._parts.join('/');
+    try{ if(typeof valor.canonicalString==='function') return valor.canonicalString(); }catch(_){}
+    try{ const t=String(valor); return t==='[object Object]'?'':t; }catch(_){ return ''; }
 }
-function registrarOperacaoMonitorada(tipo, colecao, quantidade, duracao, sucesso = true) {
-    const dados = carregarMetricasMonitoramento(); const qtd = Math.max(0, Number(quantidade || 0)); const ms = Math.max(0, Math.round(Number(duracao || 0)));
-    if (tipo === 'leitura') { dados.leituras += qtd; monitoramentoSessao.leituras += qtd; }
-    if (tipo === 'gravacao') { dados.gravacoes += qtd || 1; monitoramentoSessao.gravacoes += qtd || 1; }
-    if (tipo === 'exclusao') { dados.exclusoes += qtd || 1; monitoramentoSessao.exclusoes += qtd || 1; }
-    dados.operacoes++; dados.duracaoTotal += ms; monitoramentoSessao.operacoes++; monitoramentoSessao.duracaoTotal += ms;
-    const chave = colecao || 'desconhecida'; dados.colecoes[chave] = dados.colecoes[chave] || { leituras:0, gravacoes:0, exclusoes:0, operacoes:0, duracaoTotal:0 };
-    const c = dados.colecoes[chave]; c.operacoes++; c.duracaoTotal += ms; if(tipo==='leitura') c.leituras += qtd; if(tipo==='gravacao') c.gravacoes += qtd||1; if(tipo==='exclusao') c.exclusoes += qtd||1;
-    dados.lentas.push({ tipo, colecao: chave, duracao: ms, sucesso, horario: new Date().toISOString() }); dados.lentas = dados.lentas.sort((a,b)=>b.duracao-a.duracao).slice(0,20);
-    salvarMetricasMonitoramento(dados); if (document.getElementById('monitoramento-firestore')?.classList.contains('active')) renderizarMetricasMonitoramento();
+function caminhoRefFirestore(ref){
+    const candidatos=[ref?.path,ref?._delegate?.path,ref?._query?.path,ref?._delegate?._query?.path,ref?._key?.path,ref?._delegate?._key?.path,ref?.parent?.path,ref?._delegate?.parent?.path];
+    for(const c of candidatos){ const p=textoCaminhoFirestore(c); if(p && !/^\[object/.test(p)) return p.replace(/^projects\/[^/]+\/databases\/[^/]+\/documents\//,''); }
+    return '';
 }
-function instalarMonitorFirestore() {
-    if (monitoramentoInstrumentado || !window.firebase?.firestore) return; monitoramentoInstrumentado = true;
-    const medir = (proto, metodo, tipo, quantidadeFn) => {
-        if (!proto || !proto[metodo] || proto[metodo].__petlyneMonitorado) return;
-        const original = proto[metodo]; const envolvida = function(...args) { const inicio = performance.now(); const colecao = nomeColecaoRef(this); let retorno; try { retorno = original.apply(this,args); } catch(e) { registrarOperacaoMonitorada(tipo,colecao,1,performance.now()-inicio,false); throw e; }
-            return Promise.resolve(retorno).then(resultado=>{ let qtd=1; try { qtd=quantidadeFn?quantidadeFn(resultado):1; } catch(_){} registrarOperacaoMonitorada(tipo,colecao,qtd,performance.now()-inicio,true); return resultado; }, erro=>{ registrarOperacaoMonitorada(tipo,colecao,1,performance.now()-inicio,false); throw erro; }); };
+function nomeColecaoRef(ref){
+    const p=caminhoRefFirestore(ref);
+    if(p){ const partes=p.split('/').filter(Boolean); if(partes.length) return partes[0]; }
+    try{ const id=ref?.id||ref?._delegate?.id; const pai=ref?.parent?.id||ref?._delegate?.parent?.id; return pai||id||'desconhecida'; }catch(_){ return 'desconhecida'; }
+}
+function origemChamadaMonitorada(){
+    try{
+        const linhas=String(new Error().stack||'').split('\n').slice(2);
+        for(const linha of linhas){
+            if(/registrarOperacaoMonitorada|origemChamadaMonitorada|envolvida|firebase-firestore|gstatic|Promise/.test(linha)) continue;
+            const m=linha.match(/at\s+([^\s(]+).*?(dashboard\.js|app\.js):(\d+):(\d+)/) || linha.match(/(dashboard\.js|app\.js):(\d+):(\d+)/);
+            if(m){
+                if(m.length===5) return { funcao:m[1]||'função anônima', arquivo:m[2], linha:Number(m[3]||0) };
+                return { funcao:'função anônima', arquivo:m[1], linha:Number(m[2]||0) };
+            }
+        }
+    }catch(_){}
+    return { funcao:'não identificada', arquivo:'', linha:0 };
+}
+function assinaturaResultado(snapshot){
+    try{
+        if(snapshot?.docs){ const ids=snapshot.docs.slice(0,8).map(d=>d.id).join(','); return `${snapshot.size}|${ids}`; }
+        if(snapshot?.id) return `doc:${snapshot.id}:${snapshot.exists}`;
+    }catch(_){}
+    return '';
+}
+function assinaturaOperacao(tipo,colecao,origem,ref){
+    const caminho=caminhoRefFirestore(ref);
+    let query='';
+    try{ query=String(ref?._delegate?._query || ref?._query || '').slice(0,500); }catch(_){}
+    return `${tipo}|${colecao}|${origem.arquivo}:${origem.linha}|${origem.funcao}|${caminho}|${query}`;
+}
+function recalcularDesperdicios(d){
+    const itens=Object.values(d.operacoesDetalhadas||{}).map(x=>{
+        const evitaveis=Math.max(0,(x.repeticoes||0));
+        const leiturasEvitaveis=x.tipo==='leitura' ? Math.max(0,(x.documentosRepetidos||0)) : 0;
+        return {...x,evitaveis,leiturasEvitaveis};
+    }).filter(x=>x.evitaveis>0 || x.execucoes>=5).sort((a,b)=>(b.leiturasEvitaveis-a.leiturasEvitaveis)||(b.execucoes-a.execucoes)).slice(0,12);
+    d.desperdicios=itens;
+}
+function registrarOperacaoMonitorada({tipo,ref,quantidade=1,duracao=0,sucesso=true,resultado=null,origem=null,operacaoManual=''}){
+    const d=carregarMetricasMonitoramento();
+    const qtd=Math.max(0,Number(quantidade||0)); const ms=Math.max(0,Math.round(Number(duracao||0)));
+    const colecao=nomeColecaoRef(ref); const org=origem||origemChamadaMonitorada();
+    const assinatura=assinaturaOperacao(tipo,colecao,org,ref); const agora=Date.now(); const fingerprint=assinaturaResultado(resultado);
+    if(tipo==='leitura'){ d.leituras+=qtd; monitoramentoSessao.leituras+=qtd; }
+    if(tipo==='gravacao'){ d.gravacoes+=qtd||1; monitoramentoSessao.gravacoes+=qtd||1; }
+    if(tipo==='exclusao'){ d.exclusoes+=qtd||1; monitoramentoSessao.exclusoes+=qtd||1; }
+    d.operacoes++; d.duracaoTotal+=ms; monitoramentoSessao.operacoes++; monitoramentoSessao.duracaoTotal+=ms;
+    const c=d.colecoes[colecao]=d.colecoes[colecao]||{leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0};
+    c.operacoes++; c.duracaoTotal+=ms; if(tipo==='leitura')c.leituras+=qtd; if(tipo==='gravacao')c.gravacoes+=qtd||1; if(tipo==='exclusao')c.exclusoes+=qtd||1;
+    const op=d.operacoesDetalhadas[assinatura]=d.operacoesDetalhadas[assinatura]||{assinatura,tipo,colecao,funcao:operacaoManual||org.funcao,arquivo:org.arquivo,linha:org.linha,execucoes:0,documentos:0,duracaoTotal:0,repeticoes:0,documentosRepetidos:0,ultimoFingerprint:'',ultimaExecucao:0,erros:0};
+    op.execucoes++; op.documentos+=qtd; op.duracaoTotal+=ms; if(!sucesso)op.erros++;
+    if(op.ultimaExecucao && agora-op.ultimaExecucao<=MONITORAMENTO_JANELA_REPETICAO_MS){ op.repeticoes++; if(fingerprint && fingerprint===op.ultimoFingerprint) op.documentosRepetidos+=qtd; }
+    op.ultimaExecucao=agora; if(fingerprint)op.ultimoFingerprint=fingerprint;
+    const evento={tipo,colecao,funcao:op.funcao,arquivo:op.arquivo,linha:op.linha,quantidade:qtd,duracao:ms,sucesso,horario:new Date().toISOString(),assinatura};
+    d.eventosRecentes.unshift(evento); d.eventosRecentes=d.eventosRecentes.slice(0,80);
+    d.lentas.push(evento); d.lentas=d.lentas.sort((a,b)=>b.duracao-a.duracao).slice(0,30);
+    recalcularDesperdicios(d); salvarMetricasMonitoramento(d);
+    if(document.getElementById('monitoramento-firestore')?.classList.contains('active')) renderizarMetricasMonitoramento();
+}
+function instalarMonitorFirestore(){
+    if(monitoramentoInstrumentado || !window.firebase?.firestore) return; monitoramentoInstrumentado=true;
+    const fs=firebase.firestore;
+    const medir=(proto,metodo,tipo,qtdFn)=>{
+        if(!proto||typeof proto[metodo]!=='function'||proto[metodo].__petlyneMonitorado)return;
+        const original=proto[metodo];
+        const envolvida=function(...args){
+            const inicio=performance.now(), ref=this, origem=origemChamadaMonitorada(); let retorno;
+            try{ retorno=original.apply(this,args); }catch(e){ registrarOperacaoMonitorada({tipo,ref,quantidade:1,duracao:performance.now()-inicio,sucesso:false,origem}); throw e; }
+            return Promise.resolve(retorno).then(r=>{ let q=1; try{q=qtdFn?qtdFn(r):1}catch(_){} registrarOperacaoMonitorada({tipo,ref,quantidade:q,duracao:performance.now()-inicio,sucesso:true,resultado:r,origem}); return r; },e=>{ registrarOperacaoMonitorada({tipo,ref,quantidade:1,duracao:performance.now()-inicio,sucesso:false,origem}); throw e; });
+        };
         envolvida.__petlyneMonitorado=true; proto[metodo]=envolvida;
     };
-    const fs=firebase.firestore;
-    medir(fs.Query?.prototype,'get','leitura',snap=>Math.max(1,Number(snap?.size||0)));
+    medir(fs.Query?.prototype,'get','leitura',s=>Math.max(1,Number(s?.size||0)));
     medir(fs.DocumentReference?.prototype,'get','leitura',()=>1);
-    medir(fs.DocumentReference?.prototype,'set','gravacao'); medir(fs.DocumentReference?.prototype,'update','gravacao'); medir(fs.DocumentReference?.prototype,'delete','exclusao');
-    medir(fs.CollectionReference?.prototype,'add','gravacao');
+    medir(fs.DocumentReference?.prototype,'set','gravacao'); medir(fs.DocumentReference?.prototype,'update','gravacao'); medir(fs.DocumentReference?.prototype,'delete','exclusao'); medir(fs.CollectionReference?.prototype,'add','gravacao');
+    // Lotes: registra cada item somente no commit, sem consultas adicionais.
+    const bp=fs.WriteBatch?.prototype;
+    if(bp && !bp.__petlyneMonitorado){
+        ['set','update','delete'].forEach(m=>{ if(typeof bp[m]!=='function')return; const o=bp[m]; bp[m]=function(ref,...args){ this.__petlyneItens=this.__petlyneItens||[]; this.__petlyneItens.push({tipo:m==='delete'?'exclusao':'gravacao',ref,origem:origemChamadaMonitorada()}); return o.call(this,ref,...args); }; });
+        if(typeof bp.commit==='function'){ const oc=bp.commit; bp.commit=function(...args){ const inicio=performance.now(), itens=[...(this.__petlyneItens||[])]; return Promise.resolve(oc.apply(this,args)).then(r=>{ const dur=(performance.now()-inicio)/Math.max(1,itens.length); itens.forEach(i=>registrarOperacaoMonitorada({...i,quantidade:1,duracao:dur,sucesso:true})); return r; },e=>{ itens.forEach(i=>registrarOperacaoMonitorada({...i,quantidade:1,duracao:performance.now()-inicio,sucesso:false})); throw e; }); }; }
+        bp.__petlyneMonitorado=true;
+    }
+    const tp=fs.Transaction?.prototype;
+    medir(tp,'get','leitura',r=>r?.docs?Math.max(1,r.size):1); medir(tp,'set','gravacao'); medir(tp,'update','gravacao'); medir(tp,'delete','exclusao');
 }
 setTimeout(instalarMonitorFirestore,0);
 
-function abrirAbaMonitoramento(aba) {
-    document.querySelectorAll('.monitoring-panel').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.monitoring-tab').forEach(x=>x.classList.toggle('active',x.dataset.monitoringTab===aba));
-    document.getElementById(`monitoramento-${aba}`)?.classList.add('active');
-    if(aba==='firestore') renderizarMetricasMonitoramento(); if(aba==='diagnostico') prepararDiagnosticoMonitoramento(); if(aba==='eventos') renderizarLogsSistema();
-}
-function renderizarMetricasMonitoramento() {
-    const d=carregarMetricasMonitoramento(); const media=d.operacoes?Math.round(d.duracaoTotal/d.operacoes):0; const s=monitoramentoSessao;
+function abrirAbaMonitoramento(aba){ document.querySelectorAll('.monitoring-panel').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.monitoring-tab').forEach(x=>x.classList.toggle('active',x.dataset.monitoringTab===aba)); document.getElementById(`monitoramento-${aba}`)?.classList.add('active'); if(aba==='firestore')renderizarMetricasMonitoramento(); if(aba==='diagnostico')prepararDiagnosticoMonitoramento(); if(aba==='eventos')renderizarLogsSistema(); }
+function renderizarMetricasMonitoramento(){
+    const d=carregarMetricasMonitoramento(), media=d.operacoes?Math.round(d.duracaoTotal/d.operacoes):0, s=monitoramentoSessao;
     const txt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
     txt('metricasLeituras',d.leituras.toLocaleString('pt-BR')); txt('metricasGravacoes',d.gravacoes.toLocaleString('pt-BR')); txt('metricasExclusoes',d.exclusoes.toLocaleString('pt-BR')); txt('metricasTempoMedio',`${media} ms`); txt('metricasOperacoes',`${d.operacoes} operações medidas`);
     txt('metricasLeiturasSessao',`${s.leituras} nesta sessão`); txt('metricasGravacoesSessao',`${s.gravacoes} nesta sessão`); txt('metricasExclusoesSessao',`${s.exclusoes} nesta sessão`);
     txt('resumoLeiturasHoje',d.leituras.toLocaleString('pt-BR')); txt('resumoGravacoesHoje',d.gravacoes.toLocaleString('pt-BR')); txt('resumoExclusoesHoje',d.exclusoes.toLocaleString('pt-BR')); txt('resumoTempoMedio',`${media} ms`);
-    const ranking=Object.entries(d.colecoes).map(([nome,v])=>({nome,...v,total:(v.leituras||0)+(v.gravacoes||0)+(v.exclusoes||0)})).sort((a,b)=>b.total-a.total).slice(0,8);
-    const max=Math.max(1,...ranking.map(x=>x.total)); const rc=document.getElementById('rankingColecoesFirestore'); if(rc) rc.innerHTML=ranking.length?ranking.map(x=>`<div class="monitoring-ranking-row"><div><strong>${escaparHtmlLogs(x.nome)}</strong><span>${x.leituras} leituras · ${x.gravacoes} gravações · ${x.exclusoes} exclusões</span></div><div class="monitoring-bar"><i style="width:${Math.max(4,(x.total/max)*100)}%"></i></div><b>${x.total}</b></div>`).join(''):'<p class="logs-empty">Nenhuma operação observada ainda.</p>';
-    const rl=document.getElementById('rankingOperacoesLentas'); if(rl) rl.innerHTML=d.lentas.length?d.lentas.slice(0,8).map(x=>`<div class="slow-operation"><div><strong>${escaparHtmlLogs(x.colecao)}</strong><span>${escaparHtmlLogs(x.tipo)} · ${new Date(x.horario).toLocaleTimeString('pt-BR')}</span></div><b>${x.duracao} ms</b></div>`).join(''):'<p class="logs-empty">Nenhuma operação medida ainda.</p>';
+    const ranking=Object.entries(d.colecoes).map(([nome,v])=>({nome,...v,total:(v.leituras||0)+(v.gravacoes||0)+(v.exclusoes||0)})).sort((a,b)=>b.total-a.total).slice(0,10), max=Math.max(1,...ranking.map(x=>x.total));
+    const rc=document.getElementById('rankingColecoesFirestore'); if(rc)rc.innerHTML=ranking.length?ranking.map(x=>`<div class="monitoring-ranking-row"><div><strong>${escaparHtmlLogs(x.nome)}</strong><span>${x.leituras} leituras · ${x.gravacoes} gravações · ${x.exclusoes} exclusões</span></div><div class="monitoring-bar"><i style="width:${Math.max(4,(x.total/max)*100)}%"></i></div><b>${x.total}</b></div>`).join(''):'<p class="logs-empty">Nenhuma operação observada ainda.</p>';
+    const rl=document.getElementById('rankingOperacoesLentas'); if(rl)rl.innerHTML=d.lentas.slice(0,10).map(x=>`<div class="slow-operation"><div><strong>${escaparHtmlLogs(x.funcao||x.colecao)}</strong><span>${escaparHtmlLogs(x.colecao)} · ${escaparHtmlLogs(x.tipo)} · ${escaparHtmlLogs(x.arquivo||'')} ${x.linha?`linha ${x.linha}`:''}</span></div><b>${x.duracao} ms</b></div>`).join('')||'<p class="logs-empty">Nenhuma operação medida ainda.</p>';
+    const ro=document.getElementById('rankingFuncoesFirestore'); if(ro){ const ops=Object.values(d.operacoesDetalhadas||{}).sort((a,b)=>b.documentos-a.documentos).slice(0,12); ro.innerHTML=ops.map(x=>`<div class="monitoring-ranking-row"><div><strong>${escaparHtmlLogs(x.funcao)}</strong><span>${escaparHtmlLogs(x.colecao)} · ${x.execucoes} execuções · ${x.documentos} documentos · média ${Math.round(x.duracaoTotal/Math.max(1,x.execucoes))} ms</span></div><b>${x.documentos}</b></div>`).join('')||'<p class="logs-empty">Nenhuma função medida ainda.</p>'; }
+    const rd=document.getElementById('diagnosticoDesperdiciosFirestore'); if(rd){ rd.innerHTML=(d.desperdicios||[]).length?d.desperdicios.map(x=>`<article class="monitoring-waste-card"><div><span>Possível desperdício</span><strong>${escaparHtmlLogs(x.funcao)}</strong><small>${escaparHtmlLogs(x.colecao)} · ${x.execucoes} execuções</small></div><p>${x.repeticoes} repetição(ões) em até 2 minutos${x.documentosRepetidos?` com aproximadamente <b>${x.documentosRepetidos}</b> documentos iguais relidos`:''}.</p><em>Sugestão: ${x.documentosRepetidos?'usar cache curto ou impedir recarga duplicada':'revisar se todas as execuções são necessárias'}.</em></article>`).join(''):'<p class="logs-empty">Nenhum desperdício evidente detectado nesta sessão.</p>'; }
 }
 function exportarMetricasMonitoramento(){ const blob=new Blob([JSON.stringify({geradoEm:new Date().toISOString(),metricas:carregarMetricasMonitoramento(),logs:logsSistemaAdmin},null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`petlyne-diagnostico-${dataChaveMonitoramento()}.json`;a.click();URL.revokeObjectURL(a.href); }
-function limparMetricasMonitoramento(){ if(!confirm('Zerar as métricas locais observadas hoje neste navegador?'))return; salvarMetricasMonitoramento(estruturaMetricasVazia()); Object.assign(monitoramentoSessao,{leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0});renderizarMetricasMonitoramento(); }
-function classificarEtapaDiagnostico(log){ const t=`${log?.funcao||''} ${log?.codigo||''} ${log?.mensagem||''}`.toLowerCase(); if(/cliente|telefone/.test(t))return 0;if(/hor[aá]rio|disponibilidade|bloqueio/.test(t))return 1;if(/salvar|gravar|transaction|permission|agendamento/.test(t))return 2;if(/whatsapp/.test(t))return 3;return 4; }
-function prepararDiagnosticoMonitoramento(){ const sel=document.getElementById('diagnosticoEventoSelecionado'); if(!sel)return; const atual=sel.value; sel.innerHTML='<option value="">Ocorrência mais recente</option>'+logsSistemaAdmin.filter(x=>!x.resolvido).slice(0,50).map(x=>`<option value="${x.id}">${escaparHtmlLogs(dataLogParaTexto(x.criadoEm))} — ${escaparHtmlLogs(x.codigo||x.funcao||x.modulo)}</option>`).join(''); sel.value=atual; renderizarDiagnosticoSelecionado(); }
-function renderizarDiagnosticoSelecionado(){ const id=document.getElementById('diagnosticoEventoSelecionado')?.value; const log=(id?logsSistemaAdmin.find(x=>x.id===id):logsSistemaAdmin.find(x=>!x.resolvido))||null; const etapas=['Buscar cadastro','Validar horário','Salvar agendamento','Preparar WhatsApp','Finalizar']; const falha=log?classificarEtapaDiagnostico(log):-1; const fluxo=document.getElementById('diagnosticoFluxo'); if(fluxo) fluxo.innerHTML=etapas.map((nome,i)=>`<div class="diagnostic-step ${!log?'neutral':i<falha?'success':i===falha?'failure':'waiting'}"><span>${!log?'—':i<falha?'✓':i===falha?'!':'·'}</span><strong>${nome}</strong><small>${!log?'Sem ocorrência selecionada':i<falha?'Etapa anterior concluída':i===falha?'Possível ponto da falha':'Não confirmado'}</small></div>`).join('<i class="diagnostic-connector"></i>');
-    const rec=document.getElementById('diagnosticoRecomendacao'); if(!rec)return; if(!log){rec.innerHTML='<strong>Nenhuma falha pendente</strong><p>O sistema não possui uma ocorrência aberta para diagnosticar.</p>';return;} const msg=String(log.mensagem||''); let acao='Abra os detalhes técnicos e reproduza a operação apenas se necessário.'; if(/permission|insufficient/i.test(msg))acao='Verifique as regras do Firestore e confirme se a operação possui permissão.'; else if(/unavailable|network|offline|timeout/i.test(msg))acao='Falha provavelmente temporária. Verifique conexão e quantidade de retentativas antes de alterar o código.'; else if(/showPicker/i.test(msg))acao='Ocorrência benigna do navegador. A correção já impede abertura automática do seletor; marque registros antigos como resolvidos.'; rec.innerHTML=`<div><span class="system-log-level">${escaparHtmlLogs(log.nivel||'erro')}</span><strong>${escaparHtmlLogs(log.codigo||log.funcao||'Ocorrência')}</strong></div><p>${escaparHtmlLogs(msg)}</p><h4>Ação recomendada</h4><p>${escaparHtmlLogs(acao)}</p>`; }
-async function atualizarCentroMonitoramento(){ await atualizarLogsSistema(); renderizarMetricasMonitoramento(); prepararDiagnosticoMonitoramento(); const e=document.getElementById('monitoramentoUltimaAtualizacao');if(e)e.textContent=`Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`; }
-function iniciarAtualizacaoAutomaticaMonitoramento(){ if(monitoramentoAutoRefresh)return; monitoramentoAutoRefresh=setInterval(()=>{if(document.getElementById('secao-logs')?.classList.contains('active'))atualizarCentroMonitoramento();},30000); }
+function limparMetricasMonitoramento(){ if(!confirm('Zerar as métricas locais observadas hoje neste navegador?'))return; salvarMetricasMonitoramento(estruturaMetricasVazia());Object.assign(monitoramentoSessao,{leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0});renderizarMetricasMonitoramento(); }
+function classificarEtapaDiagnostico(log){const t=`${log?.funcao||''} ${log?.codigo||''} ${log?.mensagem||''}`.toLowerCase();if(/cliente|telefone/.test(t))return 0;if(/hor[aá]rio|disponibilidade|bloqueio/.test(t))return 1;if(/salvar|gravar|transaction|permission|agendamento/.test(t))return 2;if(/whatsapp/.test(t))return 3;return 4;}
+function prepararDiagnosticoMonitoramento(){const sel=document.getElementById('diagnosticoEventoSelecionado');if(!sel)return;const atual=sel.value;sel.innerHTML='<option value="">Ocorrência mais recente</option>'+logsSistemaAdmin.filter(x=>!x.resolvido).slice(0,50).map(x=>`<option value="${x.id}">${escaparHtmlLogs(dataLogParaTexto(x.criadoEm))} — ${escaparHtmlLogs(x.codigo||x.funcao||x.modulo)}</option>`).join('');sel.value=atual;renderizarDiagnosticoSelecionado();}
+function renderizarDiagnosticoSelecionado(){const id=document.getElementById('diagnosticoEventoSelecionado')?.value;const log=(id?logsSistemaAdmin.find(x=>x.id===id):logsSistemaAdmin.find(x=>!x.resolvido))||null;const etapas=['Buscar cadastro','Validar horário','Salvar agendamento','Preparar WhatsApp','Finalizar'];const falha=log?classificarEtapaDiagnostico(log):-1;const fluxo=document.getElementById('diagnosticoFluxo');if(fluxo)fluxo.innerHTML=etapas.map((nome,i)=>`<div class="diagnostic-step ${!log?'neutral':i<falha?'success':i===falha?'failure':'waiting'}"><span>${!log?'—':i<falha?'✓':i===falha?'!':'·'}</span><strong>${nome}</strong><small>${!log?'Sem ocorrência selecionada':i<falha?'Etapa anterior concluída':i===falha?'Possível ponto da falha':'Não confirmado'}</small></div>`).join('<i class="diagnostic-connector"></i>');const rec=document.getElementById('diagnosticoRecomendacao');if(!rec)return;if(!log){rec.innerHTML='<strong>Nenhuma falha pendente</strong><p>O sistema não possui uma ocorrência aberta para diagnosticar.</p>';return;}const msg=String(log.mensagem||'');let acao='Abra os detalhes técnicos e reproduza a operação apenas se necessário.';if(/permission|insufficient/i.test(msg))acao='Verifique as regras do Firestore e confirme se a operação possui permissão.';else if(/unavailable|network|offline|timeout/i.test(msg))acao='Falha provavelmente temporária. Verifique conexão e retentativas antes de alterar o código.';else if(/showPicker/i.test(msg))acao='Ocorrência antiga e benigna do navegador. Marque como resolvida.';rec.innerHTML=`<div><span class="system-log-level">${escaparHtmlLogs(log.nivel||'erro')}</span><strong>${escaparHtmlLogs(log.codigo||log.funcao||'Ocorrência')}</strong></div><p>${escaparHtmlLogs(msg)}</p><h4>Ação recomendada</h4><p>${escaparHtmlLogs(acao)}</p>`;}
+async function atualizarCentroMonitoramento(){await atualizarLogsSistema();renderizarMetricasMonitoramento();prepararDiagnosticoMonitoramento();const e=document.getElementById('monitoramentoUltimaAtualizacao');if(e)e.textContent=`Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;}
+function iniciarAtualizacaoAutomaticaMonitoramento(){if(monitoramentoAutoRefresh)return;monitoramentoAutoRefresh=setInterval(()=>{if(document.getElementById('secao-logs')?.classList.contains('active'))atualizarCentroMonitoramento();},30000);}
 setTimeout(iniciarAtualizacaoAutomaticaMonitoramento,1000);
