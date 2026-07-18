@@ -1,0 +1,19 @@
+PETLYNE V6.5 - MOTOR DE CONFIABILIDADE
+
+1. Consultas críticas com até 3 tentativas automáticas.
+2. Timeout controlado de 7 segundos para leituras e 9 segundos para gravações.
+3. Espera progressiva entre tentativas (500 ms e 1.000 ms).
+4. A busca por telefone não interpreta falha de conexão como cadastro inexistente.
+5. Consulta de disponibilidade com recuperação automática em falhas transitórias.
+6. Gravação idempotente do agendamento usando o protocolo como ID do documento.
+   Isso evita duplicidade caso a primeira gravação seja concluída, mas a resposta ao navegador seja perdida.
+7. Verificação do documento antes de repetir uma gravação.
+8. Proteção contra múltiplos cliques no botão Confirmar.
+9. Botão exibe “Confirmando com segurança...” durante o processo.
+10. Mensagens diferentes para conexão, permissão, sobrecarga e carregamento do Firebase.
+11. Logs registram etapa, tentativa, total de tentativas e duração da operação.
+12. Mantidas as otimizações e o módulo de logs da V6.4.
+
+IMPORTANTE
+- Publique as regras presentes em REGRAS_FIRESTORE_V6_4.txt, que já autorizam a criação segura de logs pelo agendamento online.
+- O sistema reduz fortemente falhas temporárias, mas nenhuma aplicação web pode impedir 100% dos erros externos de internet ou indisponibilidade de serviços.

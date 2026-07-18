@@ -530,6 +530,106 @@ function salvarCache(mapa, chave, valor) {
     return valor;
 }
 
+// V6.5 - Motor de confiabilidade para operações críticas
+const CONFIG_CONFIABILIDADE = {
+    tentativasLeitura: 3,
+    tentativasEscrita: 3,
+    timeoutLeituraMs: 7000,
+    timeoutEscritaMs: 9000,
+    esperaInicialMs: 500
+};
+
+const CODIGOS_TRANSITORIOS_FIREBASE = new Set([
+    "aborted",
+    "cancelled",
+    "deadline-exceeded",
+    "internal",
+    "network-request-failed",
+    "resource-exhausted",
+    "unavailable",
+    "unknown"
+]);
+
+function criarErroPetlyne(codigo, mensagem, causa = null) {
+    const erro = new Error(mensagem || codigo);
+    erro.code = codigo;
+    erro.cause = causa || undefined;
+    return erro;
+}
+
+function codigoErroNormalizado(error) {
+    const codigo = String(error?.code || error?.message || "unknown").toLowerCase();
+    return codigo.replace(/^firestore\//, "");
+}
+
+function erroTransitorio(error) {
+    const codigo = codigoErroNormalizado(error);
+    return CODIGOS_TRANSITORIOS_FIREBASE.has(codigo)
+        || /network|offline|timeout|timed out|indispon[ií]vel|conex[aã]o/i.test(String(error?.message || ""));
+}
+
+function aguardar(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function executarComTimeout(promessa, timeoutMs, etapa) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(criarErroPetlyne("deadline-exceeded", `Tempo limite excedido em ${etapa}.`)), timeoutMs);
+    });
+
+    return Promise.race([Promise.resolve(promessa), timeout]).finally(() => clearTimeout(timer));
+}
+
+async function executarComConfiabilidade(operacao, opcoes = {}) {
+    const etapa = opcoes.etapa || "operação";
+    const tentativas = Math.max(1, Number(opcoes.tentativas || CONFIG_CONFIABILIDADE.tentativasLeitura));
+    const timeoutMs = Number(opcoes.timeoutMs || CONFIG_CONFIABILIDADE.timeoutLeituraMs);
+    const inicioTotal = performance.now();
+    let ultimoErro;
+
+    for (let tentativa = 1; tentativa <= tentativas; tentativa += 1) {
+        const inicioTentativa = performance.now();
+        try {
+            const resultado = await executarComTimeout(operacao(tentativa), timeoutMs, etapa);
+            return resultado;
+        } catch (error) {
+            ultimoErro = error;
+            const transitorio = erroTransitorio(error);
+
+            await registrarLogSistema({
+                modulo: "Agendamento Online",
+                funcao: etapa,
+                nivel: tentativa < tentativas && transitorio ? "aviso" : "erro",
+                codigo: codigoErroNormalizado(error),
+                mensagem: error?.message || String(error),
+                detalhes: `Tentativa ${tentativa} de ${tentativas}; duração ${Math.round(performance.now() - inicioTentativa)} ms; total ${Math.round(performance.now() - inicioTotal)} ms`,
+                tentativa,
+                totalTentativas: tentativas
+            });
+
+            if (!transitorio || tentativa >= tentativas) break;
+            const espera = CONFIG_CONFIABILIDADE.esperaInicialMs * Math.pow(2, tentativa - 1);
+            await aguardar(espera);
+        }
+    }
+
+    throw ultimoErro || criarErroPetlyne("unknown", `Falha em ${etapa}.`);
+}
+
+function mensagemAmigavelErro(error, contexto = "agendamento") {
+    const codigo = codigoErroNormalizado(error);
+    if (codigo === "permission-denied") return "O sistema não conseguiu acessar o banco de dados. Tente novamente em instantes.";
+    if (codigo === "resource-exhausted") return "O sistema está temporariamente sobrecarregado. Aguarde um momento e tente novamente.";
+    if (["unavailable", "deadline-exceeded", "network-request-failed"].includes(codigo) || erroTransitorio(error)) {
+        return "A conexão com o sistema oscilou. Verifique sua internet e tente novamente.";
+    }
+    if (codigo === "firebase-nao-encontrado") return "O sistema de agendamento ainda não terminou de carregar. Atualize a página e tente novamente.";
+    return contexto === "cadastro"
+        ? "Não foi possível consultar seu cadastro agora. Tente novamente em instantes."
+        : "Não foi possível confirmar o agendamento agora. Atualize os horários e tente novamente.";
+}
+
 async function registrarLogSistema(dados = {}) {
     try {
         if (typeof db === "undefined") return;
@@ -544,6 +644,9 @@ async function registrarLogSistema(dados = {}) {
             dataAgendamento: document.getElementById("data")?.value || "",
             horario: document.getElementById("horario")?.value || "",
             protocolo: dados.protocolo || "",
+            tentativa: Number(dados.tentativa || 0),
+            totalTentativas: Number(dados.totalTentativas || 0),
+            duracaoMs: Number(dados.duracaoMs || 0),
             url: window.location.href,
             navegador: navigator.userAgent.slice(0, 500),
             criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
@@ -819,40 +922,63 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
     const cache = obterCacheValido(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, CACHE_CLIENTE_MS);
     if (cache) return cache;
 
-    try {
-        const variantes = [...new Set([
-            telefoneDigitado,
-            formatarTelefoneCelular(telefoneNumeros),
-            telefoneNumeros
-        ].filter(Boolean))];
+    const variantes = [...new Set([
+        telefoneDigitado,
+        formatarTelefoneCelular(telefoneNumeros),
+        telefoneNumeros
+    ].filter(Boolean))];
 
-        const consultasClientes = variantes.map(valor =>
+    try {
+        const consultasClientes = variantes.map(valor => () =>
             db.collection("clientes").where("telefone", "==", valor).limit(10).get()
         );
+        consultasClientes.push(() => db.collection("clientes").where("telefoneNormalizado", "==", telefoneNumeros).limit(10).get());
 
-        // Novos cadastros podem possuir o campo normalizado; a consulta falha de forma segura se ainda não existir índice específico.
-        consultasClientes.push(db.collection("clientes").where("telefoneNormalizado", "==", telefoneNumeros).limit(10).get());
+        const resultadosClientes = await Promise.allSettled(consultasClientes.map((consulta, indice) =>
+            executarComConfiabilidade(consulta, {
+                etapa: `buscarClienteTelefone_${indice + 1}`,
+                tentativas: CONFIG_CONFIABILIDADE.tentativasLeitura,
+                timeoutMs: CONFIG_CONFIABILIDADE.timeoutLeituraMs
+            })
+        ));
 
-        const resultadosClientes = await Promise.allSettled(consultasClientes);
+        const sucessosClientes = resultadosClientes.filter(resultado => resultado.status === "fulfilled");
+        if (sucessosClientes.length === 0) {
+            throw resultadosClientes.find(resultado => resultado.status === "rejected")?.reason
+                || criarErroPetlyne("unavailable", "Não foi possível consultar os clientes.");
+        }
+
         const mapa = new Map();
-        resultadosClientes.forEach(resultado => {
-            if (resultado.status !== "fulfilled") return;
+        sucessosClientes.forEach(resultado => {
             resultado.value.docs.forEach(doc => {
                 const item = { id: doc.id, ...doc.data() };
                 mapa.set(chavePetCadastro(item), item);
             });
         });
 
-        if (mapa.size > 0) return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
+        if (mapa.size > 0) {
+            return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
+        }
 
-        // Fallback direcionado para agendamentos antigos: nunca mais lê a coleção inteira.
-        const consultasHistorico = variantes.map(valor =>
+        const consultasHistorico = variantes.map(valor => () =>
             db.collection("agendamentos").where("telefone", "==", valor).limit(30).get()
         );
-        const resultadosHistorico = await Promise.allSettled(consultasHistorico);
+        const resultadosHistorico = await Promise.allSettled(consultasHistorico.map((consulta, indice) =>
+            executarComConfiabilidade(consulta, {
+                etapa: `buscarHistoricoTelefone_${indice + 1}`,
+                tentativas: CONFIG_CONFIABILIDADE.tentativasLeitura,
+                timeoutMs: CONFIG_CONFIABILIDADE.timeoutLeituraMs
+            })
+        ));
+
+        const sucessosHistorico = resultadosHistorico.filter(resultado => resultado.status === "fulfilled");
+        if (sucessosHistorico.length === 0) {
+            throw resultadosHistorico.find(resultado => resultado.status === "rejected")?.reason
+                || criarErroPetlyne("unavailable", "Não foi possível consultar o histórico.");
+        }
+
         const registros = [];
-        resultadosHistorico.forEach(resultado => {
-            if (resultado.status !== "fulfilled") return;
+        sucessosHistorico.forEach(resultado => {
             resultado.value.docs.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
         });
 
@@ -865,7 +991,13 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
         return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
     } catch (error) {
         console.error("Erro ao buscar cadastro por telefone:", error);
-        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarCadastrosPorTelefoneFirebase", mensagem:error.message, codigo:error.code });
+        await registrarLogSistema({
+            modulo: "Agendamento Online",
+            funcao: "buscarCadastrosPorTelefoneFirebase",
+            mensagem: error?.message || String(error),
+            codigo: codigoErroNormalizado(error),
+            detalhes: `Telefone normalizado: ${telefoneNumeros.slice(-4).padStart(telefoneNumeros.length, "*")}`
+        });
         throw error;
     }
 }
@@ -879,7 +1011,14 @@ async function preencherCadastroPorTelefone() {
         return;
     }
 
-    const pets = await buscarCadastrosPorTelefoneFirebase(telefone);
+    let pets;
+    try {
+        pets = await buscarCadastrosPorTelefoneFirebase(telefone);
+    } catch (error) {
+        limparSeletorPetsCadastrados();
+        mostrarAlerta(mensagemAmigavelErro(error, "cadastro"));
+        return;
+    }
 
     if (pets.length === 0) {
         limparSeletorPetsCadastrados();
@@ -1291,14 +1430,20 @@ async function buscarDisponibilidadeDataFirebase(dataSelecionada, forcar = false
         if (cache) return cache;
     }
 
-    const [agendamentosSnapshot, bloqueiosSnapshot] = await Promise.all([
-        db.collection("agendamentos").where("data", "==", dataSelecionada).get(),
-        db.collection("bloqueiosAgenda").where("data", "==", dataSelecionada).where("status", "==", "Ativo").get()
-    ]);
+    return executarComConfiabilidade(async () => {
+        const [agendamentosSnapshot, bloqueiosSnapshot] = await Promise.all([
+            db.collection("agendamentos").where("data", "==", dataSelecionada).get(),
+            db.collection("bloqueiosAgenda").where("data", "==", dataSelecionada).where("status", "==", "Ativo").get()
+        ]);
 
-    return salvarCache(cacheConsultasPetlyne.disponibilidadePorData, dataSelecionada, {
-        agendamentos: agendamentosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
-        bloqueios: bloqueiosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        return salvarCache(cacheConsultasPetlyne.disponibilidadePorData, dataSelecionada, {
+            agendamentos: agendamentosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+            bloqueios: bloqueiosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        });
+    }, {
+        etapa: "buscarDisponibilidadeDataFirebase",
+        tentativas: CONFIG_CONFIABILIDADE.tentativasLeitura,
+        timeoutMs: CONFIG_CONFIABILIDADE.timeoutLeituraMs
     });
 }
 
@@ -1716,10 +1861,24 @@ async function validarDisponibilidadeFinalFirestore(dados) {
 
 async function salvarAgendamentoComTransacao(dados, protocolo) {
     if (typeof db === "undefined") {
-        throw new Error("FIREBASE_NAO_ENCONTRADO");
+        throw criarErroPetlyne("firebase-nao-encontrado", "Firebase não encontrado.");
     }
 
-    await db.collection("agendamentos").add(montarDadosAgendamentoFirestore(dados, protocolo));
+    const referencia = db.collection("agendamentos").doc(protocolo);
+    const payload = montarDadosAgendamentoFirestore(dados, protocolo);
+
+    await executarComConfiabilidade(async tentativa => {
+        if (tentativa > 1) {
+            const existente = await referencia.get();
+            if (existente.exists) return;
+        }
+        await referencia.set(payload, { merge: false });
+    }, {
+        etapa: "salvarAgendamentoFirestore",
+        tentativas: CONFIG_CONFIABILIDADE.tentativasEscrita,
+        timeoutMs: CONFIG_CONFIABILIDADE.timeoutEscritaMs
+    });
+
     cacheConsultasPetlyne.disponibilidadePorData.delete(dados.data);
 }
 
@@ -1728,7 +1887,7 @@ function alternarConfirmacaoPreviaProcessando(processando) {
     if (!botao) return;
 
     botao.disabled = processando;
-    botao.textContent = processando ? "Validando disponibilidade..." : "Confirmar";
+    botao.textContent = processando ? "Confirmando com segurança..." : "Confirmar";
 }
 
 async function tratarFalhaDisponibilidadeFinal(mensagem) {
@@ -1746,9 +1905,12 @@ async function salvarAgendamentoFirebase(dados, protocolo) {
     await salvarAgendamentoComTransacao(dados, protocolo);
 }
 
-async function confirmarAgendamentoFinal() {
-    if (!dadosPreAgendamento) return;
+let confirmacaoAgendamentoEmAndamento = false;
 
+async function confirmarAgendamentoFinal() {
+    if (!dadosPreAgendamento || confirmacaoAgendamentoEmAndamento) return;
+
+    confirmacaoAgendamentoEmAndamento = true;
     alternarConfirmacaoPreviaProcessando(true);
 
     try {
@@ -1788,10 +1950,11 @@ async function confirmarAgendamentoFinal() {
             ? "Este horário acabou de ser reservado por outro cliente. Escolha outro horário."
             : error && error.message === "HORARIO_BLOQUEADO"
                 ? "Este horário acabou de ficar bloqueado por ausência temporária. Escolha outro horário."
-                : "Não foi possível confirmar o agendamento agora. Atualize os horários e tente novamente.";
+                : mensagemAmigavelErro(error, "agendamento");
 
         await tratarFalhaDisponibilidadeFinal(mensagem);
     } finally {
+        confirmacaoAgendamentoEmAndamento = false;
         alternarConfirmacaoPreviaProcessando(false);
     }
 }
