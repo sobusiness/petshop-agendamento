@@ -35,6 +35,7 @@
         <button class="tab-button" onclick="abrirSecao('clube')">Clube PetLyne</button>
         <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
+        <button class="tab-button" onclick="abrirSecao('logs')">Logs do Sistema</button>
     </nav>
 
     <section id="secao-agendamentos" class="admin-section active">
@@ -735,6 +736,39 @@
             <summary>Histórico local de alterações recentes</summary>
             <div id="catalogoHistorico"></div>
         </details>
+    </section>
+
+
+    <section id="secao-logs" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Logs do Sistema</h2>
+                <p>Consulte falhas técnicas registradas no agendamento online e no painel administrativo.</p>
+            </div>
+            <button type="button" onclick="atualizarLogsSistema()">Atualizar logs</button>
+        </div>
+        <div class="logs-filter-card">
+            <input id="buscaLogsSistema" type="text" placeholder="Pesquisar mensagem, função ou código" oninput="renderizarLogsSistema()">
+            <select id="filtroModuloLogs" onchange="renderizarLogsSistema()">
+                <option value="">Todos os módulos</option>
+                <option value="Agendamento Online">Agendamento Online</option>
+                <option value="agendamentos">Agendamentos</option>
+                <option value="faturamento">Faturamento</option>
+                <option value="clientes">Clientes</option>
+                <option value="crm">CRM Growth</option>
+                <option value="clube">Clube PetLyne</option>
+                <option value="pacotes">Gestão de Pacotes</option>
+                <option value="servicos">Produtos / Serviços</option>
+                <option value="JavaScript">JavaScript</option>
+            </select>
+            <select id="filtroNivelLogs" onchange="renderizarLogsSistema()">
+                <option value="">Todos os níveis</option>
+                <option value="erro">Erro</option>
+                <option value="aviso">Aviso</option>
+                <option value="info">Informação</option>
+            </select>
+        </div>
+        <div id="listaLogsSistema" class="system-logs-list"></div>
     </section>
 
 </main>

@@ -33,6 +33,106 @@ for (let hora = 9; hora <= 16; hora++) {
     horasAgenda.push(`${hora.toString().padStart(2, "0")}:30`);
 }
 
+
+
+// V6.4 - Controle de carregamento sob demanda e cache de sessão
+const estadoCargaModulos = {
+    agendamentos: { carregado: false, carregando: null, atualizadoEm: 0 },
+    servicos: { carregado: false, carregando: null, atualizadoEm: 0 },
+    pacotes: { carregado: false, carregando: null, atualizadoEm: 0 },
+    clientes: { carregado: false, carregando: null, atualizadoEm: 0 },
+    bloqueios: { carregado: false, carregando: null, atualizadoEm: 0 },
+    crmHistorico: { carregado: false, carregando: null, atualizadoEm: 0 },
+    clubeResgates: { carregado: false, carregando: null, atualizadoEm: 0 },
+    logs: { carregado: false, carregando: null, atualizadoEm: 0 }
+};
+
+const CACHE_MODULO_MS = 5 * 60 * 1000;
+let logsSistemaAdmin = [];
+
+function cacheModuloValido(nome) {
+    const estado = estadoCargaModulos[nome];
+    return Boolean(estado?.carregado && (Date.now() - estado.atualizadoEm) < CACHE_MODULO_MS);
+}
+
+async function executarCargaUnica(nome, executor, forcar = false) {
+    const estado = estadoCargaModulos[nome];
+    if (!estado) return executor();
+    if (!forcar && cacheModuloValido(nome)) return;
+    if (estado.carregando) return estado.carregando;
+
+    estado.carregando = (async () => {
+        try {
+            await executor();
+            estado.carregado = true;
+            estado.atualizadoEm = Date.now();
+        } catch (error) {
+            await registrarLogSistemaAdmin({
+                modulo: nome,
+                funcao: 'executarCargaUnica',
+                mensagem: error?.message || String(error),
+                codigo: error?.code || 'erro-carregamento',
+                nivel: 'erro'
+            });
+            throw error;
+        } finally {
+            estado.carregando = null;
+        }
+    })();
+
+    return estado.carregando;
+}
+
+function invalidarCacheModulo(...nomes) {
+    nomes.forEach(nome => {
+        if (estadoCargaModulos[nome]) {
+            estadoCargaModulos[nome].carregado = false;
+            estadoCargaModulos[nome].atualizadoEm = 0;
+        }
+    });
+}
+
+async function registrarLogSistemaAdmin(dados = {}) {
+    try {
+        if (typeof db === 'undefined' || !auth.currentUser) return;
+        await db.collection('logsSistema').add({
+            origem: 'Painel Admin',
+            modulo: dados.modulo || 'Admin',
+            funcao: dados.funcao || '',
+            nivel: dados.nivel || 'erro',
+            codigo: dados.codigo || '',
+            mensagem: String(dados.mensagem || 'Erro não identificado').slice(0, 1200),
+            detalhes: String(dados.detalhes || '').slice(0, 2500),
+            url: window.location.href,
+            navegador: navigator.userAgent.slice(0, 500),
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            resolvido: false
+        });
+    } catch (erroLog) {
+        console.warn('Não foi possível registrar o log administrativo:', erroLog);
+    }
+}
+
+window.addEventListener('error', event => {
+    registrarLogSistemaAdmin({
+        modulo: 'JavaScript',
+        funcao: 'window.error',
+        mensagem: event.message,
+        detalhes: `${event.filename || ''}:${event.lineno || ''}:${event.colno || ''}`
+    });
+});
+
+window.addEventListener('unhandledrejection', event => {
+    const motivo = event.reason || {};
+    registrarLogSistemaAdmin({
+        modulo: 'JavaScript',
+        funcao: 'unhandledrejection',
+        mensagem: motivo.message || String(motivo),
+        codigo: motivo.code || ''
+    });
+});
+
+
 auth.onAuthStateChanged(user => {
     if (!user) {
         window.location.href = "index.html";
@@ -43,67 +143,108 @@ auth.onAuthStateChanged(user => {
 });
 
 async function iniciarDashboard() {
-    await carregarAgendamentos();
-    await carregarServicosAdmin();
-    await carregarPacotesAdmin();
-    await carregarClientesAdmin();
-    await carregarHistoricoCRM();
-    await carregarClubePetlyneResgates();
-    await carregarBloqueiosAgenda();
+    // Apenas a agenda é necessária na primeira tela. Os demais módulos são carregados ao serem abertos.
+    await Promise.all([
+        executarCargaUnica("agendamentos", () => carregarAgendamentos(true)),
+        executarCargaUnica("bloqueios", () => carregarBloqueiosAgenda(true))
+    ]);
+
     renderizarAgenda();
-    atualizarFaturamento();
-    renderizarServicosAdmin();
-    renderizarPacotes();
     preencherHorariosBloqueio();
-    renderizarCalendarioBloqueios();
-    atualizarTextoDiasSelecionados();
-    renderizarBloqueiosAgenda();
     configurarMascaraTelefonePacote();
-    preencherHorariosPacote();
-    atualizarPreviaPacote();
-    calcularCRM();
-    crmUltimaAtualizacao = new Date();
-    renderizarCRM();
 }
 
 function sair() {
     auth.signOut();
 }
 
-function abrirSecao(secao) {
+async function abrirSecao(secao) {
     document.querySelectorAll(".admin-section").forEach(item => item.classList.remove("active"));
     document.querySelectorAll(".tab-button").forEach(item => item.classList.remove("active"));
 
     document.getElementById(`secao-${secao}`).classList.add("active");
 
-    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "clube", "pacotes", "servicos"];
+    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "clube", "pacotes", "servicos", "logs"];
     const indice = mapaSecoes.indexOf(secao);
     const botoes = document.querySelectorAll(".tab-button");
+    if (indice >= 0 && botoes[indice]) botoes[indice].classList.add("active");
 
-    if (indice >= 0 && botoes[indice]) {
-        botoes[indice].classList.add("active");
-    }
+    try {
+        if (secao === "agendamentos") {
+            await Promise.all([
+                executarCargaUnica("agendamentos", () => carregarAgendamentos(true)),
+                executarCargaUnica("bloqueios", () => carregarBloqueiosAgenda(true))
+            ]);
+            renderizarAgenda();
+        }
 
-    if (secao === "clientes") {
-        carregarClientesAdmin();
-        configurarMascaraNovoCliente();
-    }
+        if (secao === "faturamento") {
+            await Promise.all([
+                executarCargaUnica("agendamentos", () => carregarAgendamentos(true)),
+                executarCargaUnica("pacotes", () => carregarPacotesAdmin(true))
+            ]);
+            atualizarFaturamento();
+        }
 
-    if (secao === "crm") {
-        atualizarCRM();
-    }
+        if (secao === "dias-horarios") {
+            await executarCargaUnica("bloqueios", () => carregarBloqueiosAgenda(true));
+            renderizarCalendarioBloqueios();
+            atualizarTextoDiasSelecionados();
+            renderizarBloqueiosAgenda();
+        }
 
-    if (secao === "clube") {
-        atualizarClubePetlyne();
-    }
+        if (secao === "clientes") {
+            await executarCargaUnica("clientes", () => carregarClientesAdmin(true));
+            configurarMascaraNovoCliente();
+            renderizarClientesAdmin();
+        }
 
-    if (secao === "dias-horarios") {
-        renderizarCalendarioBloqueios();
-        renderizarBloqueiosAgenda();
+        if (secao === "crm") {
+            await Promise.all([
+                executarCargaUnica("agendamentos", () => carregarAgendamentos(true)),
+                executarCargaUnica("clientes", () => carregarClientesAdmin(true)),
+                executarCargaUnica("crmHistorico", () => carregarHistoricoCRM(true))
+            ]);
+            calcularCRM();
+            crmUltimaAtualizacao = new Date();
+            renderizarCRM();
+        }
+
+        if (secao === "clube") {
+            await Promise.all([
+                executarCargaUnica("agendamentos", () => carregarAgendamentos(true)),
+                executarCargaUnica("clientes", () => carregarClientesAdmin(true)),
+                executarCargaUnica("clubeResgates", () => carregarClubePetlyneResgates(true))
+            ]);
+            renderizarClubePetlyne();
+        }
+
+        if (secao === "pacotes") {
+            await Promise.all([
+                executarCargaUnica("pacotes", () => carregarPacotesAdmin(true)),
+                executarCargaUnica("agendamentos", () => carregarAgendamentos(true))
+            ]);
+            preencherHorariosPacote();
+            atualizarPreviaPacote();
+            renderizarPacotes();
+        }
+
+        if (secao === "servicos") {
+            await executarCargaUnica("servicos", () => carregarServicosAdmin(true));
+            renderizarServicosAdmin();
+        }
+
+        if (secao === "logs") {
+            await carregarLogsSistema(true);
+        }
+    } catch (error) {
+        console.error(`Erro ao abrir módulo ${secao}:`, error);
+        await registrarLogSistemaAdmin({ modulo: secao, funcao: "abrirSecao", mensagem: error.message, codigo: error.code });
+        await mostrarAvisoAdmin({ titulo: "Falha ao carregar módulo", mensagem: "Não foi possível carregar os dados agora. Tente novamente.", icone: "⚠️" });
     }
 }
 
-async function carregarAgendamentos() {
+async function carregarAgendamentos(forcar = false) {
     const snapshot = await db.collection("agendamentos").orderBy("data", "asc").get();
     agendamentos = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -111,7 +252,7 @@ async function carregarAgendamentos() {
     }));
 }
 
-async function carregarServicosAdmin() {
+async function carregarServicosAdmin(forcar = false) {
     const snapshot = await db.collection("servicos").orderBy("nome", "asc").get();
 
     servicosAdmin = snapshot.docs.map(doc => ({
@@ -120,7 +261,7 @@ async function carregarServicosAdmin() {
     }));
 }
 
-async function carregarPacotesAdmin() {
+async function carregarPacotesAdmin(forcar = false) {
     const snapshot = await db.collection("pacotes").orderBy("criadoEm", "desc").get();
 
     pacotesAdmin = snapshot.docs.map(doc => ({
@@ -129,7 +270,7 @@ async function carregarPacotesAdmin() {
     }));
 }
 
-async function carregarBloqueiosAgenda() {
+async function carregarBloqueiosAgenda(forcar = false) {
     const snapshot = await db.collection("bloqueiosAgenda").orderBy("data", "asc").get();
 
     bloqueiosAgenda = snapshot.docs.map(doc => ({
@@ -1248,7 +1389,7 @@ function montarClienteAPartirAgendamento(item) {
     };
 }
 
-async function carregarClientesAdmin() {
+async function carregarClientesAdmin(forcar = false) {
     const mapa = new Map();
     const telefonesPetsJaSalvos = new Set();
     const clientesExcluidos = new Set();
@@ -3492,7 +3633,7 @@ const CRM_CATEGORIAS = {
     conhecer: { titulo: "Conhecer agendamento online", descricao: "Cadastros manuais sem histórico PACK e que ainda não fizeram agendamento LYNE.", icone: "📱" }
 };
 
-async function carregarHistoricoCRM() {
+async function carregarHistoricoCRM(forcar = false) {
     try {
         const snapshot = await db.collection("crmHistorico").orderBy("criadoEm", "desc").get();
         crmHistorico = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -3672,14 +3813,13 @@ async function marcarAcaoCRMEnviada(chaveCodificada){
     const chave=decodeURIComponent(chaveCodificada),item=crmRegistrosPorChave.get(chave);if(!item)return;
     const confirmar=await mostrarConfirmacaoAdmin({titulo:"Confirmar envio",mensagem:`Confirma que a mensagem de ${CRM_CATEGORIAS[item.categoria].titulo.toLowerCase()} foi enviada para ${item.cliente}?`,icone:"📲",textoConfirmar:"Sim, foi enviada"});if(!confirmar)return;
     await db.collection("crmHistorico").add({clienteChave:item.chave,cliente:item.cliente,pets:item.pets,pet:item.pet,telefone:item.telefone,tipoAcao:item.categoria,protocoloEscopo:"LYNE",status:"Enviado",ultimoAtendimento:item.ultimoAtendimento||null,criadoEm:firebase.firestore.FieldValue.serverTimestamp()});
-    await carregarHistoricoCRM();calcularCRM();renderizarCRM();await mostrarAvisoAdmin({titulo:"Ação registrada",mensagem:"O envio foi salvo no histórico do CRM.",icone:"✅"});
+    invalidarCacheModulo("crmHistorico"); await executarCargaUnica("crmHistorico", () => carregarHistoricoCRM(true), true);calcularCRM();renderizarCRM();await mostrarAvisoAdmin({titulo:"Ação registrada",mensagem:"O envio foi salvo no histórico do CRM.",icone:"✅"});
 }
 
 async function atualizarCRM() {
     try {
-        await carregarAgendamentos();
-        await carregarClientesAdmin();
-        await carregarHistoricoCRM();
+        invalidarCacheModulo("agendamentos", "clientes", "crmHistorico");
+        await Promise.all([executarCargaUnica("agendamentos", () => carregarAgendamentos(true), true), executarCargaUnica("clientes", () => carregarClientesAdmin(true), true), executarCargaUnica("crmHistorico", () => carregarHistoricoCRM(true), true)]);
         calcularCRM();
         renderizarCRM();
     } catch (error) {
@@ -3858,7 +3998,7 @@ function clubeDiasDesde(data) {
 }
 function clubeFormatarData(data) { return data ? data.toLocaleDateString('pt-BR', {day:'2-digit',month:'short',year:'numeric'}).replace('.','') : 'Sem data'; }
 
-async function carregarClubePetlyneResgates() {
+async function carregarClubePetlyneResgates(forcar = false) {
     try {
         const snapshot = await db.collection('clubePetlyneResgates').orderBy('criadoEm', 'desc').get();
         clubePetlyneResgates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -4026,9 +4166,75 @@ async function atualizarClubePetlyne() {
     const botao = document.querySelector('#secao-clube .secondary-button');
     if (botao) { botao.disabled = true; botao.textContent = 'Atualizando...'; }
     try {
-        await Promise.all([carregarAgendamentos(), carregarClientesAdmin(), carregarClubePetlyneResgates()]);
+        invalidarCacheModulo("agendamentos", "clientes", "clubeResgates"); await Promise.all([executarCargaUnica("agendamentos", () => carregarAgendamentos(true), true), executarCargaUnica("clientes", () => carregarClientesAdmin(true), true), executarCargaUnica("clubeResgates", () => carregarClubePetlyneResgates(true), true)]);
         renderizarClubePetlyne();
     } finally {
         if (botao) { botao.disabled = false; botao.textContent = 'Atualizar Clube'; }
     }
+}
+
+
+async function carregarLogsSistema(forcar = false) {
+    if (!forcar && cacheModuloValido("logs")) {
+        renderizarLogsSistema();
+        return;
+    }
+
+    const snapshot = await db.collection("logsSistema")
+        .orderBy("criadoEm", "desc")
+        .limit(100)
+        .get();
+
+    logsSistemaAdmin = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    estadoCargaModulos.logs.carregado = true;
+    estadoCargaModulos.logs.atualizadoEm = Date.now();
+    renderizarLogsSistema();
+}
+
+function dataLogParaTexto(valor) {
+    if (!valor) return "Agora";
+    const data = valor.toDate ? valor.toDate() : new Date(valor);
+    return Number.isNaN(data.getTime()) ? "Data indisponível" : data.toLocaleString("pt-BR");
+}
+
+function renderizarLogsSistema() {
+    const lista = document.getElementById("listaLogsSistema");
+    if (!lista) return;
+
+    const filtroModulo = document.getElementById("filtroModuloLogs")?.value || "";
+    const filtroNivel = document.getElementById("filtroNivelLogs")?.value || "";
+    const busca = (document.getElementById("buscaLogsSistema")?.value || "").toLowerCase().trim();
+
+    const dados = logsSistemaAdmin.filter(item => {
+        if (filtroModulo && item.modulo !== filtroModulo) return false;
+        if (filtroNivel && item.nivel !== filtroNivel) return false;
+        if (!busca) return true;
+        return [item.modulo, item.funcao, item.codigo, item.mensagem, item.origem]
+            .some(valor => String(valor || "").toLowerCase().includes(busca));
+    });
+
+    if (!dados.length) {
+        lista.innerHTML = `<div class="logs-empty">Nenhum log encontrado para os filtros selecionados.</div>`;
+        return;
+    }
+
+    lista.innerHTML = dados.map(item => `
+        <article class="system-log-card ${item.nivel || "erro"}">
+            <div class="system-log-head">
+                <div><strong>${item.modulo || "Sistema"}</strong><span>${item.origem || "Aplicação"}</span></div>
+                <time>${dataLogParaTexto(item.criadoEm)}</time>
+            </div>
+            <div class="system-log-body">
+                <span class="system-log-level">${item.nivel || "erro"}</span>
+                <strong>${item.codigo || item.funcao || "Erro não classificado"}</strong>
+                <p>${item.mensagem || "Sem mensagem técnica."}</p>
+                ${item.detalhes ? `<details><summary>Detalhes técnicos</summary><pre>${item.detalhes}</pre></details>` : ""}
+            </div>
+        </article>
+    `).join("");
+}
+
+async function atualizarLogsSistema() {
+    invalidarCacheModulo("logs");
+    await carregarLogsSistema(true);
 }

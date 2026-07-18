@@ -1,0 +1,12 @@
+PETLYNE V6.4 — OTIMIZAÇÃO DE LEITURAS E LOGS
+
+- Painel admin agora carrega apenas a agenda e os bloqueios no login.
+- Faturamento, clientes, CRM, Clube, pacotes e serviços são carregados somente ao abrir a respectiva aba.
+- Cache de sessão de 5 minutos evita releituras ao alternar entre módulos.
+- Proteção contra consultas simultâneas duplicadas.
+- Busca por telefone passou a usar consultas direcionadas e limitadas, sem ler as coleções completas.
+- Disponibilidade por data possui cache curto e consulta agendamentos/bloqueios em paralelo.
+- Removida a validação duplicada da disponibilidade na confirmação.
+- Criado módulo Logs do Sistema no painel admin, limitado aos 100 registros mais recentes.
+- Incluído arquivo REGRAS_FIRESTORE_V6_4.txt. Publique essas regras para permitir logs do agendamento online.
+- Nenhuma estrutura visual ou regra operacional foi removida.

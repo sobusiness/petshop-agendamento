@@ -504,6 +504,62 @@ for (let hora = horaInicio; hora <= horaFim; hora++) {
     }
 }
 
+
+
+// V6.4 - Cache de sessão, deduplicação de consultas e logs técnicos
+const cacheConsultasPetlyne = {
+    clientesPorTelefone: new Map(),
+    disponibilidadePorData: new Map()
+};
+const CACHE_CLIENTE_MS = 10 * 60 * 1000;
+const CACHE_DISPONIBILIDADE_MS = 45 * 1000;
+let requisicaoHorariosEmAndamento = null;
+let chaveRequisicaoHorarios = "";
+
+function obterCacheValido(mapa, chave, ttl) {
+    const item = mapa.get(chave);
+    if (!item || Date.now() - item.criadoEm > ttl) {
+        mapa.delete(chave);
+        return null;
+    }
+    return item.valor;
+}
+
+function salvarCache(mapa, chave, valor) {
+    mapa.set(chave, { valor, criadoEm: Date.now() });
+    return valor;
+}
+
+async function registrarLogSistema(dados = {}) {
+    try {
+        if (typeof db === "undefined") return;
+        await db.collection("logsSistema").add({
+            origem: "Agendamento Online",
+            modulo: dados.modulo || "Agendamento Online",
+            funcao: dados.funcao || "",
+            nivel: dados.nivel || "erro",
+            codigo: dados.codigo || "",
+            mensagem: String(dados.mensagem || "Erro não identificado").slice(0, 1200),
+            detalhes: String(dados.detalhes || "").slice(0, 2500),
+            dataAgendamento: document.getElementById("data")?.value || "",
+            horario: document.getElementById("horario")?.value || "",
+            protocolo: dados.protocolo || "",
+            url: window.location.href,
+            navegador: navigator.userAgent.slice(0, 500),
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            resolvido: false
+        });
+    } catch (erroLog) {
+        console.warn("Não foi possível registrar o log do sistema:", erroLog);
+    }
+}
+
+window.addEventListener("error", event => registrarLogSistema({ modulo:"JavaScript", funcao:"window.error", mensagem:event.message, detalhes:`${event.filename || ""}:${event.lineno || ""}:${event.colno || ""}` }));
+window.addEventListener("unhandledrejection", event => {
+    const motivo = event.reason || {};
+    registrarLogSistema({ modulo:"JavaScript", funcao:"unhandledrejection", mensagem:motivo.message || String(motivo), codigo:motivo.code || "" });
+});
+
 let agendamentosExistentes = [];
 let servicosPrincipaisCliente = [];
 let timeoutBuscaCadastroTelefone = null;
@@ -757,49 +813,60 @@ function renderizarPetsCadastrados(pets) {
 }
 
 async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
+    const telefoneNumeros = normalizarTelefone(telefoneDigitado);
+    if (!telefoneNumeros) return [];
+
+    const cache = obterCacheValido(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, CACHE_CLIENTE_MS);
+    if (cache) return cache;
+
     try {
-        if (typeof db === "undefined") return [];
+        const variantes = [...new Set([
+            telefoneDigitado,
+            formatarTelefoneCelular(telefoneNumeros),
+            telefoneNumeros
+        ].filter(Boolean))];
 
-        const telefoneNumeros = normalizarTelefone(telefoneDigitado);
+        const consultasClientes = variantes.map(valor =>
+            db.collection("clientes").where("telefone", "==", valor).limit(10).get()
+        );
 
-        if (!telefoneBrasileiroValido(telefoneNumeros)) return [];
+        // Novos cadastros podem possuir o campo normalizado; a consulta falha de forma segura se ainda não existir índice específico.
+        consultasClientes.push(db.collection("clientes").where("telefoneNormalizado", "==", telefoneNumeros).limit(10).get());
 
-        const clientesSnapshot = await db.collection("clientes").get();
-
-        const clientes = clientesSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(item => telefonesEquivalentes(item.telefone, telefoneNumeros))
-            .sort((a, b) => (a.pet || "").localeCompare(b.pet || ""));
-
-        if (clientes.length > 0) {
-            return clientes;
-        }
-
-        const snapshot = await db.collection("agendamentos").get();
-
-        const registros = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(item => telefonesEquivalentes(item.telefone, telefoneNumeros))
-            .sort((a, b) => {
-                const dataA = `${a.data || ""} ${a.horario || ""}`;
-                const dataB = `${b.data || ""} ${b.horario || ""}`;
-                return dataB.localeCompare(dataA);
+        const resultadosClientes = await Promise.allSettled(consultasClientes);
+        const mapa = new Map();
+        resultadosClientes.forEach(resultado => {
+            if (resultado.status !== "fulfilled") return;
+            resultado.value.docs.forEach(doc => {
+                const item = { id: doc.id, ...doc.data() };
+                mapa.set(chavePetCadastro(item), item);
             });
-
-        const mapaPets = new Map();
-
-        registros.forEach(item => {
-            const chave = chavePetCadastro(item);
-
-            if (!mapaPets.has(chave)) {
-                mapaPets.set(chave, item);
-            }
         });
 
-        return Array.from(mapaPets.values());
+        if (mapa.size > 0) return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
+
+        // Fallback direcionado para agendamentos antigos: nunca mais lê a coleção inteira.
+        const consultasHistorico = variantes.map(valor =>
+            db.collection("agendamentos").where("telefone", "==", valor).limit(30).get()
+        );
+        const resultadosHistorico = await Promise.allSettled(consultasHistorico);
+        const registros = [];
+        resultadosHistorico.forEach(resultado => {
+            if (resultado.status !== "fulfilled") return;
+            resultado.value.docs.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
+        });
+
+        registros.sort((a, b) => `${b.data || ""} ${b.horario || ""}`.localeCompare(`${a.data || ""} ${a.horario || ""}`));
+        registros.forEach(item => {
+            const chave = chavePetCadastro(item);
+            if (!mapa.has(chave)) mapa.set(chave, item);
+        });
+
+        return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
     } catch (error) {
         console.error("Erro ao buscar cadastro por telefone:", error);
-        return [];
+        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarCadastrosPorTelefoneFirebase", mensagem:error.message, codigo:error.code });
+        throw error;
     }
 }
 
@@ -1216,42 +1283,64 @@ function atualizarResumoServicos() {
 }
 
 
-async function buscarAgendamentosPorDataFirebase(dataSelecionada) {
+async function buscarDisponibilidadeDataFirebase(dataSelecionada, forcar = false) {
+    if (!dataSelecionada || typeof db === "undefined") return { agendamentos: [], bloqueios: [] };
+
+    if (!forcar) {
+        const cache = obterCacheValido(cacheConsultasPetlyne.disponibilidadePorData, dataSelecionada, CACHE_DISPONIBILIDADE_MS);
+        if (cache) return cache;
+    }
+
+    const [agendamentosSnapshot, bloqueiosSnapshot] = await Promise.all([
+        db.collection("agendamentos").where("data", "==", dataSelecionada).get(),
+        db.collection("bloqueiosAgenda").where("data", "==", dataSelecionada).where("status", "==", "Ativo").get()
+    ]);
+
+    return salvarCache(cacheConsultasPetlyne.disponibilidadePorData, dataSelecionada, {
+        agendamentos: agendamentosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        bloqueios: bloqueiosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    });
+}
+
+async function buscarAgendamentosPorDataFirebase(dataSelecionada, forcar = false) {
     try {
-        if (typeof db === "undefined") {
-            return [];
-        }
-
-        const snapshot = await db.collection("agendamentos")
-            .where("data", "==", dataSelecionada)
-            .get();
-
-        return snapshot.docs.map(doc => doc.data());
+        return (await buscarDisponibilidadeDataFirebase(dataSelecionada, forcar)).agendamentos;
     } catch (error) {
         console.error("Erro ao buscar agendamentos no Firebase:", error);
-        return [];
+        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarAgendamentosPorDataFirebase", mensagem:error.message, codigo:error.code });
+        throw error;
     }
 }
 
-async function buscarBloqueiosPorDataFirebase(dataSelecionada) {
+async function buscarBloqueiosPorDataFirebase(dataSelecionada, forcar = false) {
     try {
-        if (typeof db === "undefined") {
-            return [];
-        }
-
-        const snapshot = await db.collection("bloqueiosAgenda")
-            .where("data", "==", dataSelecionada)
-            .where("status", "==", "Ativo")
-            .get();
-
-        return snapshot.docs.map(doc => doc.data());
+        return (await buscarDisponibilidadeDataFirebase(dataSelecionada, forcar)).bloqueios;
     } catch (error) {
         console.error("Erro ao buscar bloqueios no Firebase:", error);
-        return [];
+        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarBloqueiosPorDataFirebase", mensagem:error.message, codigo:error.code });
+        throw error;
     }
 }
 
 async function carregarHorariosDisponiveis() {
+    const data = document.getElementById("data")?.value || "";
+    const duracao = calcularDuracaoAgendamentoMinutos();
+    const chave = `${data}|${duracao}|${document.getElementById("servicoPrincipal")?.value || ""}|${document.getElementById("raca")?.value || ""}`;
+
+    if (requisicaoHorariosEmAndamento && chave === chaveRequisicaoHorarios) return requisicaoHorariosEmAndamento;
+    chaveRequisicaoHorarios = chave;
+    requisicaoHorariosEmAndamento = executarCarregamentoHorariosDisponiveis()
+        .catch(async error => {
+            console.error("Erro ao carregar horários:", error);
+            await registrarLogSistema({ modulo:"Agendamento Online", funcao:"carregarHorariosDisponiveis", mensagem:error.message, codigo:error.code });
+            const select = document.getElementById("horario");
+            if (select) select.innerHTML = "<option>Não foi possível carregar os horários. Tente novamente.</option>";
+        })
+        .finally(() => { requisicaoHorariosEmAndamento = null; });
+    return requisicaoHorariosEmAndamento;
+}
+
+async function executarCarregamentoHorariosDisponiveis() {
     const dataSelecionada = document.getElementById("data").value;
     const selectHorario = document.getElementById("horario");
 
@@ -1270,8 +1359,9 @@ async function carregarHorariosDisponiveis() {
         return;
     }
 
-    agendamentosExistentes = await buscarAgendamentosPorDataFirebase(dataSelecionada);
-    const bloqueiosTemporarios = await buscarBloqueiosPorDataFirebase(dataSelecionada);
+    const disponibilidadeData = await buscarDisponibilidadeDataFirebase(dataSelecionada);
+    agendamentosExistentes = disponibilidadeData.agendamentos;
+    const bloqueiosTemporarios = disponibilidadeData.bloqueios;
 
     let existeHorarioLivre = false;
     const duracaoSelecionada = calcularDuracaoAgendamentoMinutos();
@@ -1563,6 +1653,7 @@ async function salvarCadastroClienteAutomatico(dados) {
         const clienteId = criarClienteIdLocal(dados.telefone, dados.pet);
 
         await db.collection("clientes").doc(clienteId).set({
+            telefoneNormalizado: normalizarTelefone(dados.telefone),
             cliente: dados.cliente,
             telefone: dados.telefone,
             pet: dados.pet,
@@ -1573,6 +1664,7 @@ async function salvarCadastroClienteAutomatico(dados) {
             observacaoPet: dados.observacaoPet,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
         }, { merge: true });
+        cacheConsultasPetlyne.clientesPorTelefone.delete(normalizarTelefone(dados.telefone));
     } catch (error) {
         console.warn("Não foi possível atualizar cadastro do cliente automaticamente:", error);
     }
@@ -1589,6 +1681,7 @@ function montarDadosAgendamentoFirestore(dados, protocolo) {
         protocolo: protocolo,
         cliente: dados.cliente,
         telefone: dados.telefone,
+        telefoneNormalizado: normalizarTelefone(dados.telefone),
         pet: dados.pet,
         especie: dados.especie,
         sexo: dados.sexo,
@@ -1607,71 +1700,27 @@ function montarDadosAgendamentoFirestore(dados, protocolo) {
 }
 
 async function validarDisponibilidadeFinalFirestore(dados) {
-    if (typeof db === "undefined") {
-        return { disponivel: true };
-    }
+    if (typeof db === "undefined") return { disponivel: true };
 
     const duracaoMinutos = dados.duracaoMinutos || calcularDuracaoAgendamentoMinutos();
+    const disponibilidadeData = await buscarDisponibilidadeDataFirebase(dados.data, true);
 
-    const agendamentosSnapshot = await db.collection("agendamentos")
-        .where("data", "==", dados.data)
-        .get();
+    const horarioOcupado = horarioOcupadoPorPeriodoComDuracao(dados.horario, duracaoMinutos, disponibilidadeData.agendamentos);
+    if (horarioOcupado) return { disponivel:false, motivo:"Este horário acabou de ficar indisponível por outro agendamento." };
 
-    const agendamentosData = agendamentosSnapshot.docs.map(doc => doc.data());
+    const horarioBloqueado = horarioBloqueadoPorAusenciaComDuracao(dados.horario, duracaoMinutos, disponibilidadeData.bloqueios);
+    if (horarioBloqueado) return { disponivel:false, motivo:"Este horário está bloqueado por ausência temporária." };
 
-    const bloqueiosSnapshot = await db.collection("bloqueiosAgenda")
-        .where("data", "==", dados.data)
-        .where("status", "==", "Ativo")
-        .get();
-
-    const bloqueiosData = bloqueiosSnapshot.docs.map(doc => doc.data());
-
-    const horarioOcupado = horarioOcupadoPorPeriodoComDuracao(
-        dados.horario,
-        duracaoMinutos,
-        agendamentosData
-    );
-
-    if (horarioOcupado) {
-        return {
-            disponivel: false,
-            motivo: "Este horário acabou de ficar indisponível por outro agendamento."
-        };
-    }
-
-    const horarioBloqueado = horarioBloqueadoPorAusenciaComDuracao(
-        dados.horario,
-        duracaoMinutos,
-        bloqueiosData
-    );
-
-    if (horarioBloqueado) {
-        return {
-            disponivel: false,
-            motivo: "Este horário está bloqueado por ausência temporária."
-        };
-    }
-
-    return { disponivel: true };
+    return { disponivel:true };
 }
 
 async function salvarAgendamentoComTransacao(dados, protocolo) {
     if (typeof db === "undefined") {
-        console.warn("Firebase não encontrado. Agendamento não foi salvo no banco.");
-        return;
-    }
-
-    const disponibilidade = await validarDisponibilidadeFinalFirestore(dados);
-
-    if (!disponibilidade.disponivel) {
-        if ((disponibilidade.motivo || "").toLowerCase().includes("bloqueado")) {
-            throw new Error("HORARIO_BLOQUEADO");
-        }
-
-        throw new Error("HORARIO_OCUPADO");
+        throw new Error("FIREBASE_NAO_ENCONTRADO");
     }
 
     await db.collection("agendamentos").add(montarDadosAgendamentoFirestore(dados, protocolo));
+    cacheConsultasPetlyne.disponibilidadePorData.delete(dados.data);
 }
 
 function alternarConfirmacaoPreviaProcessando(processando) {
@@ -1733,6 +1782,7 @@ async function confirmarAgendamentoFinal() {
         dadosPreAgendamento = null;
     } catch (error) {
         console.error("Erro ao salvar agendamento no Firebase:", error);
+        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"confirmarAgendamentoFinal", mensagem:error.message, codigo:error.code || error.message, detalhes:error.stack || "" });
 
         const mensagem = error && error.message === "HORARIO_OCUPADO"
             ? "Este horário acabou de ser reservado por outro cliente. Escolha outro horário."
