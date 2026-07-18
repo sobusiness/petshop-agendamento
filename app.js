@@ -2072,3 +2072,14 @@ document.addEventListener("visibilitychange", () => {
 setInterval(() => atualizarAgendaAoRetornar(), 5 * 60 * 1000);
 
 iniciarPagina();
+
+
+// V6.7 - Instrumentação local de operações Firestore no agendamento online
+(function instalarMonitoramentoPublico(){
+ const KEY='petlyne_monitoramento_publico_v67';
+ const vazio=()=>({data:new Date().toISOString().slice(0,10),leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0});
+ const ler=()=>{try{const d=JSON.parse(localStorage.getItem(KEY)||'null');return d&&d.data===new Date().toISOString().slice(0,10)?d:vazio()}catch(_){return vazio()}};
+ const salvar=d=>{try{localStorage.setItem(KEY,JSON.stringify(d))}catch(_){}};
+ const reg=(tipo,qtd,ms)=>{const d=ler();if(tipo==='leitura')d.leituras+=Math.max(1,qtd||0);if(tipo==='gravacao')d.gravacoes++;if(tipo==='exclusao')d.exclusoes++;d.operacoes++;d.duracaoTotal+=Math.round(ms||0);salvar(d)};
+ setTimeout(()=>{if(!window.firebase?.firestore)return;const fs=firebase.firestore;const patch=(p,m,t,q)=>{if(!p?.[m]||p[m].__petlyne)return;const o=p[m];p[m]=function(...a){const ini=performance.now();let r;try{r=o.apply(this,a)}catch(e){reg(t,1,performance.now()-ini);throw e}return Promise.resolve(r).then(x=>{reg(t,q?q(x):1,performance.now()-ini);return x},e=>{reg(t,1,performance.now()-ini);throw e})};p[m].__petlyne=true};patch(fs.Query?.prototype,'get','leitura',s=>Math.max(1,s?.size||0));patch(fs.DocumentReference?.prototype,'get','leitura');patch(fs.DocumentReference?.prototype,'set','gravacao');patch(fs.DocumentReference?.prototype,'update','gravacao');patch(fs.DocumentReference?.prototype,'delete','exclusao');patch(fs.CollectionReference?.prototype,'add','gravacao')},0);
+})();

@@ -1,0 +1,12 @@
+PETLYNE V6.7 — CENTRO DE MONITORAMENTO
+
+- Centro de Monitoramento com abas Saúde, Eventos, Firestore e Diagnóstico.
+- Health Score e tendência das últimas 24h.
+- Agrupamento de erros repetidos.
+- Diagnóstico visual do fluxo provável de uma falha.
+- Instrumentação local de leituras, gravações, exclusões e duração das operações Firestore.
+- Ranking de coleções e operações mais lentas.
+- Atualização automática a cada 30 segundos somente com a tela de monitoramento aberta.
+- Exportação do diagnóstico em JSON.
+
+IMPORTANTE: as métricas Firestore exibidas são estimativas observadas pelo código do PetLyne no navegador atual. O consumo oficial global deve ser conferido no Firebase Console. Esta limitação é exibida dentro do próprio painel para evitar interpretação incorreta.

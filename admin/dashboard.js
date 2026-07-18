@@ -236,6 +236,11 @@ async function abrirSecao(secao) {
 
         if (secao === "logs") {
             await carregarLogsSistema(true);
+            abrirAbaMonitoramento("saude");
+            renderizarMetricasMonitoramento();
+            prepararDiagnosticoMonitoramento();
+            const atualizado = document.getElementById("monitoramentoUltimaAtualizacao");
+            if (atualizado) atualizado.textContent = `Atualizado às ${new Date().toLocaleTimeString("pt-BR")}`;
         }
     } catch (error) {
         console.error(`Erro ao abrir módulo ${secao}:`, error);
@@ -4228,6 +4233,16 @@ function atualizarPainelSaudeSistema() {
     setText("saudeModuloCriticoQtd", moduloCritico ? `${moduloCritico[1]} ocorrência(s) recente(s)` : "Sem ocorrências recentes");
     setText("saudeUltimoIncidente", ultimo?.codigo || ultimo?.funcao || "Nenhum");
     setText("saudeUltimoIncidenteData", ultimo ? dataLogParaTexto(ultimo.criadoEm) : "Sistema sem falhas recentes");
+
+    const limite48h = Date.now() - (48 * 60 * 60 * 1000);
+    const anteriores = logsSistemaAdmin.filter(item => { const data = dataLogComoDate(item.criadoEm); return data && data.getTime() >= limite48h && data.getTime() < limite24h && (item.nivel || "erro") === "erro"; });
+    const variacao = anteriores.length ? Math.round(((erros.length - anteriores.length) / anteriores.length) * 100) : (erros.length ? 100 : 0);
+    setText("saudeErrosTendencia", `${variacao > 0 ? "↑" : variacao < 0 ? "↓" : "→"} ${Math.abs(variacao)}% versus as 24h anteriores`);
+    const score = Math.max(0, Math.min(100, 100 - (erros.length * 12) - (avisos.length * 4) - (retentativas.length * 2)));
+    setText("healthScoreValue", `${score}%`); setText("healthScoreLabel", score >= 95 ? "Excelente" : score >= 80 ? "Estável" : score >= 60 ? "Atenção" : "Crítico");
+    setText("healthScoreHeadline", score >= 95 ? "Sistema operando normalmente" : score >= 80 ? "Sistema estável com pontos de atenção" : score >= 60 ? "Incidentes exigem acompanhamento" : "Intervenção recomendada");
+    const ring = document.getElementById("healthScoreRing"); if (ring) ring.style.setProperty("--score", `${score * 3.6}deg`);
+    renderizarMetricasMonitoramento();
 }
 
 async function alternarResolucaoLog(id, resolvidoAtual) {
@@ -4278,7 +4293,7 @@ function renderizarLogsSistema() {
     const filtroStatus = document.getElementById("filtroStatusLogs")?.value || "";
     const busca = (document.getElementById("buscaLogsSistema")?.value || "").toLowerCase().trim();
 
-    const dados = logsSistemaAdmin.filter(item => {
+    let dados = logsSistemaAdmin.filter(item => {
         if (filtroModulo && item.modulo !== filtroModulo) return false;
         if (filtroNivel && item.nivel !== filtroNivel) return false;
         if (filtroStatus === "pendente" && item.resolvido) return false;
@@ -4287,6 +4302,13 @@ function renderizarLogsSistema() {
         return [item.modulo, item.funcao, item.codigo, item.mensagem, item.origem]
             .some(valor => String(valor || "").toLowerCase().includes(busca));
     });
+    const totalOriginal = dados.length;
+    if (document.getElementById("agruparEventosIguais")?.checked) {
+        const grupos = new Map();
+        dados.forEach(item => { const chave = [item.modulo,item.codigo,item.funcao,item.mensagem,item.resolvido].join("|"); const grupo=grupos.get(chave); if(grupo){grupo.ocorrencias=(grupo.ocorrencias||1)+1; grupo.ids.push(item.id); grupo.primeiraOcorrencia=item.criadoEm;} else grupos.set(chave,{...item,ocorrencias:1,ids:[item.id]}); });
+        dados = [...grupos.values()];
+    }
+    const resumo = document.getElementById("eventosQuantidadeResumo"); if(resumo) resumo.textContent = `${totalOriginal} evento(s) · ${dados.length} grupo(s)`;
 
     if (!dados.length) {
         lista.innerHTML = `<div class="logs-empty">Nenhum log encontrado para os filtros selecionados.</div>`;
@@ -4303,6 +4325,7 @@ function renderizarLogsSistema() {
                 <div class="system-log-tags">
                     <span class="system-log-level">${escaparHtmlLogs(item.nivel || "erro")}</span>
                     <span class="system-log-status">${item.resolvido ? "Resolvido" : "Pendente"}</span>
+                    ${item.ocorrencias > 1 ? `<span class="system-log-count">${item.ocorrencias} ocorrências</span>` : ""}
                 </div>
                 <strong>${escaparHtmlLogs(item.codigo || item.funcao || "Erro não classificado")}</strong>
                 <p>${escaparHtmlLogs(item.mensagem || "Sem mensagem técnica.")}</p>
@@ -4320,3 +4343,74 @@ async function atualizarLogsSistema() {
     invalidarCacheModulo("logs");
     await carregarLogsSistema(true);
 }
+
+
+// V6.7 - Centro de Monitoramento e instrumentação local do Firestore
+const MONITORAMENTO_STORAGE_KEY = 'petlyne_monitoramento_v67';
+const monitoramentoSessao = { leituras: 0, gravacoes: 0, exclusoes: 0, operacoes: 0, duracaoTotal: 0 };
+let monitoramentoAutoRefresh = null;
+let monitoramentoInstrumentado = false;
+
+function dataChaveMonitoramento() { return new Date().toISOString().slice(0, 10); }
+function estruturaMetricasVazia() { return { data: dataChaveMonitoramento(), leituras: 0, gravacoes: 0, exclusoes: 0, operacoes: 0, duracaoTotal: 0, colecoes: {}, lentas: [], eventos: [] }; }
+function carregarMetricasMonitoramento() {
+    try {
+        const dados = JSON.parse(localStorage.getItem(MONITORAMENTO_STORAGE_KEY) || 'null');
+        return dados && dados.data === dataChaveMonitoramento() ? dados : estruturaMetricasVazia();
+    } catch (_) { return estruturaMetricasVazia(); }
+}
+function salvarMetricasMonitoramento(dados) { try { localStorage.setItem(MONITORAMENTO_STORAGE_KEY, JSON.stringify(dados)); } catch (_) {} }
+function nomeColecaoRef(ref) {
+    try { const partes = String(ref?.path || ref?._query?.path?.canonicalString?.() || 'desconhecida').split('/'); return partes[0] || 'desconhecida'; } catch (_) { return 'desconhecida'; }
+}
+function registrarOperacaoMonitorada(tipo, colecao, quantidade, duracao, sucesso = true) {
+    const dados = carregarMetricasMonitoramento(); const qtd = Math.max(0, Number(quantidade || 0)); const ms = Math.max(0, Math.round(Number(duracao || 0)));
+    if (tipo === 'leitura') { dados.leituras += qtd; monitoramentoSessao.leituras += qtd; }
+    if (tipo === 'gravacao') { dados.gravacoes += qtd || 1; monitoramentoSessao.gravacoes += qtd || 1; }
+    if (tipo === 'exclusao') { dados.exclusoes += qtd || 1; monitoramentoSessao.exclusoes += qtd || 1; }
+    dados.operacoes++; dados.duracaoTotal += ms; monitoramentoSessao.operacoes++; monitoramentoSessao.duracaoTotal += ms;
+    const chave = colecao || 'desconhecida'; dados.colecoes[chave] = dados.colecoes[chave] || { leituras:0, gravacoes:0, exclusoes:0, operacoes:0, duracaoTotal:0 };
+    const c = dados.colecoes[chave]; c.operacoes++; c.duracaoTotal += ms; if(tipo==='leitura') c.leituras += qtd; if(tipo==='gravacao') c.gravacoes += qtd||1; if(tipo==='exclusao') c.exclusoes += qtd||1;
+    dados.lentas.push({ tipo, colecao: chave, duracao: ms, sucesso, horario: new Date().toISOString() }); dados.lentas = dados.lentas.sort((a,b)=>b.duracao-a.duracao).slice(0,20);
+    salvarMetricasMonitoramento(dados); if (document.getElementById('monitoramento-firestore')?.classList.contains('active')) renderizarMetricasMonitoramento();
+}
+function instalarMonitorFirestore() {
+    if (monitoramentoInstrumentado || !window.firebase?.firestore) return; monitoramentoInstrumentado = true;
+    const medir = (proto, metodo, tipo, quantidadeFn) => {
+        if (!proto || !proto[metodo] || proto[metodo].__petlyneMonitorado) return;
+        const original = proto[metodo]; const envolvida = function(...args) { const inicio = performance.now(); const colecao = nomeColecaoRef(this); let retorno; try { retorno = original.apply(this,args); } catch(e) { registrarOperacaoMonitorada(tipo,colecao,1,performance.now()-inicio,false); throw e; }
+            return Promise.resolve(retorno).then(resultado=>{ let qtd=1; try { qtd=quantidadeFn?quantidadeFn(resultado):1; } catch(_){} registrarOperacaoMonitorada(tipo,colecao,qtd,performance.now()-inicio,true); return resultado; }, erro=>{ registrarOperacaoMonitorada(tipo,colecao,1,performance.now()-inicio,false); throw erro; }); };
+        envolvida.__petlyneMonitorado=true; proto[metodo]=envolvida;
+    };
+    const fs=firebase.firestore;
+    medir(fs.Query?.prototype,'get','leitura',snap=>Math.max(1,Number(snap?.size||0)));
+    medir(fs.DocumentReference?.prototype,'get','leitura',()=>1);
+    medir(fs.DocumentReference?.prototype,'set','gravacao'); medir(fs.DocumentReference?.prototype,'update','gravacao'); medir(fs.DocumentReference?.prototype,'delete','exclusao');
+    medir(fs.CollectionReference?.prototype,'add','gravacao');
+}
+setTimeout(instalarMonitorFirestore,0);
+
+function abrirAbaMonitoramento(aba) {
+    document.querySelectorAll('.monitoring-panel').forEach(x=>x.classList.remove('active')); document.querySelectorAll('.monitoring-tab').forEach(x=>x.classList.toggle('active',x.dataset.monitoringTab===aba));
+    document.getElementById(`monitoramento-${aba}`)?.classList.add('active');
+    if(aba==='firestore') renderizarMetricasMonitoramento(); if(aba==='diagnostico') prepararDiagnosticoMonitoramento(); if(aba==='eventos') renderizarLogsSistema();
+}
+function renderizarMetricasMonitoramento() {
+    const d=carregarMetricasMonitoramento(); const media=d.operacoes?Math.round(d.duracaoTotal/d.operacoes):0; const s=monitoramentoSessao;
+    const txt=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v};
+    txt('metricasLeituras',d.leituras.toLocaleString('pt-BR')); txt('metricasGravacoes',d.gravacoes.toLocaleString('pt-BR')); txt('metricasExclusoes',d.exclusoes.toLocaleString('pt-BR')); txt('metricasTempoMedio',`${media} ms`); txt('metricasOperacoes',`${d.operacoes} operações medidas`);
+    txt('metricasLeiturasSessao',`${s.leituras} nesta sessão`); txt('metricasGravacoesSessao',`${s.gravacoes} nesta sessão`); txt('metricasExclusoesSessao',`${s.exclusoes} nesta sessão`);
+    txt('resumoLeiturasHoje',d.leituras.toLocaleString('pt-BR')); txt('resumoGravacoesHoje',d.gravacoes.toLocaleString('pt-BR')); txt('resumoExclusoesHoje',d.exclusoes.toLocaleString('pt-BR')); txt('resumoTempoMedio',`${media} ms`);
+    const ranking=Object.entries(d.colecoes).map(([nome,v])=>({nome,...v,total:(v.leituras||0)+(v.gravacoes||0)+(v.exclusoes||0)})).sort((a,b)=>b.total-a.total).slice(0,8);
+    const max=Math.max(1,...ranking.map(x=>x.total)); const rc=document.getElementById('rankingColecoesFirestore'); if(rc) rc.innerHTML=ranking.length?ranking.map(x=>`<div class="monitoring-ranking-row"><div><strong>${escaparHtmlLogs(x.nome)}</strong><span>${x.leituras} leituras · ${x.gravacoes} gravações · ${x.exclusoes} exclusões</span></div><div class="monitoring-bar"><i style="width:${Math.max(4,(x.total/max)*100)}%"></i></div><b>${x.total}</b></div>`).join(''):'<p class="logs-empty">Nenhuma operação observada ainda.</p>';
+    const rl=document.getElementById('rankingOperacoesLentas'); if(rl) rl.innerHTML=d.lentas.length?d.lentas.slice(0,8).map(x=>`<div class="slow-operation"><div><strong>${escaparHtmlLogs(x.colecao)}</strong><span>${escaparHtmlLogs(x.tipo)} · ${new Date(x.horario).toLocaleTimeString('pt-BR')}</span></div><b>${x.duracao} ms</b></div>`).join(''):'<p class="logs-empty">Nenhuma operação medida ainda.</p>';
+}
+function exportarMetricasMonitoramento(){ const blob=new Blob([JSON.stringify({geradoEm:new Date().toISOString(),metricas:carregarMetricasMonitoramento(),logs:logsSistemaAdmin},null,2)],{type:'application/json'}); const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`petlyne-diagnostico-${dataChaveMonitoramento()}.json`;a.click();URL.revokeObjectURL(a.href); }
+function limparMetricasMonitoramento(){ if(!confirm('Zerar as métricas locais observadas hoje neste navegador?'))return; salvarMetricasMonitoramento(estruturaMetricasVazia()); Object.assign(monitoramentoSessao,{leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0});renderizarMetricasMonitoramento(); }
+function classificarEtapaDiagnostico(log){ const t=`${log?.funcao||''} ${log?.codigo||''} ${log?.mensagem||''}`.toLowerCase(); if(/cliente|telefone/.test(t))return 0;if(/hor[aá]rio|disponibilidade|bloqueio/.test(t))return 1;if(/salvar|gravar|transaction|permission|agendamento/.test(t))return 2;if(/whatsapp/.test(t))return 3;return 4; }
+function prepararDiagnosticoMonitoramento(){ const sel=document.getElementById('diagnosticoEventoSelecionado'); if(!sel)return; const atual=sel.value; sel.innerHTML='<option value="">Ocorrência mais recente</option>'+logsSistemaAdmin.filter(x=>!x.resolvido).slice(0,50).map(x=>`<option value="${x.id}">${escaparHtmlLogs(dataLogParaTexto(x.criadoEm))} — ${escaparHtmlLogs(x.codigo||x.funcao||x.modulo)}</option>`).join(''); sel.value=atual; renderizarDiagnosticoSelecionado(); }
+function renderizarDiagnosticoSelecionado(){ const id=document.getElementById('diagnosticoEventoSelecionado')?.value; const log=(id?logsSistemaAdmin.find(x=>x.id===id):logsSistemaAdmin.find(x=>!x.resolvido))||null; const etapas=['Buscar cadastro','Validar horário','Salvar agendamento','Preparar WhatsApp','Finalizar']; const falha=log?classificarEtapaDiagnostico(log):-1; const fluxo=document.getElementById('diagnosticoFluxo'); if(fluxo) fluxo.innerHTML=etapas.map((nome,i)=>`<div class="diagnostic-step ${!log?'neutral':i<falha?'success':i===falha?'failure':'waiting'}"><span>${!log?'—':i<falha?'✓':i===falha?'!':'·'}</span><strong>${nome}</strong><small>${!log?'Sem ocorrência selecionada':i<falha?'Etapa anterior concluída':i===falha?'Possível ponto da falha':'Não confirmado'}</small></div>`).join('<i class="diagnostic-connector"></i>');
+    const rec=document.getElementById('diagnosticoRecomendacao'); if(!rec)return; if(!log){rec.innerHTML='<strong>Nenhuma falha pendente</strong><p>O sistema não possui uma ocorrência aberta para diagnosticar.</p>';return;} const msg=String(log.mensagem||''); let acao='Abra os detalhes técnicos e reproduza a operação apenas se necessário.'; if(/permission|insufficient/i.test(msg))acao='Verifique as regras do Firestore e confirme se a operação possui permissão.'; else if(/unavailable|network|offline|timeout/i.test(msg))acao='Falha provavelmente temporária. Verifique conexão e quantidade de retentativas antes de alterar o código.'; else if(/showPicker/i.test(msg))acao='Ocorrência benigna do navegador. A correção já impede abertura automática do seletor; marque registros antigos como resolvidos.'; rec.innerHTML=`<div><span class="system-log-level">${escaparHtmlLogs(log.nivel||'erro')}</span><strong>${escaparHtmlLogs(log.codigo||log.funcao||'Ocorrência')}</strong></div><p>${escaparHtmlLogs(msg)}</p><h4>Ação recomendada</h4><p>${escaparHtmlLogs(acao)}</p>`; }
+async function atualizarCentroMonitoramento(){ await atualizarLogsSistema(); renderizarMetricasMonitoramento(); prepararDiagnosticoMonitoramento(); const e=document.getElementById('monitoramentoUltimaAtualizacao');if(e)e.textContent=`Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`; }
+function iniciarAtualizacaoAutomaticaMonitoramento(){ if(monitoramentoAutoRefresh)return; monitoramentoAutoRefresh=setInterval(()=>{if(document.getElementById('secao-logs')?.classList.contains('active'))atualizarCentroMonitoramento();},30000); }
+setTimeout(iniciarAtualizacaoAutomaticaMonitoramento,1000);
