@@ -1,0 +1,18 @@
+PETLYNE V7.1 — CORREÇÃO DA BUSCA DE CLIENTES
+
+- Corrigida regressão da V7.0 que deixou de reconhecer alguns telefones já cadastrados.
+- Busca continua sem expor a coleção administrativa clientes ao formulário público.
+- Reconhecimento agora considera:
+  * telefone com ou sem máscara;
+  * telefone com ou sem código +55;
+  * números antigos com 8 dígitos;
+  * números atuais com o nono dígito;
+  * campo telefoneNormalizado e registros legados no campo telefone.
+- Consultas são sequenciais e interrompidas assim que o histórico é encontrado, evitando consumo desnecessário.
+- Atualizado versionamento do app.js para impedir cache da V7.0.
+
+PUBLICAÇÃO
+1. Substitua os arquivos pela V7.1.
+2. Faça o deploy no Vercel.
+3. Abra o formulário e pressione Ctrl+F5.
+4. Teste um telefone que possua agendamento anterior.

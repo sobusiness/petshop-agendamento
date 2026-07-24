@@ -1,0 +1,38 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // O formulário precisa consultar horários e criar o agendamento.
+    match /agendamentos/{document} {
+      allow create: if true;
+      allow read: if true;
+      allow update, delete: if request.auth != null;
+    }
+
+    match /servicos/{document} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Necessário para o formulário ocultar horários bloqueados pelo pet shop.
+    // A coleção deve conter somente data, início, fim, status e tipo de bloqueio,
+    // sem informações pessoais ou administrativas sensíveis.
+    match /bloqueiosAgenda/{document} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+
+    // O formulário público somente cria logs técnicos controlados.
+    match /logsSistema/{document} {
+      allow create: if request.resource.data.origem == 'Agendamento Online'
+                    && request.resource.data.mensagem is string
+                    && request.resource.data.mensagem.size() <= 1200;
+      allow read, update, delete: if request.auth != null;
+    }
+
+    // Clientes e demais módulos permanecem privados.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

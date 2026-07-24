@@ -971,29 +971,58 @@ function renderizarPetsCadastrados(pets) {
 }
 
 async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
-    const telefoneNumeros = normalizarTelefone(telefoneDigitado);
-    if (!telefoneNumeros) return [];
+    const telefoneInformado = normalizarTelefone(telefoneDigitado);
+    if (!telefoneInformado) return [];
 
-    const cache = obterCacheValido(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, CACHE_CLIENTE_MS);
+    // Padroniza números com código do Brasil e reconhece bases antigas com ou sem 9º dígito.
+    let telefoneBase = telefoneInformado;
+    if (telefoneBase.startsWith("55") && (telefoneBase.length === 12 || telefoneBase.length === 13)) {
+        telefoneBase = telefoneBase.slice(2);
+    }
+
+    const cache = obterCacheValido(cacheConsultasPetlyne.clientesPorTelefone, telefoneBase, CACHE_CLIENTE_MS);
     if (cache) return cache;
 
-    // O formulário público não consulta a coleção privada "clientes". O cadastro é
-    // recuperado do histórico de agendamentos, que já faz parte do fluxo público.
-    // Isso elimina o permission-denied que interrompia a consulta do telefone.
-    const variantes = [...new Set([
-        telefoneNumeros,
-        formatarTelefoneCelular(telefoneNumeros),
-        telefoneDigitado
-    ].filter(Boolean))];
+    const numerosEquivalentes = new Set(variantesTelefone(telefoneBase));
+    numerosEquivalentes.add(telefoneBase);
+
+    const valoresLegados = new Set();
+    numerosEquivalentes.forEach(numero => {
+        if (!numero) return;
+        valoresLegados.add(numero);
+        valoresLegados.add(formatarTelefoneCelular(numero));
+        valoresLegados.add(`55${numero}`);
+        valoresLegados.add(`+55${numero}`);
+        valoresLegados.add(`+55 ${formatarTelefoneCelular(numero)}`);
+    });
+    valoresLegados.add(telefoneDigitado);
 
     try {
-        const consultas = [
-            () => db.collection("agendamentos").where("telefoneNormalizado", "==", telefoneNumeros).limit(30).get(),
-            ...variantes.map(valor => () => db.collection("agendamentos").where("telefone", "==", valor).limit(30).get())
-        ];
+        const consultas = [];
 
-        const registros = [];
+        // Documentos atuais gravam telefoneNormalizado. Consultamos todas as variantes
+        // equivalentes para também reconhecer cadastros antigos com mudança do 9º dígito.
+        numerosEquivalentes.forEach(numero => {
+            consultas.push(() => db.collection("agendamentos")
+                .where("telefoneNormalizado", "==", numero)
+                .limit(30)
+                .get());
+        });
+
+        // Compatibilidade com documentos antigos que possuíam apenas o telefone formatado.
+        valoresLegados.forEach(valor => {
+            if (!valor) return;
+            consultas.push(() => db.collection("agendamentos")
+                .where("telefone", "==", valor)
+                .limit(30)
+                .get());
+        });
+
+        const registrosPorId = new Map();
         let primeiroErro = null;
+
+        // Executa sequencialmente para evitar rajadas de consultas e encerra assim que
+        // encontra registros suficientes para preencher o cadastro.
         for (let indice = 0; indice < consultas.length; indice += 1) {
             try {
                 const snapshot = await executarComConfiabilidade(consultas[indice], {
@@ -1001,25 +1030,29 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
                     tentativas: CONFIG_CONFIABILIDADE.tentativasLeitura,
                     timeoutMs: CONFIG_CONFIABILIDADE.timeoutLeituraMs
                 });
-                snapshot.docs.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
-                // O campo normalizado é o caminho atual; se encontrou, não executa
-                // consultas legadas desnecessárias.
-                if (indice === 0 && snapshot.size > 0) break;
+
+                snapshot.docs.forEach(doc => {
+                    registrosPorId.set(doc.id, { id: doc.id, ...doc.data() });
+                });
+
+                if (registrosPorId.size > 0) break;
             } catch (error) {
                 primeiroErro ||= error;
             }
         }
 
-        if (registros.length === 0 && primeiroErro) throw primeiroErro;
+        if (registrosPorId.size === 0 && primeiroErro) throw primeiroErro;
 
+        const registros = Array.from(registrosPorId.values());
         registros.sort((a, b) => `${b.data || ""} ${b.horario || ""}`.localeCompare(`${a.data || ""} ${a.horario || ""}`));
-        const mapa = new Map();
+
+        const mapaPets = new Map();
         registros.forEach(item => {
             const chave = chavePetCadastro(item);
-            if (!mapa.has(chave)) mapa.set(chave, item);
+            if (!mapaPets.has(chave)) mapaPets.set(chave, item);
         });
 
-        return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
+        return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneBase, Array.from(mapaPets.values()));
     } catch (error) {
         console.error("Erro ao buscar cadastro por telefone:", error);
         registrarLogSistema({
@@ -1027,7 +1060,7 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
             funcao: "buscarCadastrosPorTelefoneFirebase",
             mensagem: error?.message || String(error),
             codigo: codigoErroNormalizado(error),
-            detalhes: `Telefone final: ${telefoneNumeros.slice(-4).padStart(telefoneNumeros.length, "*")}`
+            detalhes: `Telefone final: ${telefoneBase.slice(-4).padStart(telefoneBase.length, "*")}`
         });
         throw error;
     }
