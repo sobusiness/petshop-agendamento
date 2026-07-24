@@ -1,0 +1,23 @@
+PETLYNE V7.0 — ESTABILIZAÇÃO DO AGENDAMENTO
+
+CORREÇÕES PRINCIPAIS
+- Eliminada a consulta pública à coleção privada clientes, origem dos permission-denied.
+- Cadastro automático agora usa somente o histórico de agendamentos.
+- Removida a gravação pública silenciosa em clientes.
+- Adicionada regra pública somente de leitura para bloqueiosAgenda.
+- Removidos dois interceptadores globais sobre os prototypes do Firebase no formulário público.
+- Monitoramento e logs passaram a ser passivos e não bloqueiam o cliente.
+- Logs iguais são deduplicados por 30 segundos.
+- Retry reduzido a leituras transitórias; gravações não são repetidas concorrentemente.
+- Timeout artificial removido das gravações.
+- Em falha ambígua de gravação, o sistema verifica se o protocolo já foi salvo.
+- Respostas antigas da busca por telefone não alteram mais o formulário atual.
+- Respostas antigas de horários não sobrescrevem data/serviço escolhidos depois.
+- Consulta automática de telefone deixou de abrir modal bloqueante quando indisponível.
+- Cache busting v7.0.0 para impedir navegador/Vercel de misturar scripts antigos.
+
+PUBLICAÇÃO
+1. Substitua todos os arquivos do projeto pelos arquivos deste ZIP.
+2. Publique o conteúdo de REGRAS_FIRESTORE_V7_0.txt no Firebase Console.
+3. Após o deploy, faça Ctrl+F5 no navegador.
+4. Teste cliente conhecido, cliente novo, troca rápida de datas e confirmação.

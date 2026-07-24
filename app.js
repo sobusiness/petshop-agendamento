@@ -515,6 +515,7 @@ const CACHE_CLIENTE_MS = 10 * 60 * 1000;
 const CACHE_DISPONIBILIDADE_MS = 45 * 1000;
 let requisicaoHorariosEmAndamento = null;
 let chaveRequisicaoHorarios = "";
+let sequenciaCarregamentoHorarios = 0;
 
 function obterCacheValido(mapa, chave, ttl) {
     const item = mapa.get(chave);
@@ -532,11 +533,14 @@ function salvarCache(mapa, chave, valor) {
 
 // V6.5 - Motor de confiabilidade para operações críticas
 const CONFIG_CONFIABILIDADE = {
-    tentativasLeitura: 3,
-    tentativasEscrita: 3,
-    timeoutLeituraMs: 7000,
-    timeoutEscritaMs: 9000,
-    esperaInicialMs: 500
+    // O SDK do Firestore já possui retentativas internas. Mantemos somente uma
+    // retentativa adicional para leituras realmente transitórias e nunca repetimos
+    // gravações automaticamente, evitando operações concorrentes e falsos erros.
+    tentativasLeitura: 2,
+    tentativasEscrita: 1,
+    timeoutLeituraMs: 15000,
+    timeoutEscritaMs: 0,
+    esperaInicialMs: 650
 };
 
 const CODIGOS_TRANSITORIOS_FIREBASE = new Set([
@@ -587,8 +591,9 @@ function codigoErroNormalizado(error) {
 
 function erroTransitorio(error) {
     const codigo = codigoErroNormalizado(error);
+    if (codigo === "client-timeout") return false;
     return CODIGOS_TRANSITORIOS_FIREBASE.has(codigo)
-        || /network|offline|timeout|timed out|indispon[ií]vel|conex[aã]o/i.test(String(error?.message || ""));
+        || /network|offline|timed out|indispon[ií]vel|conex[aã]o/i.test(String(error?.message || ""));
 }
 
 function aguardar(ms) {
@@ -596,9 +601,14 @@ function aguardar(ms) {
 }
 
 function executarComTimeout(promessa, timeoutMs, etapa) {
+    // Promise.race não cancela a operação do Firestore. Em gravações isso poderia
+    // deixar a primeira tentativa ativa e iniciar outra. Por isso timeout artificial
+    // é usado apenas como aviso em leituras; gravações aguardam o SDK concluir.
+    if (!timeoutMs || timeoutMs <= 0) return Promise.resolve(promessa);
+
     let timer;
     const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(criarErroPetlyne("deadline-exceeded", `Tempo limite excedido em ${etapa}.`)), timeoutMs);
+        timer = setTimeout(() => reject(criarErroPetlyne("client-timeout", `A operação ${etapa} demorou mais do que o esperado.`)), timeoutMs);
     });
 
     return Promise.race([Promise.resolve(promessa), timeout]).finally(() => clearTimeout(timer));
@@ -620,7 +630,7 @@ async function executarComConfiabilidade(operacao, opcoes = {}) {
             ultimoErro = error;
             const transitorio = erroTransitorio(error);
 
-            await registrarLogSistema({
+            registrarLogSistema({
                 modulo: "Agendamento Online",
                 funcao: etapa,
                 nivel: tentativa < tentativas && transitorio ? "aviso" : "erro",
@@ -653,10 +663,18 @@ function mensagemAmigavelErro(error, contexto = "agendamento") {
         : "Não foi possível confirmar o agendamento agora. Atualize os horários e tente novamente.";
 }
 
-async function registrarLogSistema(dados = {}) {
+const logsRecentesPetlyne = new Map();
+
+function registrarLogSistema(dados = {}) {
+    // Observabilidade totalmente passiva: nunca bloqueia o fluxo principal.
     try {
-        if (typeof db === "undefined") return;
-        await db.collection("logsSistema").add({
+        if (typeof db === "undefined") return Promise.resolve();
+        const chave = [dados.modulo, dados.funcao, dados.codigo, dados.mensagem].join("|");
+        const ultimo = logsRecentesPetlyne.get(chave) || 0;
+        if (Date.now() - ultimo < 30000) return Promise.resolve();
+        logsRecentesPetlyne.set(chave, Date.now());
+
+        const gravacao = db.collection("logsSistema").add({
             origem: "Agendamento Online",
             modulo: dados.modulo || "Agendamento Online",
             funcao: dados.funcao || "",
@@ -675,8 +693,11 @@ async function registrarLogSistema(dados = {}) {
             criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             resolvido: false
         });
+        gravacao.catch(erroLog => console.warn("Não foi possível registrar o log do sistema:", erroLog));
+        return gravacao;
     } catch (erroLog) {
-        console.warn("Não foi possível registrar o log do sistema:", erroLog);
+        console.warn("Não foi possível iniciar o registro do log:", erroLog);
+        return Promise.resolve();
     }
 }
 
@@ -699,6 +720,7 @@ window.addEventListener("unhandledrejection", event => {
 let agendamentosExistentes = [];
 let servicosPrincipaisCliente = [];
 let timeoutBuscaCadastroTelefone = null;
+let sequenciaBuscaTelefone = 0;
 let petsEncontradosTelefone = [];
 
 const precosBanhoCaes = {
@@ -955,67 +977,43 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
     const cache = obterCacheValido(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, CACHE_CLIENTE_MS);
     if (cache) return cache;
 
+    // O formulário público não consulta a coleção privada "clientes". O cadastro é
+    // recuperado do histórico de agendamentos, que já faz parte do fluxo público.
+    // Isso elimina o permission-denied que interrompia a consulta do telefone.
     const variantes = [...new Set([
-        telefoneDigitado,
+        telefoneNumeros,
         formatarTelefoneCelular(telefoneNumeros),
-        telefoneNumeros
+        telefoneDigitado
     ].filter(Boolean))];
 
     try {
-        const consultasClientes = variantes.map(valor => () =>
-            db.collection("clientes").where("telefone", "==", valor).limit(10).get()
-        );
-        consultasClientes.push(() => db.collection("clientes").where("telefoneNormalizado", "==", telefoneNumeros).limit(10).get());
-
-        const resultadosClientes = await Promise.allSettled(consultasClientes.map((consulta, indice) =>
-            executarComConfiabilidade(consulta, {
-                etapa: `buscarClienteTelefone_${indice + 1}`,
-                tentativas: CONFIG_CONFIABILIDADE.tentativasLeitura,
-                timeoutMs: CONFIG_CONFIABILIDADE.timeoutLeituraMs
-            })
-        ));
-
-        const sucessosClientes = resultadosClientes.filter(resultado => resultado.status === "fulfilled");
-        if (sucessosClientes.length === 0) {
-            throw resultadosClientes.find(resultado => resultado.status === "rejected")?.reason
-                || criarErroPetlyne("unavailable", "Não foi possível consultar os clientes.");
-        }
-
-        const mapa = new Map();
-        sucessosClientes.forEach(resultado => {
-            resultado.value.docs.forEach(doc => {
-                const item = { id: doc.id, ...doc.data() };
-                mapa.set(chavePetCadastro(item), item);
-            });
-        });
-
-        if (mapa.size > 0) {
-            return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
-        }
-
-        const consultasHistorico = variantes.map(valor => () =>
-            db.collection("agendamentos").where("telefone", "==", valor).limit(30).get()
-        );
-        const resultadosHistorico = await Promise.allSettled(consultasHistorico.map((consulta, indice) =>
-            executarComConfiabilidade(consulta, {
-                etapa: `buscarHistoricoTelefone_${indice + 1}`,
-                tentativas: CONFIG_CONFIABILIDADE.tentativasLeitura,
-                timeoutMs: CONFIG_CONFIABILIDADE.timeoutLeituraMs
-            })
-        ));
-
-        const sucessosHistorico = resultadosHistorico.filter(resultado => resultado.status === "fulfilled");
-        if (sucessosHistorico.length === 0) {
-            throw resultadosHistorico.find(resultado => resultado.status === "rejected")?.reason
-                || criarErroPetlyne("unavailable", "Não foi possível consultar o histórico.");
-        }
+        const consultas = [
+            () => db.collection("agendamentos").where("telefoneNormalizado", "==", telefoneNumeros).limit(30).get(),
+            ...variantes.map(valor => () => db.collection("agendamentos").where("telefone", "==", valor).limit(30).get())
+        ];
 
         const registros = [];
-        sucessosHistorico.forEach(resultado => {
-            resultado.value.docs.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
-        });
+        let primeiroErro = null;
+        for (let indice = 0; indice < consultas.length; indice += 1) {
+            try {
+                const snapshot = await executarComConfiabilidade(consultas[indice], {
+                    etapa: `buscarHistoricoTelefone_${indice + 1}`,
+                    tentativas: CONFIG_CONFIABILIDADE.tentativasLeitura,
+                    timeoutMs: CONFIG_CONFIABILIDADE.timeoutLeituraMs
+                });
+                snapshot.docs.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
+                // O campo normalizado é o caminho atual; se encontrou, não executa
+                // consultas legadas desnecessárias.
+                if (indice === 0 && snapshot.size > 0) break;
+            } catch (error) {
+                primeiroErro ||= error;
+            }
+        }
+
+        if (registros.length === 0 && primeiroErro) throw primeiroErro;
 
         registros.sort((a, b) => `${b.data || ""} ${b.horario || ""}`.localeCompare(`${a.data || ""} ${a.horario || ""}`));
+        const mapa = new Map();
         registros.forEach(item => {
             const chave = chavePetCadastro(item);
             if (!mapa.has(chave)) mapa.set(chave, item);
@@ -1024,12 +1022,12 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
         return salvarCache(cacheConsultasPetlyne.clientesPorTelefone, telefoneNumeros, Array.from(mapa.values()));
     } catch (error) {
         console.error("Erro ao buscar cadastro por telefone:", error);
-        await registrarLogSistema({
+        registrarLogSistema({
             modulo: "Agendamento Online",
             funcao: "buscarCadastrosPorTelefoneFirebase",
             mensagem: error?.message || String(error),
             codigo: codigoErroNormalizado(error),
-            detalhes: `Telefone normalizado: ${telefoneNumeros.slice(-4).padStart(telefoneNumeros.length, "*")}`
+            detalhes: `Telefone final: ${telefoneNumeros.slice(-4).padStart(telefoneNumeros.length, "*")}`
         });
         throw error;
     }
@@ -1038,6 +1036,7 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
 async function preencherCadastroPorTelefone() {
     const telefone = document.getElementById("telefone").value;
     const telefoneNumeros = normalizarTelefone(telefone);
+    const minhaSequencia = ++sequenciaBuscaTelefone;
 
     if (!telefoneBrasileiroValido(telefoneNumeros)) {
         limparSeletorPetsCadastrados();
@@ -1048,10 +1047,16 @@ async function preencherCadastroPorTelefone() {
     try {
         pets = await buscarCadastrosPorTelefoneFirebase(telefone);
     } catch (error) {
+        // Uma resposta antiga nunca deve apagar ou bloquear a digitação atual.
+        if (minhaSequencia !== sequenciaBuscaTelefone || normalizarTelefone(document.getElementById("telefone").value) !== telefoneNumeros) return;
         limparSeletorPetsCadastrados();
-        mostrarAlerta(mensagemAmigavelErro(error, "cadastro"));
+        // A consulta automática de cadastro é um recurso auxiliar. Se falhar, o
+        // cliente pode continuar preenchendo manualmente sem modal bloqueante.
+        console.warn("Cadastro automático indisponível; preenchimento manual mantido.", error);
         return;
     }
+
+    if (minhaSequencia !== sequenciaBuscaTelefone || normalizarTelefone(document.getElementById("telefone").value) !== telefoneNumeros) return;
 
     if (pets.length === 0) {
         limparSeletorPetsCadastrados();
@@ -1485,7 +1490,7 @@ async function buscarAgendamentosPorDataFirebase(dataSelecionada, forcar = false
         return (await buscarDisponibilidadeDataFirebase(dataSelecionada, forcar)).agendamentos;
     } catch (error) {
         console.error("Erro ao buscar agendamentos no Firebase:", error);
-        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarAgendamentosPorDataFirebase", mensagem:error.message, codigo:error.code });
+        registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarAgendamentosPorDataFirebase", mensagem:error.message, codigo:error.code });
         throw error;
     }
 }
@@ -1495,7 +1500,7 @@ async function buscarBloqueiosPorDataFirebase(dataSelecionada, forcar = false) {
         return (await buscarDisponibilidadeDataFirebase(dataSelecionada, forcar)).bloqueios;
     } catch (error) {
         console.error("Erro ao buscar bloqueios no Firebase:", error);
-        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarBloqueiosPorDataFirebase", mensagem:error.message, codigo:error.code });
+        registrarLogSistema({ modulo:"Agendamento Online", funcao:"buscarBloqueiosPorDataFirebase", mensagem:error.message, codigo:error.code });
         throw error;
     }
 }
@@ -1507,18 +1512,23 @@ async function carregarHorariosDisponiveis() {
 
     if (requisicaoHorariosEmAndamento && chave === chaveRequisicaoHorarios) return requisicaoHorariosEmAndamento;
     chaveRequisicaoHorarios = chave;
-    requisicaoHorariosEmAndamento = executarCarregamentoHorariosDisponiveis()
-        .catch(async error => {
+    const minhaSequencia = ++sequenciaCarregamentoHorarios;
+    const promessaAtual = executarCarregamentoHorariosDisponiveis(minhaSequencia, chave)
+        .catch(error => {
             console.error("Erro ao carregar horários:", error);
-            await registrarLogSistema({ modulo:"Agendamento Online", funcao:"carregarHorariosDisponiveis", mensagem:error.message, codigo:error.code });
+            registrarLogSistema({ modulo:"Agendamento Online", funcao:"carregarHorariosDisponiveis", mensagem:error.message, codigo:error.code });
+            if (minhaSequencia !== sequenciaCarregamentoHorarios) return;
             const select = document.getElementById("horario");
             if (select) select.innerHTML = "<option>Não foi possível carregar os horários. Tente novamente.</option>";
         })
-        .finally(() => { requisicaoHorariosEmAndamento = null; });
-    return requisicaoHorariosEmAndamento;
+        .finally(() => {
+            if (requisicaoHorariosEmAndamento === promessaAtual) requisicaoHorariosEmAndamento = null;
+        });
+    requisicaoHorariosEmAndamento = promessaAtual;
+    return promessaAtual;
 }
 
-async function executarCarregamentoHorariosDisponiveis() {
+async function executarCarregamentoHorariosDisponiveis(minhaSequencia, chaveEsperada) {
     const dataSelecionada = document.getElementById("data").value;
     const selectHorario = document.getElementById("horario");
 
@@ -1538,6 +1548,8 @@ async function executarCarregamentoHorariosDisponiveis() {
     }
 
     const disponibilidadeData = await buscarDisponibilidadeDataFirebase(dataSelecionada);
+    const chaveAtual = `${document.getElementById("data")?.value || ""}|${calcularDuracaoAgendamentoMinutos()}|${document.getElementById("servicoPrincipal")?.value || ""}|${document.getElementById("raca")?.value || ""}`;
+    if (minhaSequencia !== sequenciaCarregamentoHorarios || chaveAtual !== chaveEsperada) return;
     agendamentosExistentes = disponibilidadeData.agendamentos;
     const bloqueiosTemporarios = disponibilidadeData.bloqueios;
 
@@ -1825,29 +1837,11 @@ function criarClienteIdLocal(telefone, pet) {
 }
 
 async function salvarCadastroClienteAutomatico(dados) {
-    try {
-        if (typeof db === "undefined") return;
-
-        const clienteId = criarClienteIdLocal(dados.telefone, dados.pet);
-
-        await db.collection("clientes").doc(clienteId).set({
-            telefoneNormalizado: normalizarTelefone(dados.telefone),
-            cliente: dados.cliente,
-            telefone: dados.telefone,
-            pet: dados.pet,
-            especie: dados.especie,
-            sexo: dados.sexo,
-            raca: dados.raca,
-            porte: dados.porte,
-            observacaoPet: dados.observacaoPet,
-            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-        cacheConsultasPetlyne.clientesPorTelefone.delete(normalizarTelefone(dados.telefone));
-    } catch (error) {
-        console.warn("Não foi possível atualizar cadastro do cliente automaticamente:", error);
-    }
+    // A coleção "clientes" é administrativa e exige autenticação. O formulário
+    // público não tenta mais gravá-la. O histórico do próprio agendamento mantém
+    // os dados necessários e o painel administrativo consolida os clientes.
+    cacheConsultasPetlyne.clientesPorTelefone.delete(normalizarTelefone(dados.telefone));
 }
-
 
 function montarDadosAgendamentoFirestore(dados, protocolo) {
     const servicos = dados.resumo.itens.map(item => ({
@@ -1900,17 +1894,21 @@ async function salvarAgendamentoComTransacao(dados, protocolo) {
     const referencia = db.collection("agendamentos").doc(protocolo);
     const payload = montarDadosAgendamentoFirestore(dados, protocolo);
 
-    await executarComConfiabilidade(async tentativa => {
-        if (tentativa > 1) {
-            const existente = await referencia.get();
-            if (existente.exists) return;
-        }
+    try {
+        // Uma única gravação idempotente. Não usamos timeout artificial nem retry
+        // concorrente em escrita, pois o SDK já trata reconexões internamente.
         await referencia.set(payload, { merge: false });
-    }, {
-        etapa: "salvarAgendamentoFirestore",
-        tentativas: CONFIG_CONFIABILIDADE.tentativasEscrita,
-        timeoutMs: CONFIG_CONFIABILIDADE.timeoutEscritaMs
-    });
+    } catch (error) {
+        // Em falhas ambíguas de rede, verifica se a gravação chegou ao servidor
+        // antes de informar erro ao cliente.
+        if (erroTransitorio(error)) {
+            try {
+                const existente = await referencia.get();
+                if (existente.exists) return;
+            } catch (_) {}
+        }
+        throw error;
+    }
 
     cacheConsultasPetlyne.disponibilidadePorData.delete(dados.data);
 }
@@ -1977,7 +1975,7 @@ async function confirmarAgendamentoFinal() {
         dadosPreAgendamento = null;
     } catch (error) {
         console.error("Erro ao salvar agendamento no Firebase:", error);
-        await registrarLogSistema({ modulo:"Agendamento Online", funcao:"confirmarAgendamentoFinal", mensagem:error.message, codigo:error.code || error.message, detalhes:error.stack || "" });
+        registrarLogSistema({ modulo:"Agendamento Online", funcao:"confirmarAgendamentoFinal", mensagem:error.message, codigo:error.code || error.message, detalhes:error.stack || "" });
 
         const mensagem = error && error.message === "HORARIO_OCUPADO"
             ? "Este horário acabou de ser reservado por outro cliente. Escolha outro horário."
@@ -2074,24 +2072,6 @@ setInterval(() => atualizarAgendaAoRetornar(), 5 * 60 * 1000);
 iniciarPagina();
 
 
-// V6.7 - Instrumentação local de operações Firestore no agendamento online
-(function instalarMonitoramentoPublico(){
- const KEY='petlyne_monitoramento_publico_v67';
- const vazio=()=>({data:new Date().toISOString().slice(0,10),leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0});
- const ler=()=>{try{const d=JSON.parse(localStorage.getItem(KEY)||'null');return d&&d.data===new Date().toISOString().slice(0,10)?d:vazio()}catch(_){return vazio()}};
- const salvar=d=>{try{localStorage.setItem(KEY,JSON.stringify(d))}catch(_){}};
- const reg=(tipo,qtd,ms)=>{const d=ler();if(tipo==='leitura')d.leituras+=Math.max(1,qtd||0);if(tipo==='gravacao')d.gravacoes++;if(tipo==='exclusao')d.exclusoes++;d.operacoes++;d.duracaoTotal+=Math.round(ms||0);salvar(d)};
- setTimeout(()=>{if(!window.firebase?.firestore)return;const fs=firebase.firestore;const patch=(p,m,t,q)=>{if(!p?.[m]||p[m].__petlyne)return;const o=p[m];p[m]=function(...a){const ini=performance.now();let r;try{r=o.apply(this,a)}catch(e){reg(t,1,performance.now()-ini);throw e}return Promise.resolve(r).then(x=>{reg(t,q?q(x):1,performance.now()-ini);return x},e=>{reg(t,1,performance.now()-ini);throw e})};p[m].__petlyne=true};patch(fs.Query?.prototype,'get','leitura',s=>Math.max(1,s?.size||0));patch(fs.DocumentReference?.prototype,'get','leitura');patch(fs.DocumentReference?.prototype,'set','gravacao');patch(fs.DocumentReference?.prototype,'update','gravacao');patch(fs.DocumentReference?.prototype,'delete','exclusao');patch(fs.CollectionReference?.prototype,'add','gravacao')},0);
-})();
-
-
-// V6.8 - Instrumentação local do agendamento público (mesmo localStorage do Admin)
-(function instalarMonitorPublicoV68(){
- const KEY='petlyne_monitoramento_v68', hoje=()=>new Date().toISOString().slice(0,10), vazio=()=>({versao:68,data:hoje(),leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0,colecoes:{},operacoesDetalhadas:{},lentas:[],desperdicios:[],eventosRecentes:[]});
- const load=()=>{try{const d=JSON.parse(localStorage.getItem(KEY)||'null');return d&&d.data===hoje()?d:vazio()}catch(_){return vazio()}}, save=d=>{try{localStorage.setItem(KEY,JSON.stringify(d))}catch(_){}};
- const path=x=>{const cs=[x?.path,x?._delegate?.path,x?._query?.path,x?._delegate?._query?.path,x?._key?.path,x?._delegate?._key?.path];for(const v of cs){if(!v)continue;if(typeof v==='string')return v;if(Array.isArray(v.segments))return v.segments.join('/');try{if(typeof v.canonicalString==='function')return v.canonicalString()}catch(_){}}return''};
- const col=x=>(path(x).replace(/^projects\/[^/]+\/databases\/[^/]+\/documents\//,'').split('/').filter(Boolean)[0]||x?.parent?.id||x?.id||'desconhecida');
- const origem=()=>{try{for(const l of String(new Error().stack||'').split('\n').slice(2)){if(/instalarMonitorPublicoV68|envolvida|firebase-firestore|gstatic/.test(l))continue;const m=l.match(/at\s+([^\s(]+).*?(app\.js):(\d+):(\d+)/)||l.match(/(app\.js):(\d+):(\d+)/);if(m)return m.length===5?{funcao:m[1],arquivo:m[2],linha:+m[3]}:{funcao:'função anônima',arquivo:m[1],linha:+m[2]}}}catch(_){}return{funcao:'não identificada',arquivo:'app.js',linha:0}};
- const reg=(tipo,ref,qtd,ms,ok,res)=>{const d=load(),c=col(ref),o=origem(),q=Math.max(0,+qtd||0),sig=`${tipo}|${c}|${o.funcao}|${o.linha}|${path(ref)}`,now=Date.now(),fp=res?.docs?`${res.size}|${res.docs.slice(0,8).map(x=>x.id).join(',')}`:res?.id?`doc:${res.id}:${res.exists}`:'';if(tipo==='leitura')d.leituras+=q;if(tipo==='gravacao')d.gravacoes+=q||1;if(tipo==='exclusao')d.exclusoes+=q||1;d.operacoes++;d.duracaoTotal+=Math.round(ms);const cc=d.colecoes[c]=d.colecoes[c]||{leituras:0,gravacoes:0,exclusoes:0,operacoes:0,duracaoTotal:0};cc.operacoes++;cc.duracaoTotal+=Math.round(ms);if(tipo==='leitura')cc.leituras+=q;if(tipo==='gravacao')cc.gravacoes+=q||1;if(tipo==='exclusao')cc.exclusoes+=q||1;const op=d.operacoesDetalhadas[sig]=d.operacoesDetalhadas[sig]||{assinatura:sig,tipo,colecao:c,funcao:o.funcao,arquivo:o.arquivo,linha:o.linha,execucoes:0,documentos:0,duracaoTotal:0,repeticoes:0,documentosRepetidos:0,ultimoFingerprint:'',ultimaExecucao:0,erros:0};op.execucoes++;op.documentos+=q;op.duracaoTotal+=Math.round(ms);if(!ok)op.erros++;if(op.ultimaExecucao&&now-op.ultimaExecucao<=120000){op.repeticoes++;if(fp&&fp===op.ultimoFingerprint)op.documentosRepetidos+=q}op.ultimaExecucao=now;if(fp)op.ultimoFingerprint=fp;const ev={tipo,colecao:c,funcao:o.funcao,arquivo:o.arquivo,linha:o.linha,quantidade:q,duracao:Math.round(ms),sucesso:ok,horario:new Date().toISOString(),assinatura:sig};d.eventosRecentes.unshift(ev);d.eventosRecentes=d.eventosRecentes.slice(0,80);d.lentas.push(ev);d.lentas=d.lentas.sort((a,b)=>b.duracao-a.duracao).slice(0,30);d.desperdicios=Object.values(d.operacoesDetalhadas).filter(x=>x.repeticoes>0||x.execucoes>=5).sort((a,b)=>(b.documentosRepetidos||0)-(a.documentosRepetidos||0)).slice(0,12);save(d)};
- const start=()=>{if(window.__petlynePublicMonitorV68||!window.firebase?.firestore)return;window.__petlynePublicMonitorV68=true;const fs=firebase.firestore,wrap=(p,m,t,qf)=>{if(!p||typeof p[m]!=='function'||p[m].__mon)return;const old=p[m];p[m]=function(...args){const st=performance.now(),ref=this;let r;try{r=old.apply(this,args)}catch(e){reg(t,ref,1,performance.now()-st,false);throw e}return Promise.resolve(r).then(v=>{reg(t,ref,qf?qf(v):1,performance.now()-st,true,v);return v},e=>{reg(t,ref,1,performance.now()-st,false);throw e})};p[m].__mon=true};wrap(fs.Query?.prototype,'get','leitura',s=>Math.max(1,+s?.size||0));wrap(fs.DocumentReference?.prototype,'get','leitura',()=>1);wrap(fs.DocumentReference?.prototype,'set','gravacao');wrap(fs.DocumentReference?.prototype,'update','gravacao');wrap(fs.DocumentReference?.prototype,'delete','exclusao');wrap(fs.CollectionReference?.prototype,'add','gravacao')};setTimeout(start,0);
-})();
+// V7.0 - O formulário público não altera mais os prototypes internos do SDK Firebase.
+// O monitoramento técnico continua disponível no painel administrativo, enquanto
+// o fluxo crítico de agendamento permanece isolado e sem interceptadores globais.
