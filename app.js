@@ -1066,6 +1066,84 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
     }
 }
 
+
+// ============================================================
+// PROSPECT CALLBACK V7.2
+// Registra somente telefone válido que NÃO possui histórico/cadastro.
+// O registro permanece pendente e só aparece no Admin após 5 minutos.
+// ============================================================
+async function gerarIdProspectTelefone(telefone) {
+    const normalizado = normalizarTelefone(telefone);
+    if (window.crypto?.subtle && window.TextEncoder) {
+        const bytes = new TextEncoder().encode(`petlyne-prospect:${normalizado}`);
+        const hash = await crypto.subtle.digest("SHA-256", bytes);
+        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, "0")).join("");
+    }
+    // fallback determinístico para navegadores muito antigos
+    let h = 2166136261;
+    for (const c of normalizado) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+    return `legacy_${Math.abs(h >>> 0)}_${normalizado.slice(-4)}`;
+}
+
+async function registrarProspectCallback(telefone) {
+    if (typeof db === "undefined") return;
+    const telefoneNormalizado = normalizarTelefone(telefone);
+    if (!telefoneBrasileiroValido(telefoneNormalizado)) return;
+
+    try {
+        const id = await gerarIdProspectTelefone(telefoneNormalizado);
+        const ref = db.collection("prospectCallbacks").doc(id);
+        const snap = await ref.get().catch(() => null);
+
+        // Se já converteu, não reabre como prospect.
+        if (snap?.exists && snap.data()?.status === "Convertido") return;
+
+        const agora = firebase.firestore.FieldValue.serverTimestamp();
+        const payload = {
+            telefone: formatarTelefoneCelular(telefoneNormalizado),
+            telefoneNormalizado,
+            status: "Pendente",
+            origem: "Agendamento Online",
+            ultimaInteracaoEm: agora
+        };
+        if (!snap?.exists) payload.criadoEm = agora;
+
+        await ref.set(payload, { merge: true });
+    } catch (error) {
+        // Callback é acessório comercial: jamais pode bloquear o agendamento.
+        console.warn("Não foi possível registrar prospect callback.", error);
+        registrarLogSistema?.({
+            modulo: "Agendamento Online",
+            funcao: "registrarProspectCallback",
+            mensagem: error?.message || String(error),
+            codigo: error?.code || "prospect-callback"
+        });
+    }
+}
+
+async function converterProspectCallbackSeExistir(telefone, protocolo) {
+    if (typeof db === "undefined") return;
+    const telefoneNormalizado = normalizarTelefone(telefone);
+    if (!telefoneBrasileiroValido(telefoneNormalizado)) return;
+
+    try {
+        const id = await gerarIdProspectTelefone(telefoneNormalizado);
+        const ref = db.collection("prospectCallbacks").doc(id);
+        const snap = await ref.get();
+        if (!snap.exists) return;
+
+        await ref.set({
+            status: "Convertido",
+            convertidoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            protocoloConversao: protocolo || "",
+            ultimaInteracaoEm: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    } catch (error) {
+        // Nunca interfere na confirmação principal.
+        console.warn("Não foi possível converter prospect callback.", error);
+    }
+}
+
 async function preencherCadastroPorTelefone() {
     const telefone = document.getElementById("telefone").value;
     const telefoneNumeros = normalizarTelefone(telefone);
@@ -1093,6 +1171,9 @@ async function preencherCadastroPorTelefone() {
 
     if (pets.length === 0) {
         limparSeletorPetsCadastrados();
+        // Novo telefone sem cadastro/histórico: candidato ao Prospect Callback.
+        // Ele só será exibido no Admin após 5 minutos sem conversão.
+        registrarProspectCallback(telefone).catch(() => {});
         return;
     }
 
@@ -1988,6 +2069,8 @@ async function confirmarAgendamentoFinal() {
         const protocolo = gerarProtocolo();
 
         await salvarAgendamentoFirebase(dadosPreAgendamento, protocolo);
+        // A conversão do prospect é acessória e nunca bloqueia a confirmação.
+        converterProspectCallbackSeExistir(dadosPreAgendamento.telefone, protocolo).catch(() => {});
         await salvarCadastroClienteAutomatico(dadosPreAgendamento);
 
         agendamentosExistentes.push({

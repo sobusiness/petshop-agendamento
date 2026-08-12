@@ -1,0 +1,16 @@
+PETLYNE V7.2 — PROSPECT CALLBACK
+
+- Nova aba administrativa: Prospect Callback.
+- Registra somente telefone válido sem cadastro/histórico.
+- Prospect só aparece após 5 minutos sem conversão.
+- Ao concluir agendamento, prospect é marcado como Convertido e deixa a fila ativa.
+- Telefone completo disponível ao administrador.
+- Botão WhatsApp com campanha de hidratação gratuita.
+- Status Pendente, Contatado e Convertido.
+- Prioridade Quente (5-15min), Atenção (15-30min), Atrasado (+30min).
+- Métricas de pendentes, contatados, convertidos e taxa de conversão.
+- A coleta de callback é acessória: falha nela não bloqueia o agendamento.
+- Sem listener permanente; consulta ocorre somente ao abrir/atualizar o módulo.
+
+IMPORTANTE:
+Publicar REGRAS_FIRESTORE_V7_2.txt no Firebase antes de testar o formulário público.

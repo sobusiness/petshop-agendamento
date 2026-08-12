@@ -35,6 +35,7 @@
         <button class="tab-button" onclick="abrirSecao('clube')">Clube PetLyne</button>
         <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
+        <button class="tab-button" onclick="abrirSecao('prospect-callback')"><i class="fa-brands fa-whatsapp"></i> Prospect Callback</button>
         <button class="tab-button" onclick="abrirSecao('logs')">Monitoramento</button>
     </nav>
 
@@ -739,7 +740,43 @@
     </section>
 
 
-    <section id="secao-logs" class="admin-section">
+    
+    <section id="secao-prospect-callback" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Prospect Callback</h2>
+                <p>Novos potenciais clientes que informaram um telefone válido, não possuíam cadastro e não concluíram o agendamento em até 5 minutos.</p>
+            </div>
+            <div class="filter-actions">
+                <button onclick="carregarProspectCallbacks(true)"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+            </div>
+        </div>
+
+        <div class="prospect-summary-grid">
+            <article class="agenda-ops-card"><span>🔥 Pendentes</span><strong id="prospectTotalPendente">0</strong></article>
+            <article class="agenda-ops-card"><span>💬 Contatados</span><strong id="prospectTotalContatado">0</strong></article>
+            <article class="agenda-ops-card"><span>✅ Convertidos</span><strong id="prospectTotalConvertido">0</strong></article>
+            <article class="agenda-ops-card"><span>📈 Conversão</span><strong id="prospectTaxaConversao">0%</strong></article>
+        </div>
+
+        <div class="prospect-toolbar">
+            <input id="prospectPesquisa" type="text" placeholder="Pesquisar telefone..." oninput="renderizarProspectCallbacks()">
+            <select id="prospectFiltroStatus" onchange="renderizarProspectCallbacks()">
+                <option value="ativos">Pendentes + Contatados</option>
+                <option value="Pendente">Somente pendentes</option>
+                <option value="Contatado">Somente contatados</option>
+                <option value="Convertido">Convertidos</option>
+                <option value="todos">Todos</option>
+            </select>
+        </div>
+
+        <div class="prospect-info">
+            <strong>Regra:</strong> um telefone só entra nesta fila depois de 5 minutos se não existir cadastro anterior e nenhum agendamento tiver sido concluído.
+        </div>
+        <div id="prospectCallbackLista" class="prospect-list"></div>
+    </section>
+
+<section id="secao-logs" class="admin-section">
         <div class="section-title-row monitoring-title-row">
             <div>
                 <h2>Centro de Monitoramento</h2>
@@ -824,7 +861,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="../js/firebase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="dashboard.js?v=7.0.0"></script>
+<script src="dashboard.js?v=7.2"></script>
 
 
 <div id="modalConfirmacaoAdmin" class="admin-modal-overlay">

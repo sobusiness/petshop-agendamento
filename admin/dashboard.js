@@ -164,7 +164,7 @@ async function abrirSecao(secao) {
 
     document.getElementById(`secao-${secao}`).classList.add("active");
 
-    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "clube", "pacotes", "servicos", "logs"];
+    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "clube", "pacotes", "servicos", "prospect-callback", "logs"];
     const indice = mapaSecoes.indexOf(secao);
     const botoes = document.querySelectorAll(".tab-button");
     if (indice >= 0 && botoes[indice]) botoes[indice].classList.add("active");
@@ -232,6 +232,11 @@ async function abrirSecao(secao) {
         if (secao === "servicos") {
             await executarCargaUnica("servicos", () => carregarServicosAdmin(true));
             renderizarServicosAdmin();
+        }
+
+        if (secao === "prospect-callback") {
+            await carregarProspectCallbacks(true);
+            renderizarProspectCallbacks();
         }
 
         if (secao === "logs") {
@@ -4485,3 +4490,135 @@ function renderizarDiagnosticoSelecionado(){const id=document.getElementById('di
 async function atualizarCentroMonitoramento(){await atualizarLogsSistema();renderizarMetricasMonitoramento();prepararDiagnosticoMonitoramento();const e=document.getElementById('monitoramentoUltimaAtualizacao');if(e)e.textContent=`Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;}
 function iniciarAtualizacaoAutomaticaMonitoramento(){if(monitoramentoAutoRefresh)return;monitoramentoAutoRefresh=setInterval(()=>{if(document.getElementById('secao-logs')?.classList.contains('active'))atualizarCentroMonitoramento();},30000);}
 setTimeout(iniciarAtualizacaoAutomaticaMonitoramento,1000);
+
+
+// ============================================================
+// PROSPECT CALLBACK V7.2
+// ============================================================
+let prospectCallbacks = [];
+const PROSPECT_CALLBACK_ESPERA_MS = 5 * 60 * 1000;
+
+function prospectDataMs(valor) {
+    if (!valor) return 0;
+    if (typeof valor.toDate === "function") return valor.toDate().getTime();
+    if (valor.seconds) return valor.seconds * 1000;
+    const n = new Date(valor).getTime();
+    return Number.isFinite(n) ? n : 0;
+}
+
+function prospectEscapar(valor) {
+    return String(valor ?? "").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function prospectTempoDecorrido(ms) {
+    const min = Math.max(0, Math.floor((Date.now() - ms) / 60000));
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60), resto = min % 60;
+    if (h < 24) return `${h}h ${resto}min`;
+    return `${Math.floor(h / 24)}d ${h % 24}h`;
+}
+
+function prospectPrioridade(ms) {
+    const min = Math.floor((Date.now() - ms) / 60000);
+    if (min <= 15) return { classe:"quente", texto:"🔥 Quente" };
+    if (min <= 30) return { classe:"atencao", texto:"⚠️ Atenção" };
+    return { classe:"atrasado", texto:"⏰ Atrasado" };
+}
+
+async function carregarProspectCallbacks() {
+    const snapshot = await db.collection("prospectCallbacks").orderBy("criadoEm", "desc").limit(200).get();
+    prospectCallbacks = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() }));
+}
+
+function prospectEhElegivel(item) {
+    if (item.status === "Convertido") return true;
+    const criado = prospectDataMs(item.criadoEm);
+    return criado > 0 && (Date.now() - criado) >= PROSPECT_CALLBACK_ESPERA_MS;
+}
+
+function renderizarProspectCallbacks() {
+    const lista = document.getElementById("prospectCallbackLista");
+    if (!lista) return;
+
+    const elegiveis = prospectCallbacks.filter(prospectEhElegivel);
+    const pendentes = elegiveis.filter(x => x.status === "Pendente").length;
+    const contatados = elegiveis.filter(x => x.status === "Contatado").length;
+    const convertidos = elegiveis.filter(x => x.status === "Convertido").length;
+    const base = pendentes + contatados + convertidos;
+
+    document.getElementById("prospectTotalPendente").textContent = pendentes;
+    document.getElementById("prospectTotalContatado").textContent = contatados;
+    document.getElementById("prospectTotalConvertido").textContent = convertidos;
+    document.getElementById("prospectTaxaConversao").textContent = base ? `${Math.round(convertidos/base*100)}%` : "0%";
+
+    const pesquisa = (document.getElementById("prospectPesquisa")?.value || "").replace(/\D/g,"");
+    const filtro = document.getElementById("prospectFiltroStatus")?.value || "ativos";
+
+    const dados = elegiveis.filter(item => {
+        const tel = String(item.telefoneNormalizado || item.telefone || "").replace(/\D/g,"");
+        if (pesquisa && !tel.includes(pesquisa)) return false;
+        if (filtro === "ativos") return item.status === "Pendente" || item.status === "Contatado";
+        if (filtro !== "todos" && item.status !== filtro) return false;
+        return true;
+    });
+
+    if (!dados.length) {
+        lista.innerHTML = '<div class="prospect-empty"><i class="fa-solid fa-check-circle"></i><strong>Nenhum prospect nesta fila.</strong><span>Quando um novo cliente abandonar o agendamento por mais de 5 minutos, ele aparecerá aqui.</span></div>';
+        return;
+    }
+
+    lista.innerHTML = dados.map(item => {
+        const criado = prospectDataMs(item.criadoEm);
+        const prioridade = prospectPrioridade(criado);
+        const telefone = item.telefone || item.telefoneNormalizado || "";
+        const numeroWhats = String(item.telefoneNormalizado || telefone).replace(/\D/g,"");
+        const numeroBR = numeroWhats.startsWith("55") ? numeroWhats : `55${numeroWhats}`;
+        const mensagem = encodeURIComponent("Olá! 🐾 Aqui é da PetLyne. Vimos que você iniciou um agendamento online e queremos te ajudar a finalizar 😊 Se fizer seu agendamento agora, seu pet ganha uma hidratação gratuita neste atendimento. 💗 Podemos agendar para você?");
+        const whatsapp = `https://wa.me/${numeroBR}?text=${mensagem}`;
+        const status = item.status || "Pendente";
+        return `
+            <article class="prospect-card ${prioridade.classe}">
+                <div class="prospect-card-main">
+                    <div class="prospect-card-title">
+                        <strong>${prospectEscapar(telefone)}</strong>
+                        <span class="prospect-badge ${prioridade.classe}">${prioridade.texto}</span>
+                        <span class="prospect-status">${prospectEscapar(status)}</span>
+                    </div>
+                    <div class="prospect-meta">
+                        <span><i class="fa-regular fa-clock"></i> Há ${prospectTempoDecorrido(criado)}</span>
+                        <span><i class="fa-regular fa-calendar"></i> ${criado ? new Date(criado).toLocaleString("pt-BR") : "-"}</span>
+                    </div>
+                </div>
+                <div class="prospect-actions">
+                    <a class="prospect-whatsapp" href="${whatsapp}" target="_blank" rel="noopener" onclick="marcarProspectContatado('${item.id}')"><i class="fa-brands fa-whatsapp"></i> Chamar no WhatsApp</a>
+                    ${status === "Pendente" ? `<button class="secondary-button" onclick="marcarProspectContatado('${item.id}')">Marcar contatado</button>` : ""}
+                    <button class="secondary-button" onclick="descartarProspectCallback('${item.id}')">Descartar</button>
+                </div>
+            </article>`;
+    }).join("");
+}
+
+async function marcarProspectContatado(id) {
+    try {
+        await db.collection("prospectCallbacks").doc(id).update({
+            status:"Contatado",
+            contatadoEm:firebase.firestore.FieldValue.serverTimestamp()
+        });
+        const item = prospectCallbacks.find(x => x.id === id);
+        if (item) item.status = "Contatado";
+        renderizarProspectCallbacks();
+    } catch (e) {
+        console.error("Erro ao marcar prospect como contatado:", e);
+    }
+}
+
+async function descartarProspectCallback(id) {
+    if (!confirm("Deseja remover este prospect da fila de callback?")) return;
+    try {
+        await db.collection("prospectCallbacks").doc(id).delete();
+        prospectCallbacks = prospectCallbacks.filter(x => x.id !== id);
+        renderizarProspectCallbacks();
+    } catch (e) {
+        console.error("Erro ao descartar prospect:", e);
+    }
+}
