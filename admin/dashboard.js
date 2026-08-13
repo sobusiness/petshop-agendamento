@@ -4573,7 +4573,16 @@ function renderizarProspectCallbacks() {
         const telefone = item.telefone || item.telefoneNormalizado || "";
         const numeroWhats = String(item.telefoneNormalizado || telefone).replace(/\D/g,"");
         const numeroBR = numeroWhats.startsWith("55") ? numeroWhats : `55${numeroWhats}`;
-        const mensagem = encodeURIComponent("Olá! 🐾 Aqui é da PetLyne. Vimos que você iniciou um agendamento online e queremos te ajudar a finalizar 😊 Se fizer seu agendamento agora, seu pet ganha uma hidratação gratuita neste atendimento. 💗 Podemos agendar para você?");
+        const mensagem = encodeURIComponent(`Oi! ❤️
+
+Vimos que você iniciou um agendamento online com a PetLyne, mas não chegou a finalizar.
+
+Queremos te ajudar a concluir seu agendamento e, se você agendar agora, seu pet ganha uma hidratação gratuita neste atendimento. 🐾✨
+
+📅 Agende aqui:
+https://petlyne-agendamento-two.vercel.app/
+
+Se preferir, também podemos te ajudar por aqui. 💗`);
         const whatsapp = `https://wa.me/${numeroBR}?text=${mensagem}`;
         const status = item.status || "Pendente";
         return `

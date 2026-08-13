@@ -1,0 +1,10 @@
+PETLYNE V7.4 — MENSAGEM PROSPECT CALLBACK
+
+- Atualizada a mensagem automática do botão WhatsApp do Prospect Callback.
+- Corrigida codificação de emojis.
+- Mensagem alinhada ao padrão humanizado do CRM.
+- Incluído CTA com link direto do agendamento online.
+
+ARQUIVOS ALTERADOS:
+- admin/dashboard.js
+- ALTERACOES_V7_4.txt
