@@ -4573,17 +4573,6 @@ function renderizarProspectCallbacks() {
         const telefone = item.telefone || item.telefoneNormalizado || "";
         const numeroWhats = String(item.telefoneNormalizado || telefone).replace(/\D/g,"");
         const numeroBR = numeroWhats.startsWith("55") ? numeroWhats : `55${numeroWhats}`;
-        const mensagem = encodeURIComponent(`Oi! ❤️
-
-Vimos que você iniciou um agendamento online com a PetLyne, mas não chegou a finalizar.
-
-Queremos te ajudar a concluir seu agendamento e, se você agendar agora, seu pet ganha uma hidratação gratuita neste atendimento. 🐾✨
-
-📅 Agende aqui:
-https://petlyne-agendamento-two.vercel.app/
-
-Se preferir, também podemos te ajudar por aqui. 💗`);
-        const whatsapp = `https://wa.me/${numeroBR}?text=${mensagem}`;
         const status = item.status || "Pendente";
         return `
             <article class="prospect-card ${prioridade.classe}">
@@ -4599,12 +4588,53 @@ Se preferir, também podemos te ajudar por aqui. 💗`);
                     </div>
                 </div>
                 <div class="prospect-actions">
-                    <a class="prospect-whatsapp" href="${whatsapp}" target="_blank" rel="noopener" onclick="marcarProspectContatado('${item.id}')"><i class="fa-brands fa-whatsapp"></i> Chamar no WhatsApp</a>
+                    <button type="button" class="prospect-whatsapp" onclick="abrirWhatsAppProspect('${item.id}')"><i class="fa-brands fa-whatsapp"></i> Chamar no WhatsApp</button>
                     ${status === "Pendente" ? `<button class="secondary-button" onclick="marcarProspectContatado('${item.id}')">Marcar contatado</button>` : ""}
                     <button class="secondary-button" onclick="descartarProspectCallback('${item.id}')">Descartar</button>
                 </div>
             </article>`;
     }).join("");
+}
+
+
+function montarMensagemProspectCallback() {
+    return [
+        "Oi! \u2764\uFE0F",
+        "",
+        "Vimos que voc\u00EA iniciou um agendamento online com a PetLyne, mas n\u00E3o chegou a finalizar.",
+        "",
+        "Queremos te ajudar a concluir seu agendamento e, se voc\u00EA agendar agora, seu pet ganha uma hidrata\u00E7\u00E3o gratuita neste atendimento. \uD83D\uDC3E\u2728",
+        "",
+        "\uD83D\uDCC5 Agende aqui:",
+        "https://petlyne-agendamento-two.vercel.app/",
+        "",
+        "Se preferir, tamb\u00E9m podemos te ajudar por aqui. \uD83D\uDC97"
+    ].join("\n");
+}
+
+function abrirWhatsAppProspect(id) {
+    const item = prospectCallbacks.find(x => x.id === id);
+    if (!item) return;
+
+    const telefone = String(item.telefoneNormalizado || item.telefone || "").replace(/\D/g, "");
+    if (!telefone) {
+        mostrarAvisoAdmin?.({
+            titulo: "Telefone n\u00E3o encontrado",
+            mensagem: "Este prospect n\u00E3o possui um telefone v\u00E1lido para abrir o WhatsApp.",
+            icone: "\u26A0\uFE0F"
+        });
+        return;
+    }
+
+    const numeroBR = telefone.startsWith("55") ? telefone : `55${telefone}`;
+    // Mesma função usada pelo CRM: normaliza NFC e faz encodeURIComponent.
+    const texto = codificarMensagemWhatsApp(montarMensagemProspectCallback());
+    const movel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const baseWhatsApp = movel ? "https://api.whatsapp.com/send" : "https://web.whatsapp.com/send";
+
+    // Marca como contatado sem bloquear a abertura do WhatsApp.
+    marcarProspectContatado(id).catch(() => {});
+    window.open(`${baseWhatsApp}?phone=${numeroBR}&text=${texto}`, "_blank", "noopener,noreferrer");
 }
 
 async function marcarProspectContatado(id) {

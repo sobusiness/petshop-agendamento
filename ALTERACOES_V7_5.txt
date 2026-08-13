@@ -1,0 +1,13 @@
+PETLYNE V7.5 — WHATSAPP PROSPECT CALLBACK
+
+- Prospect Callback agora usa exatamente o mesmo mecanismo do CRM.
+- Desktop abre direto em web.whatsapp.com/send.
+- Mobile abre em api.whatsapp.com/send.
+- Removido uso de wa.me que gerava tela intermediária.
+- Mensagem passa pela mesma codificação NFC/encodeURIComponent do CRM.
+- Emojis foram definidos por escapes Unicode para evitar caracteres � após deploy.
+- Botão de WhatsApp marca o prospect como Contatado sem bloquear a abertura.
+
+ARQUIVOS ALTERADOS:
+- admin/dashboard.js
+- ALTERACOES_V7_5.txt
