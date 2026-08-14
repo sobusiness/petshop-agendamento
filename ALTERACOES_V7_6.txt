@@ -1,0 +1,14 @@
+PETLYNE V7.6 — CORTE DE UNHA
+
+- Incluído em Serviços Avulsos / Adicionais:
+  Corte de Unha — R$ 12,00
+- Ao selecionar, aparece no Resumo do Agendamento.
+- R$ 12,00 é somado ao Total previsto.
+- Corrigido internamente o ID antigo do Tratamento Anti-Parasitas, que estava
+  indevidamente nomeado como adicionalCorteUnha; o serviço e o valor de
+  Anti-Parasitas foram preservados.
+
+ARQUIVOS ALTERADOS:
+- index.html
+- app.js
+- ALTERACOES_V7_6.txt

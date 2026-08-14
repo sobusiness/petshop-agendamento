@@ -601,17 +601,31 @@ function aguardar(ms) {
 }
 
 function executarComTimeout(promessa, timeoutMs, etapa) {
-    // Promise.race não cancela a operação do Firestore. Em gravações isso poderia
-    // deixar a primeira tentativa ativa e iniciar outra. Por isso timeout artificial
-    // é usado apenas como aviso em leituras; gravações aguardam o SDK concluir.
+    // V7.3: o SDK do Firestore é o responsável por concluir/cancelar a operação.
+    // Um Promise.race com timeout NÃO cancela a leitura real e criava falsos
+    // "client-timeout" enquanto o Firestore ainda estava trabalhando.
+    //
+    // A partir daqui o limite serve SOMENTE como telemetria de lentidão:
+    // registra um aviso, mas nunca interrompe o fluxo do cliente.
     if (!timeoutMs || timeoutMs <= 0) return Promise.resolve(promessa);
 
-    let timer;
-    const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(criarErroPetlyne("client-timeout", `A operação ${etapa} demorou mais do que o esperado.`)), timeoutMs);
-    });
+    let concluida = false;
+    const timer = setTimeout(() => {
+        if (concluida) return;
+        registrarLogSistema({
+            modulo: "Agendamento Online",
+            funcao: etapa || "leitura-firestore",
+            nivel: "aviso",
+            codigo: "client-slow",
+            mensagem: `A operação ${etapa || "leitura"} está demorando mais do que o esperado, mas continua em andamento.`,
+            duracaoMs: timeoutMs
+        });
+    }, timeoutMs);
 
-    return Promise.race([Promise.resolve(promessa), timeout]).finally(() => clearTimeout(timer));
+    return Promise.resolve(promessa).finally(() => {
+        concluida = true;
+        clearTimeout(timer);
+    });
 }
 
 async function executarComConfiabilidade(operacao, opcoes = {}) {
@@ -743,6 +757,7 @@ const precosHidratacaoCaes = {
 
 const precoTosaHigienicaAvulsa = 12;
 const precoTratamentoAntiParasitas = 25;
+const precoCorteUnha = 12;
 
 const precosDesemboloCaes = {
     "Pequeno": 25,
@@ -1091,33 +1106,35 @@ async function registrarProspectCallback(telefone) {
     if (!telefoneBrasileiroValido(telefoneNormalizado)) return;
 
     try {
-        const id = await gerarIdProspectTelefone(telefoneNormalizado);
-        const ref = db.collection("prospectCallbacks").doc(id);
-        const snap = await ref.get().catch(() => null);
+        // O formulário público não possui permissão de leitura em prospectCallbacks.
+        // Portanto NÃO fazemos ref.get(). Criamos no máximo um documento por telefone
+        // nesta sessão e guardamos apenas o ID localmente para eventual conversão.
+        const chaveSessao = `petlyne_prospect_${telefoneNormalizado}`;
+        const existente = sessionStorage.getItem(chaveSessao);
+        if (existente) return existente;
 
-        // Se já converteu, não reabre como prospect.
-        if (snap?.exists && snap.data()?.status === "Convertido") return;
-
-        const agora = firebase.firestore.FieldValue.serverTimestamp();
-        const payload = {
+        const ref = await db.collection("prospectCallbacks").add({
             telefone: formatarTelefoneCelular(telefoneNormalizado),
             telefoneNormalizado,
             status: "Pendente",
             origem: "Agendamento Online",
-            ultimaInteracaoEm: agora
-        };
-        if (!snap?.exists) payload.criadoEm = agora;
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            ultimaInteracaoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-        await ref.set(payload, { merge: true });
+        sessionStorage.setItem(chaveSessao, ref.id);
+        return ref.id;
     } catch (error) {
         // Callback é acessório comercial: jamais pode bloquear o agendamento.
         console.warn("Não foi possível registrar prospect callback.", error);
         registrarLogSistema?.({
             modulo: "Agendamento Online",
             funcao: "registrarProspectCallback",
+            nivel: "aviso",
             mensagem: error?.message || String(error),
             codigo: error?.code || "prospect-callback"
         });
+        return null;
     }
 }
 
@@ -1127,17 +1144,19 @@ async function converterProspectCallbackSeExistir(telefone, protocolo) {
     if (!telefoneBrasileiroValido(telefoneNormalizado)) return;
 
     try {
-        const id = await gerarIdProspectTelefone(telefoneNormalizado);
-        const ref = db.collection("prospectCallbacks").doc(id);
-        const snap = await ref.get();
-        if (!snap.exists) return;
+        const chaveSessao = `petlyne_prospect_${telefoneNormalizado}`;
+        const prospectId = sessionStorage.getItem(chaveSessao);
+        if (!prospectId) return;
 
-        await ref.set({
+        // Atualiza diretamente o documento criado nesta sessão, sem leitura pública.
+        await db.collection("prospectCallbacks").doc(prospectId).update({
             status: "Convertido",
             convertidoEm: firebase.firestore.FieldValue.serverTimestamp(),
             protocoloConversao: protocolo || "",
             ultimaInteracaoEm: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        });
+
+        sessionStorage.removeItem(chaveSessao);
     } catch (error) {
         // Nunca interfere na confirmação principal.
         console.warn("Não foi possível converter prospect callback.", error);
@@ -1225,6 +1244,7 @@ document.getElementById("pelagem").addEventListener("change", atualizarResumoSer
 document.getElementById("tipoTosa").addEventListener("change", atualizarResumoServicos);
 document.getElementById("adicionalHidratacao").addEventListener("change", atualizarResumoServicos);
 document.getElementById("adicionalTosaHigienica").addEventListener("change", atualizarResumoServicos);
+document.getElementById("adicionalAntiParasitas").addEventListener("change", atualizarResumoServicos);
 document.getElementById("adicionalCorteUnha").addEventListener("change", atualizarResumoServicos);
 document.getElementById("adicionalDesembolo").addEventListener("change", atualizarResumoServicos);
 document.getElementById("data").addEventListener("change", carregarHorariosDisponiveis);
@@ -1376,7 +1396,7 @@ function atualizarServicosPorEspecie() {
     const servicoPrincipal = document.getElementById("servicoPrincipal");
     const adicionalHidratacao = document.getElementById("adicionalHidratacao");
     const adicionalTosaHigienica = document.getElementById("adicionalTosaHigienica");
-    const adicionalCorteUnha = document.getElementById("adicionalCorteUnha");
+    const adicionalCorteUnha = document.getElementById("adicionalAntiParasitas");
     const adicionalDesembolo = document.getElementById("adicionalDesembolo");
 
     servicoPrincipal.innerHTML = "";
@@ -1523,9 +1543,14 @@ function calcularServicosSelecionados() {
         total += precoTosaHigienicaAvulsa;
     }
 
-    if (document.getElementById("adicionalCorteUnha").checked) {
+    if (document.getElementById("adicionalAntiParasitas").checked) {
         itens.push({ nome: "Tratamento Anti-Parasitas", valor: precoTratamentoAntiParasitas });
         total += precoTratamentoAntiParasitas;
+    }
+
+    if (document.getElementById("adicionalCorteUnha").checked) {
+        itens.push({ nome: "Corte de Unha", valor: precoCorteUnha });
+        total += precoCorteUnha;
     }
 
     if (especie === "Cão" && document.getElementById("adicionalDesembolo").checked && porte) {
@@ -2143,6 +2168,7 @@ function limparFormulario() {
     document.getElementById("tipoTosa").value = "";
     document.getElementById("adicionalHidratacao").checked = false;
     document.getElementById("adicionalTosaHigienica").checked = false;
+    document.getElementById("adicionalAntiParasitas").checked = false;
     document.getElementById("adicionalCorteUnha").checked = false;
     document.getElementById("data").value = "";
     document.getElementById("horario").innerHTML = "<option>Selecione uma data primeiro</option>";
