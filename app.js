@@ -1737,10 +1737,32 @@ async function executarCarregamentoHorariosDisponiveis(minhaSequencia, chaveEspe
     }
 }
 
+function corteUnhaSelecionado() {
+    return Boolean(document.getElementById("adicionalCorteUnha")?.checked);
+}
+
+function adicionaisQueExigemServicoPrincipalSelecionados() {
+    return Boolean(
+        document.getElementById("adicionalHidratacao")?.checked ||
+        document.getElementById("adicionalTosaHigienica")?.checked ||
+        document.getElementById("adicionalAntiParasitas")?.checked ||
+        document.getElementById("adicionalDesembolo")?.checked
+    );
+}
+
+function corteUnhaEhServicoAvulsoUnicoSemPrincipal() {
+    const servicoPrincipal = document.getElementById("servicoPrincipal")?.value || "";
+    return !servicoPrincipal && corteUnhaSelecionado() && !adicionaisQueExigemServicoPrincipalSelecionados();
+}
+
 function validarAgendamento() {
     const telefoneNumeros = document.getElementById("telefone").value.replace(/\D/g, "");
     const resumo = calcularServicosSelecionados();
+    const servicoPrincipalAtual = document.getElementById("servicoPrincipal").value;
+    const apenasCorteUnhaSemPrincipal = corteUnhaEhServicoAvulsoUnicoSemPrincipal();
 
+    // Corte de Unha é o único serviço que pode ser agendado sem Banho/Tosa.
+    // Os demais campos cadastrais, data e horário continuam obrigatórios.
     const camposObrigatorios = [
         "cliente",
         "telefone",
@@ -1750,16 +1772,28 @@ function validarAgendamento() {
         "raca",
         "porte",
         "observacaoPet",
-        "servicoPrincipal",
         "data",
         "horario"
     ];
+
+    if (!apenasCorteUnhaSemPrincipal) camposObrigatorios.push("servicoPrincipal");
 
     for (const campo of camposObrigatorios) {
         if (document.getElementById(campo).value.trim() === "") {
             mostrarAlerta("Preencha todos os dados obrigatórios.");
             return false;
         }
+    }
+
+    // Se não houver serviço principal, só Corte de Unha pode estar selecionado.
+    if (!servicoPrincipalAtual && adicionaisQueExigemServicoPrincipalSelecionados()) {
+        mostrarAlerta("Hidratação, Tosa Higiênica Avulsa, Tratamento Anti-Parasitas e Desembolo precisam estar vinculados a um Serviço Principal (Banho ou Tosa). Para agendar sem Banho/Tosa, selecione somente Corte de Unha.");
+        return false;
+    }
+
+    if (!servicoPrincipalAtual && !corteUnhaSelecionado()) {
+        mostrarAlerta("Selecione um Serviço Principal ou escolha Corte de Unha como serviço avulso.");
+        return false;
     }
 
     if (!telefoneBrasileiroValido(telefoneNumeros)) {

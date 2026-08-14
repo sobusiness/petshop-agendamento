@@ -1,0 +1,20 @@
+PETLYNE V7.7 — CORTE DE UNHA INDEPENDENTE
+
+REGRA NOVA
+- Corte de Unha pode ser agendado sozinho, sem Serviço Principal.
+- Valor permanece R$ 12,00.
+- Data e horário continuam obrigatórios.
+- Os dados do cliente e do pet continuam obrigatórios.
+
+REGRAS PRESERVADAS
+- Hidratação continua exigindo Serviço Principal.
+- Tosa Higiênica Avulsa continua exigindo Serviço Principal.
+- Tratamento Anti-Parasitas continua exigindo Serviço Principal.
+- Desembolo continua exigindo Serviço Principal.
+- Se qualquer um desses adicionais estiver selecionado sem Banho/Tosa,
+  o sistema bloqueia a confirmação e explica a regra.
+- Corte de Unha também pode ser somado normalmente a um Banho/Tosa.
+
+ARQUIVOS ALTERADOS
+- app.js
+- ALTERACOES_V7_7.txt
