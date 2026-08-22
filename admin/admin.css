@@ -2922,3 +2922,7 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .prospect-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:38px;background:#fff;border:1px dashed #ddd;border-radius:14px;color:#6b7280}
 .prospect-empty i{font-size:26px;color:#25D366}
 @media(max-width:800px){.prospect-summary-grid{grid-template-columns:repeat(2,1fr)}.prospect-card{align-items:flex-start;flex-direction:column}.prospect-actions{justify-content:flex-start}}
+
+.clube-reward-reserved{border-color:#d8b4c4;background:#fff7fa}
+.clube-reserva-badge{padding:6px 10px;border-radius:999px;background:#f1d7e2;color:#7d3b57;font-size:12px;font-weight:800}
+.agenda-beneficio-clube{margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff0f6;color:#8b3158}

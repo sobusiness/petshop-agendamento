@@ -1,0 +1,31 @@
+PETLYNE V7.8 — CLUBE PETLYNE NO AGENDAMENTO ONLINE
+
+- Pop-up do Clube aparece após telefone de cliente existente ser reconhecido.
+- Apenas 1 leitura adicional é feita para buscar o resumo do Clube.
+- Jornada é por cliente/telefone, não por pet.
+- Mostra progresso 0–10 e marcos de hidratação (5) e banho grátis (10).
+- Benefício disponível permite escolher qual pet receberá o prêmio.
+- Hidratação prêmio entra automaticamente no resumo por R$ 0,00.
+- Banho grátis zera somente o Banho do agendamento escolhido.
+- Benefício é reservado de forma transacional no Firestore para evitar uso duplo.
+- O agendamento Admin mostra quando existe Prêmio Clube PetLyne.
+- Ao concluir atendimento: Reservado -> Resgatado automaticamente.
+- O uso também é registrado em clubePetlyneResgates.
+- Ao cancelar antes da conclusão: o benefício volta para Disponível.
+- Clube Admin exibe benefícios Reservados e Resgatados.
+- Ao abrir/atualizar Clube no Admin, os documentos-resumo públicos são sincronizados.
+
+IMPORTANTE
+1. Publique REGRAS_FIRESTORE_V7_8.txt.
+2. Após o deploy, abra o módulo Clube PetLyne no Admin uma vez e clique em
+   Atualizar Clube para gerar/sincronizar os resumos dos clientes atuais.
+
+ARQUIVOS ALTERADOS
+- app.js
+- index.html
+- style.css
+- admin/dashboard.js
+- admin/dashboard.html
+- admin/admin.css
+- REGRAS_FIRESTORE_V7_8.txt
+- ALTERACOES_V7_8.txt

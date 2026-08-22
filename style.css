@@ -553,3 +553,18 @@ form h2,
         object-position: 42% center;
     }
 }
+
+
+/* V7.8 Clube PetLyne Cliente */
+.clube-popup-card{max-width:520px;text-align:center}
+.clube-popup-subtitulo{margin-top:-4px;color:#7a5265}
+.clube-popup-trilha{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin:18px 0}
+.clube-popup-trilha span{height:34px;border-radius:50%;display:grid;place-items:center;background:#f5e7ed;color:#a77287;font-size:12px;font-weight:700}
+.clube-popup-trilha span.done{background:#ef7aa8;color:#fff}
+.clube-popup-trilha span.reward{font-size:16px}
+.clube-popup-beneficios{display:grid;gap:10px;margin-top:14px}
+.clube-popup-beneficios .clube-beneficio-btn{width:100%;border:0;border-radius:12px;padding:12px 14px;background:#f6b4ce;color:#6d2747;font-weight:800;cursor:pointer}
+.clube-popup-beneficios .clube-beneficio-btn.destaque{background:#e95f96;color:#fff}
+#clubePopupPet{width:100%;margin-top:8px;padding:11px;border:1px solid #edc6d6;border-radius:10px;background:#fff}
+#clubePopupProgresso>p{color:#6f5661}
+@media(max-width:600px){.clube-popup-trilha{gap:3px}.clube-popup-trilha span{height:28px;font-size:10px}}

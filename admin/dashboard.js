@@ -11,6 +11,7 @@ let crmRegistrosPorChave = new Map();
 let crmUltimaAtualizacao = null;
 let crmVisaoAtual = "pendentes";
 let clubePetlyneResgates = [];
+let clubePetlyneResumos = [];
 let clubeFiltroAtivo = "todos";
 const racasPorteGatosPetlyneAdmin = [{"raca": "Abissínio", "porte": "Único"}, {"raca": "American Bobtail", "porte": "Único"}, {"raca": "American Curl", "porte": "Único"}, {"raca": "American Shorthair", "porte": "Único"}, {"raca": "Angorá Turco", "porte": "Único"}, {"raca": "Azul Russo", "porte": "Único"}, {"raca": "Balinês", "porte": "Único"}, {"raca": "Bengal", "porte": "Único"}, {"raca": "Birmanês", "porte": "Único"}, {"raca": "Bobtail Japonês", "porte": "Único"}, {"raca": "Bombay", "porte": "Único"}, {"raca": "British Longhair", "porte": "Único"}, {"raca": "British Shorthair", "porte": "Único"}, {"raca": "Burmilla", "porte": "Único"}, {"raca": "Burmês", "porte": "Único"}, {"raca": "Chartreux", "porte": "Único"}, {"raca": "Chausie", "porte": "Único"}, {"raca": "Cornish Rex", "porte": "Único"}, {"raca": "Cymric", "porte": "Único"}, {"raca": "Devon Rex", "porte": "Único"}, {"raca": "Egyptian Mau", "porte": "Único"}, {"raca": "Exótico", "porte": "Único"}, {"raca": "Havana Brown", "porte": "Único"}, {"raca": "Himalaio", "porte": "Único"}, {"raca": "Khao Manee", "porte": "Único"}, {"raca": "Kurilian Bobtail", "porte": "Único"}, {"raca": "LaPerm", "porte": "Único"}, {"raca": "Maine Coon", "porte": "Único"}, {"raca": "Manx", "porte": "Único"}, {"raca": "Munchkin", "porte": "Único"}, {"raca": "Norueguês da Floresta", "porte": "Único"}, {"raca": "Ocicat", "porte": "Único"}, {"raca": "Oriental Longhair", "porte": "Único"}, {"raca": "Oriental Shorthair", "porte": "Único"}, {"raca": "Persa", "porte": "Único"}, {"raca": "Peterbald", "porte": "Único"}, {"raca": "Ragdoll", "porte": "Único"}, {"raca": "Savannah", "porte": "Único"}, {"raca": "Scottish Fold", "porte": "Único"}, {"raca": "Selkirk Rex", "porte": "Único"}, {"raca": "Sem Raça Definida (SRD)", "porte": "Único"}, {"raca": "Siamês", "porte": "Único"}, {"raca": "Siberiano", "porte": "Único"}, {"raca": "Singapura", "porte": "Único"}, {"raca": "Somali", "porte": "Único"}, {"raca": "Sphynx", "porte": "Único"}, {"raca": "Tonquinês", "porte": "Único"}, {"raca": "Toyger", "porte": "Único"}];
 const racasPorteBanhoTosaAdmin = [{"raca": "Akita", "porte": "Grande"}, {"raca": "Akita Americano", "porte": "Grande"}, {"raca": "Alaskan Malamute", "porte": "Grande"}, {"raca": "American Pit Bull Terrier", "porte": "Médio"}, {"raca": "American Staffordshire Terrier", "porte": "Médio"}, {"raca": "Australian Shepherd", "porte": "Médio"}, {"raca": "Basset Hound", "porte": "Médio"}, {"raca": "Beagle", "porte": "Médio"}, {"raca": "Bernese Mountain Dog", "porte": "Grande"}, {"raca": "Bichon Frisé", "porte": "Pequeno"}, {"raca": "Border Collie", "porte": "Médio"}, {"raca": "Boston Terrier", "porte": "Pequeno"}, {"raca": "Boxer", "porte": "Grande"}, {"raca": "Buldogue Francês", "porte": "Pequeno"}, {"raca": "Bulldog Inglês", "porte": "Médio"}, {"raca": "Bullmastiff", "porte": "Grande"}, {"raca": "Cane Corso", "porte": "Grande"}, {"raca": "Cavalier King Charles Spaniel", "porte": "Pequeno"}, {"raca": "Chihuahua", "porte": "Pequeno"}, {"raca": "Chow Chow", "porte": "Médio"}, {"raca": "Cocker Spaniel Americano", "porte": "Médio"}, {"raca": "Cocker Spaniel Inglês", "porte": "Médio"}, {"raca": "Coton de Tuléar", "porte": "Pequeno"}, {"raca": "Dachshund (Salsicha)", "porte": "Pequeno"}, {"raca": "Dobermann", "porte": "Grande"}, {"raca": "Dogue Alemão", "porte": "Grande"}, {"raca": "Dogue de Bordeaux", "porte": "Grande"}, {"raca": "Dálmata", "porte": "Grande"}, {"raca": "Fila Brasileiro", "porte": "Grande"}, {"raca": "Fox Paulistinha (Terrier Brasileiro)", "porte": "Pequeno"}, {"raca": "Golden Retriever", "porte": "Grande"}, {"raca": "Greyhound", "porte": "Grande"}, {"raca": "Husky Siberiano", "porte": "Médio"}, {"raca": "Jack Russell Terrier", "porte": "Pequeno"}, {"raca": "Komondor", "porte": "Grande"}, {"raca": "Kuvasz", "porte": "Grande"}, {"raca": "Labrador Retriever", "porte": "Grande"}, {"raca": "Leonberger", "porte": "Grande"}, {"raca": "Lhasa Apso", "porte": "Pequeno"}, {"raca": "Maltês", "porte": "Pequeno"}, {"raca": "Mastiff", "porte": "Grande"}, {"raca": "Mastino Napolitano", "porte": "Grande"}, {"raca": "Papillon", "porte": "Pequeno"}, {"raca": "Pastor Alemão", "porte": "Grande"}, {"raca": "Pastor Belga", "porte": "Grande"}, {"raca": "Pequinês", "porte": "Pequeno"}, {"raca": "Pinscher", "porte": "Pequeno"}, {"raca": "Poodle Mini", "porte": "Pequeno"}, {"raca": "Poodle Standard", "porte": "Médio"}, {"raca": "Poodle Toy", "porte": "Pequeno"}, {"raca": "Pug", "porte": "Pequeno"}, {"raca": "Rhodesian Ridgeback", "porte": "Grande"}, {"raca": "Rottweiler", "porte": "Grande"}, {"raca": "Samoieda", "porte": "Médio"}, {"raca": "Schnauzer Miniatura", "porte": "Pequeno"}, {"raca": "Schnauzer Standard", "porte": "Médio"}, {"raca": "Sem Raça Grande", "porte": "Grande"}, {"raca": "Sem Raça Médio", "porte": "Médio"}, {"raca": "Sem Raça Pequeno", "porte": "Pequeno"}, {"raca": "Setter Inglês", "porte": "Médio"}, {"raca": "Setter Irlandês", "porte": "Médio"}, {"raca": "Shar Pei", "porte": "Médio"}, {"raca": "Shiba Inu", "porte": "Pequeno"}, {"raca": "Shih Tzu", "porte": "Pequeno"}, {"raca": "Spitz Alemão (Lulu da Pomerânia)", "porte": "Pequeno"}, {"raca": "Springer Spaniel", "porte": "Médio"}, {"raca": "São Bernardo", "porte": "Grande"}, {"raca": "Terra Nova", "porte": "Grande"}, {"raca": "Weimaraner", "porte": "Médio"}, {"raca": "West Highland White Terrier", "porte": "Pequeno"}, {"raca": "Whippet", "porte": "Médio"}, {"raca": "Wolfhound Irlandês", "porte": "Grande"}, {"raca": "Yorkshire Terrier", "porte": "Pequeno"}];
@@ -214,8 +215,10 @@ async function abrirSecao(secao) {
             await Promise.all([
                 executarCargaUnica("agendamentos", () => carregarAgendamentos(true)),
                 executarCargaUnica("clientes", () => carregarClientesAdmin(true)),
-                executarCargaUnica("clubeResgates", () => carregarClubePetlyneResgates(true))
+                executarCargaUnica("clubeResgates", () => carregarClubePetlyneResgates(true)),
+                carregarClubePetlyneResumos()
             ]);
+            await sincronizarResumosClubePetlyne();
             renderizarClubePetlyne();
         }
 
@@ -661,6 +664,7 @@ function renderizarAgenda() {
                                     <div class="agenda-compact-line agenda-service-line" title="${servicos.replace(/"/g, '&quot;')}">
                                         <b>✂</b> ${servicos}
                                     </div>
+                                    ${agendamento.beneficioClube ? `<div class="agenda-compact-line agenda-beneficio-clube"><b>🎁</b> Prêmio Clube PetLyne: ${agendamento.beneficioClube.tipo === "hidratacao" ? "Hidratação" : "Banho grátis"} • ${agendamento.beneficioClube.pet || agendamento.pet || ""} • <strong>${agendamento.beneficioClube.status || "Reservado"}</strong></div>` : ""}
                                     <div class="agenda-compact-line agenda-meta-line">
                                         <span class="agenda-value"><b>${valorServico}</b></span>
                                         <span>${agendamento.especie || "Não informada"}</span>
@@ -3219,12 +3223,41 @@ async function concluirAgendamento(id) {
 
     if (!confirmar) return;
 
+    const agendamentoAtual = agendamentos.find(a => a.id === id);
     await db.collection("agendamentos").doc(id).update({
         status: "Concluído",
-        concluidoEm: firebase.firestore.FieldValue.serverTimestamp()
+        concluidoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        ...(agendamentoAtual?.beneficioClube ? {"beneficioClube.status":"Resgatado"} : {})
     });
 
+    if (agendamentoAtual?.beneficioClube) {
+        const tel = normalizarTelefoneCliente(agendamentoAtual.telefone);
+        const prefixo = agendamentoAtual.beneficioClube.tipo === "hidratacao" ? "hidratacao" : "banhoGratis";
+        const resumoRef = db.collection("clubePetlyneResumo").doc(tel);
+        await resumoRef.set({
+            [`${prefixo}Status`]: "Resgatado",
+            [`${prefixo}Protocolo`]: agendamentoAtual.protocolo || id,
+            [`${prefixo}Pet`]: agendamentoAtual.beneficioClube.pet || agendamentoAtual.pet || "",
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        }, {merge:true});
+
+        const chave = clubeChaveCliente(agendamentoAtual.cliente || "Cliente");
+        await db.collection("clubePetlyneResgates").add({
+            clienteChave: chave,
+            cliente: agendamentoAtual.cliente || "",
+            telefone: agendamentoAtual.telefone || "",
+            pets: [agendamentoAtual.beneficioClube.pet || agendamentoAtual.pet || ""],
+            tipoBeneficio: agendamentoAtual.beneficioClube.tipo,
+            ciclo: Number(agendamentoAtual.beneficioClube.ciclo || 1),
+            status: "Utilizado",
+            protocolo: agendamentoAtual.protocolo || id,
+            origem: "Agendamento Online",
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
     await carregarAgendamentos();
+    if (agendamentoAtual?.beneficioClube) await atualizarResumoClubeAposMudanca(agendamentoAtual.telefone);
     renderizarAgenda();
     atualizarFaturamento();
 }
@@ -3239,6 +3272,18 @@ async function cancelarAgendamento(id) {
     });
 
     if (!confirmar) return;
+
+    const agendamentoAtual = agendamentos.find(a => a.id === id);
+    if (agendamentoAtual?.beneficioClube?.status === "Reservado" || agendamentoAtual?.beneficioClube) {
+        const tel = normalizarTelefoneCliente(agendamentoAtual.telefone);
+        const prefixo = agendamentoAtual.beneficioClube.tipo === "hidratacao" ? "hidratacao" : "banhoGratis";
+        await db.collection("clubePetlyneResumo").doc(tel).set({
+            [`${prefixo}Status`]: "Disponivel",
+            [`${prefixo}Protocolo`]: "",
+            [`${prefixo}Pet`]: "",
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        }, {merge:true});
+    }
 
     await db.collection("agendamentos").doc(id).delete();
 
@@ -4021,6 +4066,95 @@ async function carregarClubePetlyneResgates(forcar = false) {
     }
 }
 
+
+async function carregarClubePetlyneResumos() {
+    try {
+        const snapshot = await db.collection("clubePetlyneResumo").get();
+        clubePetlyneResumos = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() }));
+    } catch (erro) {
+        console.warn("Não foi possível carregar os resumos públicos do Clube.", erro);
+        clubePetlyneResumos = [];
+    }
+}
+
+function resumoClubePorTelefone(telefone) {
+    const base = normalizarTelefoneCliente(telefone);
+    return clubePetlyneResumos.find(r => normalizarTelefoneCliente(r.telefoneNormalizado) === base);
+}
+
+function construirResumoClubeTelefone(item) {
+    const telefoneNormalizado = normalizarTelefoneCliente(item.telefone);
+    if (!telefoneNormalizado) return null;
+
+    const existente = resumoClubePorTelefone(telefoneNormalizado) || {};
+    const utilizados = item.resgates || [];
+    const pendH = item.beneficiosPendentes.find(b => b.tipo === "hidratacao");
+    const pendB = item.beneficiosPendentes.find(b => b.tipo === "banhoGratis");
+
+    const usadoH = [...utilizados].filter(r=>r.tipoBeneficio==="hidratacao"&&r.status==="Utilizado").sort((a,b)=>(b.ciclo||0)-(a.ciclo||0))[0];
+    const usadoB = [...utilizados].filter(r=>r.tipoBeneficio==="banhoGratis"&&r.status==="Utilizado").sort((a,b)=>(b.ciclo||0)-(a.ciclo||0))[0];
+
+    const manterReserva = (tipo, pendente) =>
+        existente[`${tipo}Status`] === "Reservado" &&
+        pendente &&
+        Number(existente[`${tipo}Ciclo`]) === Number(pendente.ciclo);
+
+    const hidratacaoStatus = manterReserva("hidratacao", pendH) ? "Reservado" : pendH ? "Disponivel" : usadoH ? "Resgatado" : "Bloqueado";
+    const banhoGratisStatus = manterReserva("banhoGratis", pendB) ? "Reservado" : pendB ? "Disponivel" : usadoB ? "Resgatado" : "Bloqueado";
+
+    return {
+        telefoneNormalizado,
+        cliente: item.cliente || "",
+        banhosTotal: item.banhos || 0,
+        progresso: item.progresso || 0,
+        cicloAtual: item.cicloAtual || 1,
+
+        hidratacaoStatus,
+        hidratacaoCiclo: pendH?.ciclo || usadoH?.ciclo || item.cicloAtual || 1,
+        hidratacaoProtocolo: hidratacaoStatus === "Reservado" ? (existente.hidratacaoProtocolo || "") : "",
+        hidratacaoPet: hidratacaoStatus === "Reservado" ? (existente.hidratacaoPet || "") : "",
+
+        banhoGratisStatus,
+        banhoGratisCiclo: pendB?.ciclo || usadoB?.ciclo || item.cicloAtual || 1,
+        banhoGratisProtocolo: banhoGratisStatus === "Reservado" ? (existente.banhoGratisProtocolo || "") : "",
+        banhoGratisPet: banhoGratisStatus === "Reservado" ? (existente.banhoGratisPet || "") : "",
+
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+}
+
+async function sincronizarResumosClubePetlyne() {
+    const dados = calcularClientesClubePetlyne();
+    if (!dados.length) return;
+
+    const batch = db.batch();
+    const novos = [];
+
+    dados.forEach(item => {
+        const resumo = construirResumoClubeTelefone(item);
+        if (!resumo) return;
+        const ref = db.collection("clubePetlyneResumo").doc(resumo.telefoneNormalizado);
+        batch.set(ref, resumo, { merge:true });
+        novos.push({ id:resumo.telefoneNormalizado, ...resumo });
+    });
+
+    if (novos.length) {
+        await batch.commit();
+        clubePetlyneResumos = novos;
+    }
+}
+
+async function atualizarResumoClubeAposMudanca(telefone) {
+    if (!telefone) return;
+    await Promise.all([carregarClubePetlyneResgates(), carregarClubePetlyneResumos()]);
+    const cliente = calcularClientesClubePetlyne().find(i => telefonesEquivalentesCliente(i.telefone, telefone));
+    if (!cliente) return;
+    const resumo = construirResumoClubeTelefone(cliente);
+    if (!resumo) return;
+    await db.collection("clubePetlyneResumo").doc(resumo.telefoneNormalizado).set(resumo, {merge:true});
+    await carregarClubePetlyneResumos();
+}
+
 function calcularClientesClubePetlyne() {
     const mapa = new Map();
     const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a));
@@ -4035,16 +4169,25 @@ function calcularClientesClubePetlyne() {
 
     return [...mapa.values()].map(item=>{
         const ciclosCompletos=Math.floor(item.banhos/CLUBE_CONFIG.metaBanhos), cicloAtual=ciclosCompletos+1, progressoBruto=item.banhos%CLUBE_CONFIG.metaBanhos;
-        const resgates=clubePetlyneResgates.filter(r=>r.clienteChave===item.chave&&r.status==='Utilizado');
+        const resgates=clubePetlyneResgates.filter(r=>
+            r.status==='Utilizado' &&
+            (r.clienteChave===item.chave || telefonesEquivalentesCliente(r.telefone, item.telefone))
+        );
+        const resumoPublico = resumoClubePorTelefone(item.telefone);
         const beneficios=[];
         for(let ciclo=1;ciclo<=cicloAtual;ciclo++){
             const inicio=(ciclo-1)*CLUBE_CONFIG.metaBanhos;
             const hLib=item.banhos>=inicio+CLUBE_CONFIG.marcoHidratacao, gLib=item.banhos>=inicio+CLUBE_CONFIG.metaBanhos;
-            const hUse=resgates.some(r=>r.ciclo===ciclo&&r.tipoBeneficio==='hidratacao'), gUse=resgates.some(r=>r.ciclo===ciclo&&r.tipoBeneficio==='banhoGratis');
-            if(hLib)beneficios.push({tipo:'hidratacao',ciclo,liberado:true,utilizado:hUse});
-            if(gLib)beneficios.push({tipo:'banhoGratis',ciclo,liberado:true,utilizado:gUse});
+            const hUse=resgates.some(r=>r.ciclo===ciclo&&r.tipoBeneficio==='hidratacao') ||
+                (resumoPublico?.hidratacaoStatus==='Resgatado' && Number(resumoPublico?.hidratacaoCiclo)===ciclo);
+            const gUse=resgates.some(r=>r.ciclo===ciclo&&r.tipoBeneficio==='banhoGratis') ||
+                (resumoPublico?.banhoGratisStatus==='Resgatado' && Number(resumoPublico?.banhoGratisCiclo)===ciclo);
+            const hReservado=resumoPublico?.hidratacaoStatus==='Reservado' && Number(resumoPublico?.hidratacaoCiclo)===ciclo;
+            const gReservado=resumoPublico?.banhoGratisStatus==='Reservado' && Number(resumoPublico?.banhoGratisCiclo)===ciclo;
+            if(hLib)beneficios.push({tipo:'hidratacao',ciclo,liberado:true,utilizado:hUse,reservado:hReservado,protocolo:resumoPublico?.hidratacaoProtocolo,pet:resumoPublico?.hidratacaoPet});
+            if(gLib)beneficios.push({tipo:'banhoGratis',ciclo,liberado:true,utilizado:gUse,reservado:gReservado,protocolo:resumoPublico?.banhoGratisProtocolo,pet:resumoPublico?.banhoGratisPet});
         }
-        const pendentes=beneficios.filter(b=>!b.utilizado);
+        const pendentes=beneficios.filter(b=>!b.utilizado&&!b.reservado);
         let progresso=progressoBruto;
         if(progressoBruto===0&&item.banhos>0&&pendentes.some(b=>b.tipo==='banhoGratis'&&b.ciclo===ciclosCompletos))progresso=CLUBE_CONFIG.metaBanhos;
         const datas=item.atendimentos.map(a=>dataISOValidaCRM(a.data)?new Date(`${a.data}T12:00:00`):null).filter(Boolean).sort((a,b)=>b-a);
@@ -4060,7 +4203,7 @@ function calcularClientesClubePetlyne() {
         else if(faltamProxima===2)prioridade=80;
         else if(diasSemRetorno!==null&&diasSemRetorno>=45)prioridade=70;
         else prioridade=Math.max(1,50-faltamProxima);
-        return {...item,pets:[...item.pets],ciclosCompletos,cicloAtual:progresso===CLUBE_CONFIG.metaBanhos?ciclosCompletos:cicloAtual,progresso,beneficios,beneficiosPendentes:pendentes,resgates,faltamHidratacao,faltamBanhoGratis,proximaConquista,faltamProxima,iconeConquista,ultimaVisita,primeiraVisita,diasSemRetorno,prioridade};
+        return {...item,pets:[...item.pets],ciclosCompletos,cicloAtual:progresso===CLUBE_CONFIG.metaBanhos?ciclosCompletos:cicloAtual,progresso,beneficios,beneficiosPendentes:pendentes,beneficiosReservados:beneficios.filter(b=>b.reservado&&!b.utilizado),resgates,faltamHidratacao,faltamBanhoGratis,proximaConquista,faltamProxima,iconeConquista,ultimaVisita,primeiraVisita,diasSemRetorno,prioridade};
     }).sort((a,b)=>b.prioridade-a.prioridade||b.banhos-a.banhos||a.cliente.localeCompare(b.cliente,'pt-BR'));
 }
 
@@ -4123,6 +4266,8 @@ function renderizarClubePetlyne() {
     alvo.innerHTML=dados.map(i=>{
         const pct=Math.min(100,(i.progresso/CLUBE_CONFIG.metaBanhos)*100);
         const pendentes=i.beneficiosPendentes.map(b=>`<div class="clube-beneficio-disponivel clube-reward-card"><div class="clube-reward-icon">${b.tipo==='hidratacao'?'💧':'🎁'}</div><div><span>BENEFÍCIO LIBERADO • CICLO ${b.ciclo}</span><strong>${nomeBeneficioClube(b.tipo)}</strong><small>Pronto para utilização</small></div><button type="button" onclick="registrarResgateClube('${i.chave.replace(/'/g,"\\'")}', '${b.tipo}', ${b.ciclo})">Registrar uso</button></div>`).join('');
+
+        const reservados=(i.beneficiosReservados||[]).map(b=>`<div class="clube-beneficio-disponivel clube-reward-card clube-reward-reserved"><div class="clube-reward-icon">🔒</div><div><span>BENEFÍCIO RESERVADO • CICLO ${b.ciclo}</span><strong>${nomeBeneficioClube(b.tipo)}</strong><small>${b.pet?`Pet: ${escaparHTMLCRM(b.pet)} • `:""}Protocolo ${escaparHTMLCRM(b.protocolo||"")}</small></div><span class="clube-reserva-badge">Reservado</span></div>`).join('');
         const historico=i.resgates.slice(0,6).map(r=>{const d=clubeDataParaDate(r.criadoEm);return `<li><span>${r.tipoBeneficio==='hidratacao'?'💧':'🎁'}</span><div><strong>${nomeBeneficioClube(r.tipoBeneficio)}</strong><small>Ciclo ${r.ciclo} • ${d?d.toLocaleDateString('pt-BR'):'data indisponível'}</small></div></li>`;}).join('');
         const alertaInativo=i.diasSemRetorno!==null&&i.diasSemRetorno>=45;
         const classe=i.beneficiosPendentes.length?'reward-ready':i.faltamProxima<=2?'near-reward':alertaInativo?'inactive-member':'';
@@ -4133,7 +4278,7 @@ function renderizarClubePetlyne() {
           <div class="clube-next-achievement"><span>${i.iconeConquista}</span><div><small>${i.beneficiosPendentes.length?'CONQUISTA DISPONÍVEL':'PRÓXIMA CONQUISTA'}</small><strong>${escaparHTMLCRM(i.proximaConquista)}</strong><p>${i.beneficiosPendentes.length?'Registre o uso para manter o ciclo atualizado.':`Falta${i.faltamProxima===1?'':'m'} ${i.faltamProxima} banho${i.faltamProxima===1?'':'s'}.`}</p></div></div>
           <div class="clube-member-meta"><div><small>Última visita</small><strong>${clubeFormatarData(i.ultimaVisita)}</strong></div><div><small>Cliente desde</small><strong>${i.primeiraVisita?i.primeiraVisita.toLocaleDateString('pt-BR',{month:'short',year:'numeric'}).replace('.',''):'—'}</strong></div><div><small>Resgates</small><strong>${i.resgates.length}</strong></div></div>
           ${alertaInativo?`<div class="clube-inactive-alert">⚠️ Há ${i.diasSemRetorno} dias sem novo atendimento LYNE.</div>`:''}
-          ${pendentes?`<div class="clube-beneficios">${pendentes}</div>`:''}
+          ${pendentes?`<div class="clube-beneficios">${reservados}${pendentes}</div>`:''}
           ${historico?`<details class="clube-historico clube-history-premium"><summary>Ver histórico de benefícios <span>＋</span></summary><ul>${historico}</ul></details>`:''}
         </article>`;
     }).join('');
@@ -4164,6 +4309,7 @@ async function registrarResgateClube(clienteChave, tipoBeneficio, ciclo) {
             criadoEm: firebase.firestore.FieldValue.serverTimestamp()
         });
         await carregarClubePetlyneResgates();
+        await atualizarResumoClubeAposMudanca(cliente.telefone);
         renderizarClubePetlyne();
         alert(`${beneficio} registrada como utilizada com sucesso.`);
     } catch (erro) {
@@ -4176,7 +4322,8 @@ async function atualizarClubePetlyne() {
     const botao = document.querySelector('#secao-clube .secondary-button');
     if (botao) { botao.disabled = true; botao.textContent = 'Atualizando...'; }
     try {
-        invalidarCacheModulo("agendamentos", "clientes", "clubeResgates"); await Promise.all([executarCargaUnica("agendamentos", () => carregarAgendamentos(true), true), executarCargaUnica("clientes", () => carregarClientesAdmin(true), true), executarCargaUnica("clubeResgates", () => carregarClubePetlyneResgates(true), true)]);
+        invalidarCacheModulo("agendamentos", "clientes", "clubeResgates"); await Promise.all([executarCargaUnica("agendamentos", () => carregarAgendamentos(true), true), executarCargaUnica("clientes", () => carregarClientesAdmin(true), true), executarCargaUnica("clubeResgates", () => carregarClubePetlyneResgates(true), true), carregarClubePetlyneResumos()]);
+        await sincronizarResumosClubePetlyne();
         renderizarClubePetlyne();
     } finally {
         if (botao) { botao.disabled = false; botao.textContent = 'Atualizar Clube'; }

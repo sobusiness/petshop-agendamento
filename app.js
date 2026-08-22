@@ -493,6 +493,137 @@ const horarioAlmoco = "12:00";
 const telefoneWhatsappPetlyne = "5511957260772";
 
 let dadosPreAgendamento = null;
+let clubePetlyneClienteAtual = null;
+let beneficioClubeSelecionado = null;
+const cacheClubePetlyneCliente = new Map();
+const popupClubeExibidoSessao = new Set();
+
+function telefoneBaseClube(valor) {
+    let tel = normalizarTelefone(valor);
+    if (tel.startsWith("55") && (tel.length === 12 || tel.length === 13)) tel = tel.slice(2);
+    return tel;
+}
+
+function nomeBeneficioClubeCliente(tipo) {
+    return tipo === "hidratacao" ? "Hidratação" : "Banho grátis";
+}
+
+async function consultarResumoClubeCliente(telefone, pets) {
+    const telefoneBase = telefoneBaseClube(telefone);
+    if (!telefoneBase || !pets?.length || typeof db === "undefined") return null;
+
+    if (cacheClubePetlyneCliente.has(telefoneBase)) {
+        const resumo = cacheClubePetlyneCliente.get(telefoneBase);
+        clubePetlyneClienteAtual = resumo;
+        mostrarPopupClubeCliente(resumo, pets, telefoneBase);
+        return resumo;
+    }
+
+    try {
+        // Uma única leitura adicional: documento-resumo do Clube deste telefone.
+        const snap = await db.collection("clubePetlyneResumo").doc(telefoneBase).get();
+        if (!snap.exists) return null;
+        const resumo = { id: snap.id, ...snap.data() };
+        cacheClubePetlyneCliente.set(telefoneBase, resumo);
+        clubePetlyneClienteAtual = resumo;
+        mostrarPopupClubeCliente(resumo, pets, telefoneBase);
+        return resumo;
+    } catch (erro) {
+        console.warn("Não foi possível consultar o Clube PetLyne.", erro);
+        return null;
+    }
+}
+
+function renderizarTrilhaClube(progresso) {
+    const total = 10;
+    let html = '<div class="clube-popup-trilha">';
+    for (let i = 1; i <= total; i++) {
+        const feito = i <= progresso;
+        const marco = i === 5 ? "💧" : i === 10 ? "🎁" : i;
+        html += `<span class="${feito ? "done" : ""} ${i===5||i===10 ? "reward" : ""}">${marco}</span>`;
+    }
+    return html + "</div>";
+}
+
+function mostrarPopupClubeCliente(resumo, pets, telefoneBase) {
+    if (!resumo || popupClubeExibidoSessao.has(telefoneBase)) return;
+    popupClubeExibidoSessao.add(telefoneBase);
+
+    const progresso = Math.max(0, Math.min(10, Number(resumo.progresso || 0)));
+    const hidratacaoDisponivel = resumo.hidratacaoStatus === "Disponivel";
+    const banhoDisponivel = resumo.banhoGratisStatus === "Disponivel";
+    const temBeneficio = hidratacaoDisponivel || banhoDisponivel;
+
+    const petOptions = pets.map((p, i) =>
+        `<option value="${i}">${(p.pet || "Pet").replace(/</g,"&lt;")}${p.raca ? " - " + String(p.raca).replace(/</g,"&lt;") : ""}</option>`
+    ).join("");
+
+    const mensagemProgresso = temBeneficio
+        ? "Você tem um benefício disponível para usar em um único agendamento."
+        : progresso < 5
+            ? `Faltam ${5-progresso} banho${5-progresso===1?"":"s"} para a hidratação.`
+            : `Faltam ${10-progresso} banho${10-progresso===1?"":"s"} para o banho grátis.`;
+
+    const beneficios = `
+        ${hidratacaoDisponivel ? `<button type="button" class="clube-beneficio-btn" onclick="selecionarBeneficioClubeCliente('hidratacao')">💧 Usar hidratação grátis</button>` : ""}
+        ${banhoDisponivel ? `<button type="button" class="clube-beneficio-btn destaque" onclick="selecionarBeneficioClubeCliente('banhoGratis')">🎁 Usar banho grátis</button>` : ""}
+    `;
+
+    document.getElementById("clubePopupProgresso").innerHTML = `
+        <strong>${progresso} de 10 banhos</strong>
+        ${renderizarTrilhaClube(progresso)}
+        <p>${mensagemProgresso}</p>
+        ${temBeneficio ? `
+            <label for="clubePopupPet">Qual pet receberá o benefício?</label>
+            <select id="clubePopupPet">${petOptions}</select>
+            <div class="clube-popup-beneficios">${beneficios}</div>
+        ` : ""}
+    `;
+    document.getElementById("popupClubePetlyne").classList.add("ativo");
+}
+
+function fecharPopupClubePetlyne() {
+    document.getElementById("popupClubePetlyne")?.classList.remove("ativo");
+}
+
+function selecionarBeneficioClubeCliente(tipo) {
+    const select = document.getElementById("clubePopupPet");
+    const index = Number(select?.value || 0);
+    const cadastro = petsEncontradosTelefone[index] || petsEncontradosTelefone[0];
+    if (!cadastro || !clubePetlyneClienteAtual) return;
+
+    const ciclo = Number(tipo === "hidratacao"
+        ? clubePetlyneClienteAtual.hidratacaoCiclo
+        : clubePetlyneClienteAtual.banhoGratisCiclo);
+
+    beneficioClubeSelecionado = {
+        tipo,
+        ciclo,
+        pet: cadastro.pet || "",
+        telefoneNormalizado: telefoneBaseClube(document.getElementById("telefone").value)
+    };
+
+    aplicarCadastroPet(cadastro);
+
+    if (tipo === "hidratacao") {
+        const hidratacao = document.getElementById("adicionalHidratacao");
+        if (hidratacao) hidratacao.checked = true;
+    } else {
+        const principal = document.getElementById("servicoPrincipal");
+        if (principal && !/banho/i.test(principal.options[principal.selectedIndex]?.text || principal.value)) {
+            const opcaoBanho = Array.from(principal.options).find(o => /banho/i.test(o.text) && !/tosa/i.test(o.text));
+            if (opcaoBanho) {
+                principal.value = opcaoBanho.value;
+                controlarCamposServico();
+            }
+        }
+    }
+
+    atualizarResumoServicos();
+    fecharPopupClubePetlyne();
+    mostrarAlerta(`${nomeBeneficioClubeCliente(tipo)} reservado para ${cadastro.pet || "o pet selecionado"} neste agendamento. O benefício só será consumido quando o atendimento for concluído.`);
+}
+
 
 const horariosPadrao = [];
 
@@ -1189,6 +1320,8 @@ async function preencherCadastroPorTelefone() {
     if (minhaSequencia !== sequenciaBuscaTelefone || normalizarTelefone(document.getElementById("telefone").value) !== telefoneNumeros) return;
 
     if (pets.length === 0) {
+        clubePetlyneClienteAtual = null;
+        beneficioClubeSelecionado = null;
         limparSeletorPetsCadastrados();
         // Novo telefone sem cadastro/histórico: candidato ao Prospect Callback.
         // Ele só será exibido no Admin após 5 minutos sem conversão.
@@ -1200,12 +1333,15 @@ async function preencherCadastroPorTelefone() {
 
     if (pets.length === 1) {
         limparSeletorPetsCadastrados();
+        petsEncontradosTelefone = pets;
         aplicarCadastroPet(pets[0]);
+        consultarResumoClubeCliente(telefone, pets).catch(() => {});
         return;
     }
 
     preencherCampoSeVazioOuDiferente("cliente", pets[0].cliente);
     renderizarPetsCadastrados(pets);
+    consultarResumoClubeCliente(telefone, pets).catch(() => {});
 }
 
 function buscarCadastroTelefoneComDelay() {
@@ -1561,6 +1697,33 @@ function calcularServicosSelecionados() {
         }
     }
 
+
+    // Benefício do Clube é aplicado somente ao pet escolhido e somente neste agendamento.
+    if (beneficioClubeSelecionado && document.getElementById("pet").value.trim() === beneficioClubeSelecionado.pet) {
+        if (beneficioClubeSelecionado.tipo === "hidratacao") {
+            let item = itens.find(i => /^Hidratação/i.test(i.nome));
+            if (item) {
+                total -= Number(item.valor || 0);
+                item.valor = 0;
+                item.nome = "Hidratação — Prêmio Clube PetLyne";
+                item.beneficioClube = "hidratacao";
+            } else {
+                itens.push({ nome: "Hidratação — Prêmio Clube PetLyne", valor: 0, beneficioClube: "hidratacao" });
+            }
+        }
+
+        if (beneficioClubeSelecionado.tipo === "banhoGratis") {
+            const item = itens.find(i => /^Banho/i.test(i.nome));
+            if (item) {
+                total -= Number(item.valor || 0);
+                item.valor = 0;
+                item.nome = `${item.nome} — Prêmio Clube PetLyne`;
+                item.beneficioClube = "banhoGratis";
+            }
+        }
+    }
+
+    total = Math.max(0, total);
     return { itens, total };
 }
 
@@ -1846,8 +2009,20 @@ function validarAgendamento() {
         return false;
     }
 
-    if (resumo.itens.length === 0 || resumo.total <= 0) {
+    if (resumo.itens.length === 0 || (resumo.total <= 0 && !beneficioClubeSelecionado)) {
         mostrarAlerta("Selecione pelo menos um serviço válido.");
+        return false;
+    }
+
+    if (beneficioClubeSelecionado?.tipo === "banhoGratis" &&
+        !resumo.itens.some(i => i.beneficioClube === "banhoGratis")) {
+        mostrarAlerta("Para utilizar o benefício de banho grátis, selecione Banho como Serviço Principal.");
+        return false;
+    }
+
+    if (beneficioClubeSelecionado &&
+        document.getElementById("pet").value.trim() !== beneficioClubeSelecionado.pet) {
+        mostrarAlerta("O benefício do Clube foi reservado para outro pet. Selecione o pet escolhido para utilizar o prêmio.");
         return false;
     }
 
@@ -1894,7 +2069,8 @@ function abrirPreviaAgendamento() {
         dataFormatada,
         horario: document.getElementById("horario").value,
         duracaoMinutos: calcularDuracaoAgendamentoMinutos(),
-        resumo
+        resumo,
+        beneficioClube: beneficioClubeSelecionado ? { ...beneficioClubeSelecionado } : null
     };
 
     const servicosHtml = resumo.itens.map(item => {
@@ -2039,6 +2215,10 @@ function montarDadosAgendamentoFirestore(dados, protocolo) {
         duracaoMinutos: dados.duracaoMinutos || calcularDuracaoAgendamentoMinutos(),
         servicos: servicos,
         valorTotal: dados.resumo.total,
+        beneficioClube: dados.beneficioClube ? {
+            ...dados.beneficioClube,
+            status: "Reservado"
+        } : null,
         status: "Confirmado",
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -2068,13 +2248,35 @@ async function salvarAgendamentoComTransacao(dados, protocolo) {
     const payload = montarDadosAgendamentoFirestore(dados, protocolo);
 
     try {
-        // Uma única gravação idempotente. Não usamos timeout artificial nem retry
-        // concorrente em escrita, pois o SDK já trata reconexões internamente.
-        await referencia.set(payload, { merge: false });
+        if (dados.beneficioClube) {
+            const telefoneBase = telefoneBaseClube(dados.telefone);
+            const resumoRef = db.collection("clubePetlyneResumo").doc(telefoneBase);
+            const prefixo = dados.beneficioClube.tipo === "hidratacao" ? "hidratacao" : "banhoGratis";
+
+            await db.runTransaction(async transaction => {
+                const resumoSnap = await transaction.get(resumoRef);
+                if (!resumoSnap.exists) throw criarErroPetlyne("BENEFICIO_CLUBE_INDISPONIVEL", "Benefício do Clube não localizado.");
+
+                const resumo = resumoSnap.data();
+                if (resumo[`${prefixo}Status`] !== "Disponivel" ||
+                    Number(resumo[`${prefixo}Ciclo`]) !== Number(dados.beneficioClube.ciclo)) {
+                    throw criarErroPetlyne("BENEFICIO_CLUBE_INDISPONIVEL", "Este benefício já foi reservado ou utilizado.");
+                }
+
+                transaction.set(referencia, payload, { merge: false });
+                transaction.update(resumoRef, {
+                    [`${prefixo}Status`]: "Reservado",
+                    [`${prefixo}Protocolo`]: protocolo,
+                    [`${prefixo}Pet`]: dados.beneficioClube.pet,
+                    [`${prefixo}ReservadoEm`]: firebase.firestore.FieldValue.serverTimestamp(),
+                    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+        } else {
+            await referencia.set(payload, { merge: false });
+        }
     } catch (error) {
-        // Em falhas ambíguas de rede, verifica se a gravação chegou ao servidor
-        // antes de informar erro ao cliente.
-        if (erroTransitorio(error)) {
+        if (erroTransitorio(error) && !dados.beneficioClube) {
             try {
                 const existente = await referencia.get();
                 if (existente.exists) return;
@@ -2084,7 +2286,7 @@ async function salvarAgendamentoComTransacao(dados, protocolo) {
     }
 
     cacheConsultasPetlyne.disponibilidadePorData.delete(dados.data);
-}
+} 
 
 function alternarConfirmacaoPreviaProcessando(processando) {
     const botao = document.getElementById("btnConfirmarPrevia");
@@ -2152,7 +2354,9 @@ async function confirmarAgendamentoFinal() {
         console.error("Erro ao salvar agendamento no Firebase:", error);
         registrarLogSistema({ modulo:"Agendamento Online", funcao:"confirmarAgendamentoFinal", mensagem:error.message, codigo:error.code || error.message, detalhes:error.stack || "" });
 
-        const mensagem = error && error.message === "HORARIO_OCUPADO"
+        const mensagem = error && (error.code === "BENEFICIO_CLUBE_INDISPONIVEL" || error.message === "BENEFICIO_CLUBE_INDISPONIVEL")
+            ? "Este benefício do Clube já foi reservado ou utilizado em outro agendamento. Atualize o telefone para consultar seu progresso novamente."
+            : error && error.message === "HORARIO_OCUPADO"
             ? "Este horário acabou de ser reservado por outro cliente. Escolha outro horário."
             : error && error.message === "HORARIO_BLOQUEADO"
                 ? "Este horário acabou de ficar bloqueado por ausência temporária. Escolha outro horário."
@@ -2187,6 +2391,8 @@ function fecharPopup() {
 }
 
 function limparFormulario() {
+    beneficioClubeSelecionado = null;
+    clubePetlyneClienteAtual = null;
     document.getElementById("cliente").value = "";
     document.getElementById("telefone").value = "";
     limparSeletorPetsCadastrados();
