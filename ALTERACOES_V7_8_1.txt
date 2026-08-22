@@ -1,0 +1,9 @@
+PETLYNE V7.8.1 — AJUSTE VISUAL POPUP CLUBE
+
+- Centralizado o botão "Continuar agendamento".
+- Corrigidas as bolinhas de progresso para círculos perfeitos.
+- Mantida responsividade no mobile sem deformar os indicadores.
+
+ARQUIVOS ALTERADOS:
+- style.css
+- ALTERACOES_V7_8_1.txt

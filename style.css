@@ -568,3 +568,52 @@ form h2,
 #clubePopupPet{width:100%;margin-top:8px;padding:11px;border:1px solid #edc6d6;border-radius:10px;background:#fff}
 #clubePopupProgresso>p{color:#6f5661}
 @media(max-width:600px){.clube-popup-trilha{gap:3px}.clube-popup-trilha span{height:28px;font-size:10px}}
+
+/* V7.8.1 — refinamento visual do popup Clube PetLyne */
+.clube-popup-card .popup-actions{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    width:100%;
+}
+
+.clube-popup-card .popup-actions button{
+    display:block;
+    margin:0 auto;
+}
+
+.clube-popup-trilha{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap:8px;
+    flex-wrap:nowrap;
+}
+
+.clube-popup-trilha span{
+    width:34px;
+    height:34px;
+    min-width:34px;
+    min-height:34px;
+    flex:0 0 34px;
+    aspect-ratio:1 / 1;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    box-sizing:border-box;
+}
+
+@media(max-width:600px){
+    .clube-popup-trilha{
+        gap:5px;
+    }
+
+    .clube-popup-trilha span{
+        width:30px;
+        height:30px;
+        min-width:30px;
+        min-height:30px;
+        flex-basis:30px;
+    }
+}
