@@ -1255,8 +1255,8 @@ function formatarMoedaGrafico(valor) {
 }
 
 function obterCorFinanceiraOrigem(origem, alpha = 1) {
-    if (origem === "pacote") return alpha === 1 ? "#8e4c64" : `rgba(142,76,100,${alpha})`;
-    return alpha === 1 ? "#d65a7e" : `rgba(214,90,126,${alpha})`;
+    if (origem === "pacote") return alpha === 1 ? "#ff7a18" : `rgba(255,122,24,${alpha})`;
+    return alpha === 1 ? "#8b5cf6" : `rgba(139,92,246,${alpha})`;
 }
 
 function obterSeriesEvolucaoFinanceira(dados) {
@@ -1306,8 +1306,8 @@ function opcoesBaseGraficoFinanceiro() {
             tooltip: { callbacks: { label: context => `${context.dataset.label || "Valor"}: ${formatarMoedaGrafico(context.raw)}` } }
         },
         scales: {
-            x: { grid: { display: false }, ticks: { color: "#806b72", maxRotation: 0, autoSkip: true } },
-            y: { beginAtZero: true, grid: { color: "rgba(214,90,126,.10)" }, ticks: { color: "#806b72", callback: value => formatarMoedaGrafico(value) } }
+            x: { grid: { display: false }, ticks: { color: "#c4b5d5", maxRotation: 0, autoSkip: true } },
+            y: { beginAtZero: true, grid: { color: "rgba(139,92,246,.10)" }, ticks: { color: "#c4b5d5", callback: value => formatarMoedaGrafico(value) } }
         }
     };
 }
@@ -1334,9 +1334,9 @@ function renderizarGraficos(dados) {
             data: {
                 labels: evolucao.labels,
                 datasets: [
-                    { label: "Avulso", data: evolucao.avulso, borderColor: "#d65a7e", backgroundColor: "rgba(214,90,126,.10)", tension: .32, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3 },
-                    { label: "Pacote", data: evolucao.pacote, borderColor: "#8e4c64", backgroundColor: "rgba(142,76,100,.08)", tension: .32, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3 },
-                    { label: "Total", data: evolucao.total, borderColor: "#4e3941", borderDash: [6, 5], backgroundColor: "transparent", tension: .28, pointRadius: 2, borderWidth: 2 }
+                    { label: "Avulso", data: evolucao.avulso, borderColor: "#8b5cf6", backgroundColor: "rgba(139,92,246,.10)", tension: .32, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3 },
+                    { label: "Pacote", data: evolucao.pacote, borderColor: "#ff7a18", backgroundColor: "rgba(255,122,24,.08)", tension: .32, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3 },
+                    { label: "Total", data: evolucao.total, borderColor: "#eadff6", borderDash: [6, 5], backgroundColor: "transparent", tension: .28, pointRadius: 2, borderWidth: 2 }
                 ]
             },
             options: opcoes
@@ -1351,7 +1351,7 @@ function renderizarGraficos(dados) {
     const canvasMix = document.getElementById("graficoEspecie");
     if (canvasMix) chartEspecie = new Chart(canvasMix, {
         type: "doughnut",
-        data: { labels: mix.map(i => i.nome), datasets: [{ data: mix.map(i => i.valor), backgroundColor: ["#d65a7e", "#8e4c64"], borderColor: "#fff", borderWidth: 5, hoverOffset: 7 }] },
+        data: { labels: mix.map(i => i.nome), datasets: [{ data: mix.map(i => i.valor), backgroundColor: ["#8b5cf6", "#ff7a18"], borderColor: "#170b27", borderWidth: 5, hoverOffset: 7 }] },
         options: { responsive: true, maintainAspectRatio: false, cutout: "64%", plugins: { legend: { position: "bottom", labels: { color: "#5f4951", usePointStyle: true, font: { weight: "bold" } } }, tooltip: { callbacks: { label: c => `${c.label}: ${formatarMoedaGrafico(c.raw)}` } } }, onClick: (_, elementos) => { if (elementos.length) aplicarFiltroOrigemFinanceiro(mix[elementos[0].index].chave); } }
     });
 
@@ -1362,7 +1362,7 @@ function renderizarGraficos(dados) {
     const canvasPerfil = document.getElementById("graficoPerfilCliente");
     if (canvasPerfil) chartPerfilCliente = new Chart(canvasPerfil, {
         type: "doughnut",
-        data: { labels: perfis.map(i => i.nome), datasets: [{ data: perfis.map(i => i.valor), backgroundColor: ["#f1a7bb", "#a94a69"], borderColor: "#fff", borderWidth: 5, hoverOffset: 7 }] },
+        data: { labels: perfis.map(i => i.nome), datasets: [{ data: perfis.map(i => i.valor), backgroundColor: ["#c084fc", "#ff7a18"], borderColor: "#170b27", borderWidth: 5, hoverOffset: 7 }] },
         options: { responsive: true, maintainAspectRatio: false, cutout: "64%", plugins: { legend: { position: "bottom", labels: { color: "#5f4951", usePointStyle: true, font: { weight: "bold" } } }, tooltip: { callbacks: { label: c => `${c.label}: ${formatarMoedaGrafico(c.raw)}` } } }, onClick: (_, elementos) => { if (elementos.length) aplicarFiltroPerfilClienteFinanceiro(perfis[elementos[0].index].chave); } }
     });
 
@@ -1373,7 +1373,7 @@ function renderizarGraficos(dados) {
         const opcoes = opcoesBaseGraficoFinanceiro();
         opcoes.plugins.legend.display = false;
         opcoes.onClick = (_, elementos) => { if (elementos.length) aplicarFiltroDiaSemanaFinanceiro(diasOrdenados[elementos[0].index]); };
-        chartDiaSemana = new Chart(canvasSemana, { type: "bar", data: { labels: diasOrdenados.map(n => n.slice(0, 3)), datasets: [{ label: "Faturamento", data: diasOrdenados.map(n => porDiaSemana[n] || 0), backgroundColor: "rgba(214,90,126,.78)", borderRadius: 10, borderSkipped: false }] }, options: opcoes });
+        chartDiaSemana = new Chart(canvasSemana, { type: "bar", data: { labels: diasOrdenados.map(n => n.slice(0, 3)), datasets: [{ label: "Faturamento", data: diasOrdenados.map(n => porDiaSemana[n] || 0), backgroundColor: "rgba(139,92,246,.78)", borderRadius: 10, borderSkipped: false }] }, options: opcoes });
     }
 
     const servicos = Object.entries(agruparServicos(dados)).sort((a, b) => b[1] - a[1]).slice(0, 12);
@@ -1382,10 +1382,10 @@ function renderizarGraficos(dados) {
         const opcoes = opcoesBaseGraficoFinanceiro();
         opcoes.indexAxis = "y";
         opcoes.plugins.legend.display = false;
-        opcoes.scales.x = { beginAtZero: true, grid: { color: "rgba(214,90,126,.10)" }, ticks: { color: "#806b72", callback: value => formatarMoedaGrafico(value) } };
+        opcoes.scales.x = { beginAtZero: true, grid: { color: "rgba(139,92,246,.10)" }, ticks: { color: "#c4b5d5", callback: value => formatarMoedaGrafico(value) } };
         opcoes.scales.y = { grid: { display: false }, ticks: { color: "#5f4951", font: { weight: "bold" }, autoSkip: false } };
         opcoes.onClick = (_, elementos) => { if (elementos.length) aplicarFiltroServicoFinanceiro(servicos[elementos[0].index][0]); };
-        chartServico = new Chart(canvasServico, { type: "bar", data: { labels: servicos.map(i => i[0]), datasets: [{ label: "Receita", data: servicos.map(i => i[1]), backgroundColor: "rgba(214,90,126,.76)", borderColor: "#bd4267", borderWidth: 1, borderRadius: 9, borderSkipped: false }] }, options: opcoes });
+        chartServico = new Chart(canvasServico, { type: "bar", data: { labels: servicos.map(i => i[0]), datasets: [{ label: "Receita", data: servicos.map(i => i[1]), backgroundColor: "rgba(139,92,246,.76)", borderColor: "#7c3aed", borderWidth: 1, borderRadius: 9, borderSkipped: false }] }, options: opcoes });
     }
 }
 

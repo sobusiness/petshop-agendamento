@@ -1,0 +1,337 @@
+/* ============================================================
+   PetLyne V8.1 — Halloween Edition 2026 / Admin
+   Camada visual isolada para a branch halloween-2026.
+   ============================================================ */
+
+body.theme-halloween {
+    --pet-bg: #08040f;
+    --pet-bg-soft: #12081f;
+    --pet-primary: #7c3aed;
+    --pet-primary-dark: #5b21b6;
+    --pet-primary-light: #c084fc;
+    --pet-brown: #c7b4d7;
+    --pet-gray: #8f7b9f;
+    --pet-text: #f6efff;
+    --pet-border: rgba(192,132,252,.24);
+    --pet-shadow: rgba(0,0,0,.54);
+    --hw-orange: #ff7a18;
+    --hw-amber: #ffb13b;
+    --hw-purple: #7c3aed;
+    --hw-purple-soft: #a855f7;
+    --hw-panel: #160a24;
+    --hw-panel-2: #1d0d30;
+    --hw-ink: #08040f;
+    color: var(--pet-text);
+    background:
+        radial-gradient(circle at 86% 4%, rgba(199,177,255,.20), transparent 20%),
+        radial-gradient(circle at 7% 34%, rgba(124,58,237,.19), transparent 29%),
+        radial-gradient(circle at 85% 82%, rgba(255,122,24,.06), transparent 18%),
+        linear-gradient(180deg, #07030d 0%, #11071c 47%, #090410 100%);
+    background-attachment: fixed;
+}
+
+body.theme-halloween::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .62;
+    background:
+        radial-gradient(circle at 90% 2%, rgba(218,200,255,.22) 0 5%, transparent 13%),
+        repeating-linear-gradient(118deg, transparent 0 110px, rgba(255,255,255,.012) 111px 112px);
+}
+
+body.theme-halloween::after {
+    content: "🦇     🦇";
+    position: fixed;
+    top: 72px;
+    right: 4vw;
+    z-index: 0;
+    pointer-events: none;
+    font-size: 20px;
+    letter-spacing: 10px;
+    opacity: .24;
+    filter: grayscale(1) brightness(.25);
+}
+
+.halloween-preview-strip {
+    position: relative;
+    z-index: 100;
+    text-align: center;
+    padding: 8px 14px;
+    color: #fff2df;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    background: linear-gradient(90deg,#35105c 0%,#6819a5 48%,#8e3d10 100%);
+    border-bottom: 1px solid rgba(255,177,59,.34);
+    box-shadow: 0 8px 28px rgba(0,0,0,.34);
+}
+.halloween-admin-edition { color: #ffae57; font-weight: 900; }
+
+/* Header */
+body.theme-halloween .admin-header {
+    position: relative;
+    z-index: 5;
+    color: #f7f1ff;
+    background:
+        linear-gradient(105deg, rgba(13,6,23,.97), rgba(35,13,60,.96) 60%, rgba(63,20,77,.88));
+    border-bottom: 1px solid rgba(192,132,252,.22);
+    box-shadow: 0 14px 46px rgba(0,0,0,.42);
+}
+body.theme-halloween .admin-header::after {
+    content: "🎃";
+    position: absolute;
+    right: 110px;
+    bottom: -16px;
+    font-size: 38px;
+    filter: drop-shadow(0 0 15px rgba(255,122,24,.40));
+    transform: rotate(7deg);
+}
+body.theme-halloween .admin-logo {
+    background: rgba(255,255,255,.96);
+    filter: hue-rotate(34deg) saturate(1.18) contrast(1.04);
+    box-shadow: 0 0 0 4px rgba(168,85,247,.13), 0 10px 32px rgba(0,0,0,.45);
+}
+body.theme-halloween .admin-brand h1 { color: #faf7ff; }
+body.theme-halloween .admin-brand p { color: #c6b4d7; }
+body.theme-halloween .logout-button,
+body.theme-halloween .secondary-button {
+    color: #e9ddf6;
+    background: linear-gradient(135deg,#33243e,#1d1427);
+    border: 1px solid rgba(192,132,252,.19);
+}
+
+/* Navegação */
+body.theme-halloween .admin-tabs {
+    position: relative;
+    z-index: 4;
+    background: rgba(15,7,25,.90);
+    border-color: rgba(192,132,252,.20);
+    box-shadow: 0 18px 50px rgba(0,0,0,.38);
+    backdrop-filter: blur(14px);
+}
+body.theme-halloween .tab-button { color: #cdbadd; }
+body.theme-halloween .tab-button:hover { color: #fff; background: rgba(124,58,237,.13); box-shadow: none; }
+body.theme-halloween .tab-button.active {
+    color: #fff;
+    background: linear-gradient(135deg,#7c3aed,#5b21b6);
+    box-shadow: 0 9px 24px rgba(124,58,237,.26), inset 0 1px 0 rgba(255,255,255,.12);
+}
+
+/* Superfícies globais */
+body.theme-halloween .admin-section,
+body.theme-halloween .agenda-ops-panel,
+body.theme-halloween .finance-chart-card,
+body.theme-halloween .finance-kpi,
+body.theme-halloween .finance-table-card,
+body.theme-halloween .finance-detail-card,
+body.theme-halloween .finance-goal-panel,
+body.theme-halloween .finance-package-card,
+body.theme-halloween .finance-service-card,
+body.theme-halloween .finance-insights-card,
+body.theme-halloween .crm-view-panel,
+body.theme-halloween .crm-overview-grid > *,
+body.theme-halloween .crm-summary-grid > *,
+body.theme-halloween .clube-kpi-premium,
+body.theme-halloween .clube-list-premium,
+body.theme-halloween .clube-regra-premium,
+body.theme-halloween .pacote-kpi-card,
+body.theme-halloween .pacote-cadastro-box,
+body.theme-halloween .pacote-preview,
+body.theme-halloween .pacote-radar,
+body.theme-halloween .catalog-command-center,
+body.theme-halloween .catalog-create-panel,
+body.theme-halloween .catalog-bulk-panel,
+body.theme-halloween .catalog-history-panel,
+body.theme-halloween .schedule-hero,
+body.theme-halloween .schedule-kpi,
+body.theme-halloween .schedule-calendar-panel,
+body.theme-halloween .schedule-composer,
+body.theme-halloween .schedule-upcoming-panel,
+body.theme-halloween .monitoring-panel,
+body.theme-halloween .monitoring-table-card,
+body.theme-halloween .system-health-card,
+body.theme-halloween .logs-filter-card,
+body.theme-halloween .novo-cliente-panel,
+body.theme-halloween .prospect-toolbar,
+body.theme-halloween .prospect-summary-grid > *,
+body.theme-halloween .status-card,
+body.theme-halloween .chart-card,
+body.theme-halloween .kpi-card {
+    color: #f4ecff;
+    background: linear-gradient(145deg, rgba(26,12,43,.95), rgba(13,6,23,.96));
+    border-color: rgba(192,132,252,.20);
+    box-shadow: 0 18px 54px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.025);
+}
+body.theme-halloween .admin-section { backdrop-filter: blur(10px); }
+
+/* Textos */
+body.theme-halloween .section-title-row h2,
+body.theme-halloween .finance-hero h2,
+body.theme-halloween .finance-card-title h3,
+body.theme-halloween .finance-table-title h3,
+body.theme-halloween .crm-title-row h2,
+body.theme-halloween .clube-title-row h2,
+body.theme-halloween .monitoring-title-row h2,
+body.theme-halloween .catalog-hero h2,
+body.theme-halloween .schedule-hero h2,
+body.theme-halloween .chart-card h3 { color: #f8f3ff; }
+body.theme-halloween .section-title-row p,
+body.theme-halloween .finance-hero p,
+body.theme-halloween .finance-card-title small,
+body.theme-halloween .filter-info,
+body.theme-halloween small { color: #bba8cc; }
+body.theme-halloween .eyebrow,
+body.theme-halloween .finance-eyebrow,
+body.theme-halloween .catalog-eyebrow,
+body.theme-halloween .schedule-eyebrow,
+body.theme-halloween .clube-eyebrow,
+body.theme-halloween .agenda-ops-eyebrow { color: #c084fc; }
+
+/* Inputs */
+body.theme-halloween input,
+body.theme-halloween select,
+body.theme-halloween textarea {
+    color: #f8f1ff;
+    background: rgba(8,4,15,.72);
+    border-color: rgba(192,132,252,.24);
+}
+body.theme-halloween input::placeholder,
+body.theme-halloween textarea::placeholder { color: #88769b; }
+body.theme-halloween select option { color:#f7f0ff; background:#160a24; }
+body.theme-halloween input:focus,
+body.theme-halloween select:focus,
+body.theme-halloween textarea:focus {
+    border-color:#a855f7;
+    box-shadow: 0 0 0 3px rgba(168,85,247,.13), 0 0 22px rgba(124,58,237,.09);
+}
+
+/* Botões */
+body.theme-halloween button:not(.secondary-button):not(.logout-button):not(.tab-button):not(.danger-outline-button):not(.finance-nav-button) {
+    background: linear-gradient(135deg,#7c3aed 0%,#5b21b6 78%);
+    box-shadow: 0 9px 25px rgba(124,58,237,.20);
+}
+body.theme-halloween button:not(.secondary-button):not(.logout-button):not(.tab-button):not(.danger-outline-button):hover {
+    box-shadow: 0 12px 30px rgba(124,58,237,.30), 0 0 25px rgba(168,85,247,.12);
+}
+body.theme-halloween .danger-outline-button { color:#ff9a9a; border-color:rgba(255,100,100,.35); background:rgba(90,20,28,.14); }
+
+/* Agenda */
+body.theme-halloween .agenda-grid { background:#0c0614; border-color:rgba(192,132,252,.21); }
+body.theme-halloween .agenda-cell { color:#e9def5; border-color:rgba(192,132,252,.13); background:rgba(17,8,29,.78); }
+body.theme-halloween .agenda-header,
+body.theme-halloween .agenda-hour,
+body.theme-halloween #secao-agendamentos .agenda-hour,
+body.theme-halloween #secao-agendamentos .agenda-grid > .agenda-header:first-child {
+    color:#e7d7f7 !important;
+    background:#211032 !important;
+    border-color:rgba(192,132,252,.16) !important;
+}
+body.theme-halloween .agenda-event {
+    color:#f6f0ff;
+    background:linear-gradient(135deg,#29123d,#351553);
+    border-color:rgba(192,132,252,.32);
+    box-shadow:0 8px 20px rgba(0,0,0,.22);
+}
+body.theme-halloween .agenda-occupancy-track,
+body.theme-halloween .finance-goal-track { background:#0b0611; border:1px solid rgba(192,132,252,.14); }
+body.theme-halloween .agenda-occupancy-track span,
+body.theme-halloween .finance-goal-track span { background:linear-gradient(90deg,#7c3aed,#c084fc,#ff7a18); box-shadow:0 0 18px rgba(168,85,247,.22); }
+body.theme-halloween .agenda-legend { color:#c4b1d5; }
+
+/* Financeiro V8 */
+body.theme-halloween .finance-hero {
+    position: relative;
+    overflow: hidden;
+    color:#fff;
+    background:
+        radial-gradient(circle at 88% 30%, rgba(219,200,255,.22), transparent 24%),
+        linear-gradient(118deg,#24103c,#4b176e 64%,#69250d 145%);
+    border:1px solid rgba(192,132,252,.27);
+    box-shadow:0 22px 60px rgba(0,0,0,.36);
+}
+body.theme-halloween .finance-hero::after { content:"🌙"; position:absolute; right:24px; top:15px; font-size:54px; opacity:.20; filter:grayscale(.5); }
+body.theme-halloween .finance-hero-badge,
+body.theme-halloween .finance-period-chips,
+body.theme-halloween .finance-toolbar { background:rgba(10,4,17,.42); border-color:rgba(230,210,255,.16); }
+body.theme-halloween .finance-period-chips button.active,
+body.theme-halloween .finance-filter-toggle.active { background:linear-gradient(135deg,#7c3aed,#a855f7); color:#fff; }
+body.theme-halloween .finance-kpi-clickable:hover { border-color:rgba(255,122,24,.45); transform:translateY(-2px); box-shadow:0 18px 45px rgba(0,0,0,.38),0 0 28px rgba(124,58,237,.10); }
+body.theme-halloween .finance-kpi-icon { background:linear-gradient(135deg,rgba(124,58,237,.21),rgba(255,122,24,.12)); color:#d8b4fe; }
+body.theme-halloween .finance-kpi strong,
+body.theme-halloween .finance-goal-metrics strong { color:#fff; }
+body.theme-halloween .finance-card-title > span,
+body.theme-halloween .finance-card-title div > span { color:#c084fc; }
+body.theme-halloween .finance-active-filters > * { background:#251135; border-color:rgba(192,132,252,.22); color:#e8daf5; }
+body.theme-halloween .finance-table,
+body.theme-halloween .finance-detail-table { color:#eadff5; }
+body.theme-halloween .finance-table th,
+body.theme-halloween .finance-detail-table th { color:#d7c2e9; background:#211031; border-color:rgba(192,132,252,.14); }
+body.theme-halloween .finance-table td,
+body.theme-halloween .finance-detail-table td { border-color:rgba(192,132,252,.10); }
+body.theme-halloween .finance-table tbody tr:hover,
+body.theme-halloween .finance-detail-table tbody tr:hover { background:rgba(124,58,237,.09); }
+
+/* Pacotes / CRM / Clube / Catálogo */
+body.theme-halloween .pacote-kpi-card strong,
+body.theme-halloween .clube-kpi-premium strong,
+body.theme-halloween .schedule-kpi strong { color:#fff; }
+body.theme-halloween .clube-filter-chips button.active,
+body.theme-halloween .pacote-filter-chips button.active,
+body.theme-halloween .catalog-view-tabs button.active,
+body.theme-halloween .crm-view-tabs button.active { background:linear-gradient(135deg,#7c3aed,#5b21b6); color:#fff; }
+body.theme-halloween .clube-regra-premium { border-left:3px solid #ff7a18; }
+body.theme-halloween .clube-regra-icon,
+body.theme-halloween .pacote-summary-icon { color:#ff9b42; background:rgba(255,122,24,.10); }
+
+/* Monitoramento */
+body.theme-halloween .monitoring-live-box { background:rgba(36,16,57,.76); border-color:rgba(192,132,252,.19); }
+body.theme-halloween .monitoring-live-dot { box-shadow:0 0 0 5px rgba(255,122,24,.10); }
+body.theme-halloween .monitoring-tabs { background:#10081a; border-color:rgba(192,132,252,.18); }
+body.theme-halloween .monitoring-tab.active { color:#fff; background:#6422b4; }
+
+/* Modais */
+body.theme-halloween .admin-modal-overlay { background:rgba(2,1,5,.80); backdrop-filter:blur(8px); }
+body.theme-halloween .admin-modal-card {
+    color:#f5eeff;
+    background:linear-gradient(160deg,#251039,#100719);
+    border:1px solid rgba(192,132,252,.25);
+    box-shadow:0 32px 100px rgba(0,0,0,.70),0 0 65px rgba(124,58,237,.10);
+}
+body.theme-halloween .admin-modal-icon { filter:drop-shadow(0 0 14px rgba(255,122,24,.24)); }
+
+/* Login */
+body.theme-halloween .login-page {
+    position:relative;
+    background:
+        radial-gradient(circle at 77% 18%, rgba(211,194,255,.26) 0 6%, transparent 18%),
+        radial-gradient(circle at 18% 68%, rgba(124,58,237,.18), transparent 27%),
+        linear-gradient(145deg,#07030d,#180a29 58%,#090410);
+}
+body.theme-halloween .login-page::before { content:"🦇   🦇   🦇"; position:absolute; top:10%; right:10%; color:#0b0612; font-size:23px; letter-spacing:15px; opacity:.7; filter:drop-shadow(0 0 10px rgba(192,132,252,.20)); }
+body.theme-halloween .login-page::after { content:"🎃"; position:absolute; bottom:7%; left:7%; font-size:76px; filter:drop-shadow(0 0 25px rgba(255,122,24,.42)); }
+body.theme-halloween .login-card {
+    position:relative; z-index:2;
+    color:#f6efff;
+    background:linear-gradient(145deg,rgba(29,13,47,.94),rgba(12,6,21,.96));
+    border-color:rgba(192,132,252,.25);
+    box-shadow:0 30px 100px rgba(0,0,0,.62),0 0 60px rgba(124,58,237,.12);
+}
+body.theme-halloween .login-logo { filter:hue-rotate(34deg) saturate(1.2); box-shadow:0 0 0 5px rgba(168,85,247,.12),0 12px 36px rgba(0,0,0,.42); }
+body.theme-halloween .login-card h1 { color:#fff; }
+body.theme-halloween .login-card p { color:#cdb8de; }
+body.theme-halloween .login-card label { color:#eadff6; }
+
+/* Scrollbars */
+body.theme-halloween * { scrollbar-color:#6f2bb4 #100719; }
+body.theme-halloween *::-webkit-scrollbar { width:10px; height:10px; }
+body.theme-halloween *::-webkit-scrollbar-track { background:#100719; }
+body.theme-halloween *::-webkit-scrollbar-thumb { background:linear-gradient(#7c3aed,#4c1d95); border-radius:999px; border:2px solid #100719; }
+
+@media (max-width: 850px) {
+    body.theme-halloween .admin-header::after { display:none; }
+    .halloween-preview-strip { font-size:9px; line-height:1.35; }
+}

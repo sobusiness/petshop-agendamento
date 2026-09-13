@@ -1,0 +1,41 @@
+PETLYNE V8.1 — HALLOWEEN EDITION 2026
+======================================
+
+Objetivo
+--------
+Criar uma versão visual sazonal completa para testes na branch halloween-2026,
+sem alterar regras de negócio, consultas Firebase, agendamentos ou cálculos.
+
+Alterações
+----------
+1. Agendamento online
+   - Nova identidade visual Halloween em roxo profundo, preto, lilás e âmbar/laranja.
+   - Hero sazonal completo com lua, morcegos, abóboras e selo Halloween Edition 2026.
+   - Cards, formulários, selects, inputs, adicionais, pacotes e popups tematizados.
+   - Layout responsivo preservado.
+   - Faixa superior indicando ambiente de teste.
+
+2. Painel administrativo
+   - Tema aplicado ao Admin completo: header, navegação, agenda, CRM, Clube,
+     Pacotes, Catálogo, Dias/Horários, Monitoramento e Financeiro V8.
+   - Superfícies escuras com iluminação roxa e pontos de destaque em laranja/âmbar.
+   - Login administrativo tematizado.
+   - Modais, tabelas, inputs, scrollbars, filtros e botões adaptados.
+   - Financeiro V8 com paleta dos gráficos ajustada para o Halloween.
+   - Faixa superior indicando Preview Halloween 2026.
+
+3. Segurança da implementação
+   - Tema isolado em halloween.css e admin/halloween.css.
+   - CSS original continua intacto.
+   - Nenhuma alteração em Firebase, regras de negócio ou estrutura de dados.
+   - Destinado exclusivamente à branch halloween-2026 / Preview da Vercel.
+
+Arquivos alterados/adicionados no pacote
+-----------------------------------------
+index.html
+halloween.css
+admin/index.html
+admin/dashboard.html
+admin/dashboard.js
+admin/halloween.css
+ALTERACOES_V8_1_HALLOWEEN.txt
