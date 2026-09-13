@@ -39,3 +39,12 @@ admin/dashboard.html
 admin/dashboard.js
 admin/halloween.css
 ALTERACOES_V8_1_HALLOWEEN.txt
+
+V8.1.1
+- Topo do agendamento refeito em formato compacto.
+- Nova arte Halloween temporária aplicada como identidade visual do topo.
+- Texto e pills do hero removidos para reduzir altura e melhorar legibilidade.
+- Correção de largura no desktop para evitar hero/logo cortados.
+- Morcegos animados atravessando a página.
+- Abóboras com efeito lento de acender/apagar.
+- Ajustes específicos para mobile.
