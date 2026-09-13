@@ -769,8 +769,14 @@ function limparFiltroAgendamentos() {
     renderizarAgenda();
 }
 
-function agendamentoEhAvulsoFinanceiro(item) {
-    return protocoloEhLyne(item?.protocolo) && agendamentoConcluidoCRM(item);
+function agendamentoEhRealizadoFinanceiro(item) {
+    // Receita realizada nasce exclusivamente de ATENDIMENTOS concluídos.
+    // Inclui avulsos LYNE e visitas PACK que tenham sido efetivamente concluídas.
+    // A simples criação/cadastro de um pacote nunca gera receita realizada.
+    const concluido = agendamentoConcluidoCRM(item);
+    const ehAvulso = protocoloEhLyne(item?.protocolo);
+    const ehVisitaPacote = normalizarTextoCliente(item?.origem) === "pacote" || String(item?.protocolo || "").toUpperCase().startsWith("PACK-");
+    return concluido && (ehAvulso || ehVisitaPacote);
 }
 
 function dataTimestampFinanceiroISO(valor) {
@@ -780,15 +786,9 @@ function dataTimestampFinanceiroISO(valor) {
 }
 
 function dataAgendamentoFinanceiroISO(item) {
-    // A receita do avulso pertence ao dia em que o atendimento foi efetivamente concluído.
-    // Registros antigos sem concluidoEm usam a data do atendimento apenas como compatibilidade histórica.
+    // O faturamento pertence ao dia em que o atendimento foi marcado como Concluído.
+    // Registros históricos sem concluidoEm usam a data do atendimento apenas como fallback.
     return dataTimestampFinanceiroISO(item?.concluidoEm) || item?.data || "";
-}
-
-function dataPacoteFinanceiroISO(pacote) {
-    const dataCriacao = pacote?.criadoEm?.toDate?.() || (pacote?.criadoEm instanceof Date ? pacote.criadoEm : null);
-    if (dataCriacao && !Number.isNaN(dataCriacao.getTime())) return obterDataLocalISO(dataCriacao);
-    return pacote?.dataInicio || pacote?.primeiroBanho || "";
 }
 
 function dataNoIntervaloFinanceiro(data, intervalo) {
@@ -801,67 +801,22 @@ function dataNoIntervaloFinanceiro(data, intervalo) {
 function obterAgendamentosFiltradosFaturamento(intervalo = obterIntervaloFinanceiroAtual()) {
     const realizados = agendamentos
         .filter(item =>
-            agendamentoEhAvulsoFinanceiro(item) &&
+            agendamentoEhRealizadoFinanceiro(item) &&
             dataNoIntervaloFinanceiro(dataAgendamentoFinanceiroISO(item), intervalo)
         )
         .map(item => ({
             ...item,
             data: dataAgendamentoFinanceiroISO(item),
-            origemFinanceira: "avulso"
+            origemFinanceira: normalizarTextoCliente(item?.origem) === "pacote" || String(item?.protocolo || "").toUpperCase().startsWith("PACK-") ? "pacote" : "avulso"
         }));
 
     return aplicarFiltrosAvancadosFaturamento(realizados);
 }
 
-function pacotePassaFiltrosFinanceiros(pacote) {
-    const filtros = obterFiltrosFaturamentoAvancados();
-    const cadastroPet = clientesAdmin.find(c =>
-        telefonesEquivalentesCliente(c.telefone, pacote.telefone) &&
-        normalizarTextoCliente(c.pet) === normalizarTextoCliente(pacote.nomePet)
-    );
-    const especie = cadastroPet?.especie || "Cão";
-    const porte = cadastroPet?.porte || "";
-
-    if (filtros.especie && especie !== filtros.especie) return false;
-    if (filtros.porte && porte !== filtros.porte) return false;
-    if (filtros.servico && filtros.servico !== "banho") return false;
-    return true;
-}
-
-function obterPacotesFiltradosFaturamento(intervalo = obterIntervaloFinanceiroAtual()) {
-    return pacotesAdmin.filter(pacote => {
-        const status = normalizarTextoCliente(pacote.status);
-        if (status !== "ativo" && status !== "concluido") return false;
-        const dataReceita = dataPacoteFinanceiroISO(pacote);
-        return dataNoIntervaloFinanceiro(dataReceita, intervalo) && pacotePassaFiltrosFinanceiros(pacote);
-    });
-}
-
-function transformarPacoteEmLancamentoFinanceiro(pacote) {
-    const cadastroPet = clientesAdmin.find(c =>
-        telefonesEquivalentesCliente(c.telefone, pacote.telefone) &&
-        normalizarTextoCliente(c.pet) === normalizarTextoCliente(pacote.nomePet)
-    );
-    return {
-        origemFinanceira: "pacote",
-        protocolo: pacote.protocolo || pacote.id || "PACOTE",
-        cliente: pacote.nomeCliente || "Cliente",
-        telefone: pacote.telefone || "",
-        pet: pacote.nomePet || "",
-        especie: cadastroPet?.especie || "Cão",
-        porte: cadastroPet?.porte || "",
-        data: dataPacoteFinanceiroISO(pacote),
-        horario: "",
-        valorTotal: Number(pacote.valorPacote || 0),
-        servicos: [{ nome: `Pacote ${pacote.tipo || ""}`.trim(), valor: Number(pacote.valorPacote || 0) }]
-    };
-}
-
 function obterLancamentosFinanceirosAtuais(intervalo = obterIntervaloFinanceiroAtual()) {
-    return [
-        ...obterAgendamentosFiltradosFaturamento(intervalo),
-        ...obterPacotesFiltradosFaturamento(intervalo).map(transformarPacoteEmLancamentoFinanceiro)
-    ];
+    // IMPORTANTE: pacote cadastrado/ativo não é lançamento de receita.
+    // Receita realizada vem somente das visitas/atendimentos que chegaram a Concluído.
+    return obterAgendamentosFiltradosFaturamento(intervalo);
 }
 
 async function limparAgendamentosOrfaosPacotes() {
@@ -925,9 +880,8 @@ function agruparPorEspecieComPacotes(dados) {
 }
 
 function atualizarFaturamento() {
-    // Receita realizada = avulsos concluídos (pela data de concluidoEm) + pacotes
-    // atualmente existentes no Firebase (pela data de cadastro do pacote).
-    // Pacotes excluídos deixam de compor a receita porque deixam de existir em pacotesAdmin.
+    // Receita realizada = somente atendimentos efetivamente concluídos, pela data de concluidoEm.
+    // O cadastro de um pacote, por si só, não gera faturamento. Cada visita PACK entra apenas ao ser concluída.
     const lancamentos = obterLancamentosFinanceirosAtuais();
 
     const quantidade = lancamentos.length;

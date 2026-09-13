@@ -1,0 +1,20 @@
+PetLyne V7.9.3 - Correção definitiva do Faturamento
+
+Causa encontrada na V7.9.2:
+- obterLancamentosFinanceirosAtuais() ainda juntava atendimentos concluídos com pacotes cadastrados.
+- Por isso, no dia 12/09, R$ 70,00 concluídos + R$ 145,00 do pacote cadastrado = R$ 215,00.
+- O filtro avançado também usava essa mesma função, portanto repetia os R$ 215,00.
+
+Regra corrigida:
+- Receita realizada nasce SOMENTE de agendamentos/visitas efetivamente Concluídos.
+- Data financeira = concluidoEm (fallback para data apenas em registros históricos sem concluidoEm).
+- Avulso LYNE concluído entra pelo valorTotal.
+- Visita PACK concluída entra pelo valorTotal daquela visita/parcela.
+- Criar/cadastrar pacote NÃO gera Receita realizada.
+- Pacote ativo continua aparecendo somente no KPI Pacotes ativos.
+- Pacote excluído não cria receita.
+- Visita PACK já concluída continua preservada como receita histórica, mesmo se o pacote for excluído depois.
+- Mesma base corrigida alimenta Hoje, 7 dias, 30 dias, Este mês, Todo histórico, filtro avançado, meta, comparação, gráficos e insights.
+
+Cache:
+- dashboard.js atualizado para v=7.9.3.
