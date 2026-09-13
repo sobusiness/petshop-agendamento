@@ -1,0 +1,10 @@
+PETLYNE V7.9.8 - COLUNA DE HORÁRIOS FIXA NA AGENDA ADMIN
+
+Ajuste realizado no módulo administrativo > Agendamentos:
+
+- A primeira coluna da agenda (Hora) agora permanece fixa à esquerda durante o scroll horizontal das datas.
+- Os horários 09:00, 09:30, 10:00 etc. continuam visíveis enquanto o usuário navega para datas mais à direita.
+- A célula de cabeçalho "Hora" também permanece fixa.
+- Foi adicionada uma sombra discreta na lateral da coluna fixa para separar visualmente horários e datas.
+- Nenhuma regra de agendamento, Firebase ou faturamento foi alterada.
+- Cache do CSS atualizado para admin.css?v=7.9.8.

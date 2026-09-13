@@ -2926,3 +2926,21 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .clube-reward-reserved{border-color:#d8b4c4;background:#fff7fa}
 .clube-reserva-badge{padding:6px 10px;border-radius:999px;background:#f1d7e2;color:#7d3b57;font-size:12px;font-weight:800}
 .agenda-beneficio-clube{margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff0f6;color:#8b3158}
+
+/* V7.9.8 - Coluna de horários fixa durante o scroll horizontal da agenda */
+#secao-agendamentos .agenda-grid {
+    overflow: visible !important;
+}
+
+#secao-agendamentos .agenda-hour,
+#secao-agendamentos .agenda-grid > .agenda-header:first-child {
+    position: sticky !important;
+    left: 0 !important;
+    z-index: 30 !important;
+    background: #fff0f4 !important;
+    box-shadow: 6px 0 10px -8px rgba(92, 46, 62, .55);
+}
+
+#secao-agendamentos .agenda-grid > .agenda-header:first-child {
+    z-index: 35 !important;
+}
