@@ -786,9 +786,9 @@ function dataTimestampFinanceiroISO(valor) {
 }
 
 function dataAgendamentoFinanceiroISO(item) {
-    // O faturamento pertence ao dia em que o atendimento foi marcado como Concluído.
-    // Registros históricos sem concluidoEm usam a data do atendimento apenas como fallback.
-    return dataTimestampFinanceiroISO(item?.concluidoEm) || item?.data || "";
+    // REGRA FINANCEIRA: a receita pertence sempre à data do atendimento (campo data).
+    // concluidoEm é somente trilha de auditoria e nunca desloca a receita para outro dia.
+    return item?.data || "";
 }
 
 function dataNoIntervaloFinanceiro(data, intervalo) {
@@ -880,8 +880,9 @@ function agruparPorEspecieComPacotes(dados) {
 }
 
 function atualizarFaturamento() {
-    // Receita realizada = somente atendimentos efetivamente concluídos, pela data de concluidoEm.
-    // O cadastro de um pacote, por si só, não gera faturamento. Cada visita PACK entra apenas ao ser concluída.
+    // Receita realizada = somente atendimentos efetivamente concluídos, atribuídos à data do atendimento (campo data).
+    // concluidoEm é apenas auditoria. O cadastro de um pacote, por si só, não gera faturamento.
+    // Cada visita PACK entra apenas ao ser concluída e permanece na data em que a visita estava agendada.
     const lancamentos = obterLancamentosFinanceirosAtuais();
 
     const quantidade = lancamentos.length;

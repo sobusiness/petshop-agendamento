@@ -1,0 +1,29 @@
+PetLyne V7.9.4 - Data correta do Faturamento
+
+Regra definitiva:
+- Receita realizada entra somente quando o atendimento/visita estiver Concluído.
+- A data financeira é SEMPRE o campo `data` do atendimento (dia em que o serviço foi agendado/realizado).
+- `concluidoEm` permanece apenas como trilha de auditoria e não altera o dia da receita.
+- Se um atendimento de 07/08 for marcado como Concluído em 08/08, o valor pertence a 07/08.
+- A mesma regra vale para visitas de pacotes: cada parcela concluída pertence à data da visita.
+- Cadastro de pacote não gera receita realizada por si só.
+- Pacotes ativos continuam separados no KPI de Pacotes ativos.
+
+Validação de referência:
+- Para 08/08/2026, os 5 atendimentos exibidos na Agenda (R$50 + R$50 + R$57 + R$45 + R$50) totalizam R$252,00.
+- O atendimento de R$70 agendado para 07/08, embora concluído em 08/08, permanece contabilizado em 07/08.
+
+Impacto:
+- Hoje
+- 7 dias
+- 30 dias
+- Este mês
+- Todo histórico
+- Filtro avançado
+- Meta mensal
+- Comparações
+- Gráficos
+- Insights
+
+Cache:
+- dashboard.js atualizado para v=7.9.4.
