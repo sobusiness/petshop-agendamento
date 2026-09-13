@@ -1,0 +1,20 @@
+PETLYNE V7.9.1 — CORREÇÃO DE FATURAMENTO
+
+CAUSA DO ERRO
+- A V7.9 estava transformando pacotes cadastrados em lançamentos de receita do período.
+- Por isso, no filtro Hoje, um atendimento concluído de R$ 70,00 estava sendo somado a um pacote de R$ 145,00, resultando incorretamente em R$ 215,00.
+
+REGRA CORRIGIDA
+- Receita realizada: somente agendamentos avulsos concluídos (protocolo LYNE).
+- Atendimentos: somente quantidade de agendamentos avulsos concluídos.
+- Ticket médio: Receita realizada / atendimentos avulsos concluídos.
+- Hoje / 7 dias / 30 dias / Este mês / Todo histórico seguem exatamente a mesma regra.
+- Comparação com período anterior também usa somente avulsos concluídos.
+- Progresso da meta mensal usa somente receita de avulsos concluídos no mês.
+- Pacotes NÃO são mais misturados na Receita realizada.
+- Pacotes continuam separados no card "Pacotes ativos", incluindo quantidade e valor total cadastrado.
+- As visitas PACK também continuam sem entrar como receita, evitando dupla contagem.
+
+ARQUIVOS ALTERADOS
+- admin/dashboard.js
+- ALTERACOES_V7_9_1.txt
