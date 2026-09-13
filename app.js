@@ -625,8 +625,8 @@ function selecionarBeneficioClubeCliente(tipo) {
 }
 
 
-// V7.9.6 - Agendamento online somente em intervalos de 1 hora.
-// Mantemos 12:00 e 13:00 visíveis como almoço/indisponíveis.
+// V7.9.7 - Agendamento online somente em intervalos de 1 hora.
+// O almoço vai de 12:00 até 13:00; portanto, 13:00 já volta a ficar disponível.
 const horariosPadrao = [
     "09:00",
     "10:00",
@@ -1864,7 +1864,7 @@ async function executarCarregamentoHorariosDisponiveis(minhaSequencia, chaveEspe
     horariosPadrao.forEach(horario => {
         const option = document.createElement("option");
 
-        if (horario === horarioAlmoco || horario === "13:00") {
+        if (horario === horarioAlmoco) {
             option.value = horario;
             option.textContent = `${horario} - Almoço`;
             option.disabled = true;

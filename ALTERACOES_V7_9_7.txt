@@ -1,0 +1,7 @@
+PetLyne V7.9.7 - Liberação das 13:00 no agendamento online
+
+- O horário de almoço permanece às 12:00.
+- 13:00 volta a ser um horário normal de agendamento.
+- Horários públicos: 09:00, 10:00, 11:00, 12:00 (Almoço), 13:00, 14:00, 15:00 e 16:00.
+- Mantidas as validações normais de disponibilidade, bloqueios e duração do serviço.
+- Cache atualizado para app.js?v=7.9.7.
