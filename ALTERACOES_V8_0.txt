@@ -1,0 +1,24 @@
+PetLyne V8.0 - Centro de Inteligência Financeira Interativo
+
+Arquivos alterados:
+- admin/dashboard.js
+- admin/dashboard.html
+- admin/admin.css
+
+Principais mudanças:
+1. Nova navegação financeira por Dia, Semana, Mês, Ano, Histórico e período personalizado.
+2. Navegação para período anterior/próximo sem precisar redefinir datas manualmente.
+3. KPIs separados: Faturamento realizado, Avulsos, Pacotes realizados, Atendimentos, Ticket médio e Pacotes vendidos.
+4. Regra financeira mantida: receita pertence à data do atendimento (campo data), desde que esteja Concluído. concluidoEm é somente auditoria.
+5. Pacotes vendidos são exibidos separadamente e não são somados ao faturamento realizado.
+6. Gráfico de evolução com Avulso, Pacote e Total.
+7. Gráficos interativos: clicar em data, Avulso/Pacote, dia da semana, serviço ou perfil de cliente filtra toda a página.
+8. Filtros cruzados combináveis com chips visíveis e opção de limpar individualmente ou todos.
+9. Novos x Recorrentes calculado pelo telefone e histórico de atendimentos concluídos.
+10. Resumo diário clicável com Avulso, Pacote, Total, quantidade e ticket médio.
+11. Tabela detalhada como fonte de conferência dos valores exibidos nos KPIs e gráficos.
+12. Performance de pacotes com ativos, valor realizado no filtro, receita futura e visitas restantes.
+13. Meta mensal aprimorada com esperado até hoje e projeção de fechamento do mês.
+14. Insights executivos recalculados conforme os filtros aplicados.
+15. Mantido o padrão visual rosa/vinho já utilizado no sistema.
+16. Cache atualizado para dashboard.js?v=8.0.0 e admin.css?v=8.0.0.

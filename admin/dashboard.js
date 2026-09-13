@@ -21,12 +21,22 @@ let mesBloqueioReferencia = new Date();
 let diasSelecionadosBloqueio = [];
 let tipoBloqueioSelecionado = "Compromisso";
 let filtroAgendaPeriodo = "todos";
-let filtroFaturamentoAtual = "todos";
+let filtroFaturamentoAtual = "mes";
+let referenciaFinanceira = "";
+let filtrosInterativosFinanceiros = {
+    origem: "",
+    intervalo: null,
+    servico: "",
+    diaSemana: "",
+    perfilCliente: ""
+};
 
 let chartFaturamentoDia = null;
 let chartEspecie = null;
 let chartServico = null;
 let chartDiaSemana = null;
+let chartPerfilCliente = null;
+let bucketsEvolucaoFinanceira = [];
 
 const horasAgenda = [];
 
@@ -773,9 +783,6 @@ function limparFiltroAgendamentos() {
 }
 
 function agendamentoEhRealizadoFinanceiro(item) {
-    // Receita realizada nasce exclusivamente de ATENDIMENTOS concluídos.
-    // Inclui avulsos LYNE e visitas PACK que tenham sido efetivamente concluídas.
-    // A simples criação/cadastro de um pacote nunca gera receita realizada.
     const concluido = agendamentoConcluidoCRM(item);
     const ehAvulso = protocoloEhLyne(item?.protocolo);
     const ehVisitaPacote = normalizarTextoCliente(item?.origem) === "pacote" || String(item?.protocolo || "").toUpperCase().startsWith("PACK-");
@@ -789,8 +796,7 @@ function dataTimestampFinanceiroISO(valor) {
 }
 
 function dataAgendamentoFinanceiroISO(item) {
-    // REGRA FINANCEIRA: a receita pertence sempre à data do atendimento (campo data).
-    // concluidoEm é somente trilha de auditoria e nunca desloca a receita para outro dia.
+    // Receita pertence sempre à data do atendimento. concluidoEm é apenas auditoria.
     return item?.data || "";
 }
 
@@ -801,46 +807,169 @@ function dataNoIntervaloFinanceiro(data, intervalo) {
     return true;
 }
 
-function obterAgendamentosFiltradosFaturamento(intervalo = obterIntervaloFinanceiroAtual()) {
-    const realizados = agendamentos
-        .filter(item =>
-            agendamentoEhRealizadoFinanceiro(item) &&
-            dataNoIntervaloFinanceiro(dataAgendamentoFinanceiroISO(item), intervalo)
-        )
-        .map(item => ({
-            ...item,
-            data: dataAgendamentoFinanceiroISO(item),
-            origemFinanceira: normalizarTextoCliente(item?.origem) === "pacote" || String(item?.protocolo || "").toUpperCase().startsWith("PACK-") ? "pacote" : "avulso"
-        }));
+function obterReferenciaFinanceira() {
+    if (!referenciaFinanceira) referenciaFinanceira = hojeISO();
+    return referenciaFinanceira;
+}
 
+function inicioSemanaISO(dataISO) {
+    const data = new Date(`${dataISO}T12:00:00`);
+    const dia = data.getDay();
+    const ajuste = dia === 0 ? -6 : 1 - dia;
+    return adicionarDias(dataISO, ajuste);
+}
+
+function fimSemanaISO(dataISO) {
+    return adicionarDias(inicioSemanaISO(dataISO), 6);
+}
+
+function inicioMesISO(dataISO) {
+    return `${dataISO.slice(0, 7)}-01`;
+}
+
+function fimMesISO(dataISO) {
+    const [ano, mes] = dataISO.split("-").map(Number);
+    const ultimo = new Date(ano, mes, 0).getDate();
+    return `${ano}-${String(mes).padStart(2, "0")}-${String(ultimo).padStart(2, "0")}`;
+}
+
+function formatarMesAnoFinanceiro(dataISO) {
+    const data = new Date(`${dataISO.slice(0, 7)}-01T12:00:00`);
+    return data.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+}
+
+function obterIntervaloFinanceiroAtual() {
+    const ref = obterReferenciaFinanceira();
+    if (filtroFaturamentoAtual === "hoje") return { inicio: ref, fim: ref, label: formatarDataCurta(ref) };
+    if (filtroFaturamentoAtual === "semana") {
+        const inicio = inicioSemanaISO(ref);
+        const fim = fimSemanaISO(ref);
+        return { inicio, fim, label: `${formatarDataCurta(inicio)} a ${formatarDataCurta(fim)}` };
+    }
+    if (filtroFaturamentoAtual === "mes") {
+        return { inicio: inicioMesISO(ref), fim: fimMesISO(ref), label: formatarMesAnoFinanceiro(ref) };
+    }
+    if (filtroFaturamentoAtual === "ano") {
+        const ano = ref.slice(0, 4);
+        return { inicio: `${ano}-01-01`, fim: `${ano}-12-31`, label: ano };
+    }
+    if (filtroFaturamentoAtual === "personalizado") {
+        const inicio = document.getElementById("dataInicioFaturamento")?.value || "";
+        const fim = document.getElementById("dataFimFaturamento")?.value || "";
+        return { inicio, fim, label: inicio && fim ? `${formatarDataCurta(inicio)} a ${formatarDataCurta(fim)}` : "Período personalizado" };
+    }
+    return { inicio: "", fim: "", label: "Todo o histórico" };
+}
+
+function navegarPeriodoFinanceiro(direcao) {
+    if (!["hoje", "semana", "mes", "ano"].includes(filtroFaturamentoAtual)) return;
+    const ref = obterReferenciaFinanceira();
+    const data = new Date(`${ref}T12:00:00`);
+    if (filtroFaturamentoAtual === "hoje") data.setDate(data.getDate() + direcao);
+    if (filtroFaturamentoAtual === "semana") data.setDate(data.getDate() + (7 * direcao));
+    if (filtroFaturamentoAtual === "mes") data.setMonth(data.getMonth() + direcao);
+    if (filtroFaturamentoAtual === "ano") data.setFullYear(data.getFullYear() + direcao);
+    referenciaFinanceira = obterDataLocalISO(data);
+    filtrosInterativosFinanceiros.intervalo = null;
+    atualizarFaturamento();
+}
+
+function obterFiltrosFaturamentoAvancados() {
+    return {
+        especie: document.getElementById("filtroEspecieFaturamento")?.value || "",
+        porte: document.getElementById("filtroPorteFaturamento")?.value || "",
+        servico: document.getElementById("filtroServicoFaturamento")?.value || ""
+    };
+}
+
+function agendamentoTemServico(agendamento, filtroServico) {
+    if (!filtroServico) return true;
+    const nomes = Array.isArray(agendamento?.servicos) ? agendamento.servicos.map(s => normalizarTextoCliente(s?.nome)) : [];
+    if (filtroServico === "banho") return nomes.some(nome => nome.includes("banho"));
+    if (filtroServico === "tosa") return nomes.some(nome => nome.includes("tosa"));
+    if (filtroServico === "avulsos") return nomes.some(nome => !nome.includes("banho") && !nome.includes("tosa") && !nome.includes("pacote"));
+    return true;
+}
+
+function aplicarFiltrosAvancadosFaturamento(dados) {
+    const filtros = obterFiltrosFaturamentoAvancados();
+    return dados.filter(item => {
+        const especieOk = !filtros.especie || item.especie === filtros.especie;
+        const porteOk = !filtros.porte || item.porte === filtros.porte;
+        const servicoOk = agendamentoTemServico(item, filtros.servico);
+        return especieOk && porteOk && servicoOk;
+    });
+}
+
+function obterMapaPrimeiroAtendimentoCliente() {
+    const mapa = new Map();
+    agendamentos.filter(agendamentoEhRealizadoFinanceiro).forEach(item => {
+        const telefone = normalizarTelefoneCliente(item.telefone || item.telefoneNormalizado || "");
+        const data = dataAgendamentoFinanceiroISO(item);
+        if (!telefone || !data) return;
+        const atual = mapa.get(telefone);
+        if (!atual || data < atual) mapa.set(telefone, data);
+    });
+    return mapa;
+}
+
+function enriquecerLancamentoFinanceiro(item, mapaPrimeiroAtendimento) {
+    const origemFinanceira = normalizarTextoCliente(item?.origem) === "pacote" || String(item?.protocolo || "").toUpperCase().startsWith("PACK-") ? "pacote" : "avulso";
+    const telefone = normalizarTelefoneCliente(item.telefone || item.telefoneNormalizado || "");
+    const primeiraData = telefone ? mapaPrimeiroAtendimento.get(telefone) : "";
+    const perfilCliente = !telefone ? "sem cadastro" : primeiraData === item.data ? "novo" : "recorrente";
+    const dataObj = item.data ? new Date(`${item.data}T12:00:00`) : null;
+    const nomesDia = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    return {
+        ...item,
+        data: dataAgendamentoFinanceiroISO(item),
+        origemFinanceira,
+        perfilCliente,
+        diaSemanaFinanceiro: dataObj && !Number.isNaN(dataObj.getTime()) ? nomesDia[dataObj.getDay()] : "Não informado"
+    };
+}
+
+function obterLancamentosFinanceirosBase(intervalo = obterIntervaloFinanceiroAtual()) {
+    const mapaPrimeiro = obterMapaPrimeiroAtendimentoCliente();
+    const realizados = agendamentos
+        .filter(item => agendamentoEhRealizadoFinanceiro(item) && dataNoIntervaloFinanceiro(dataAgendamentoFinanceiroISO(item), intervalo))
+        .map(item => enriquecerLancamentoFinanceiro(item, mapaPrimeiro));
     return aplicarFiltrosAvancadosFaturamento(realizados);
 }
 
-function obterLancamentosFinanceirosAtuais(intervalo = obterIntervaloFinanceiroAtual()) {
-    // IMPORTANTE: pacote cadastrado/ativo não é lançamento de receita.
-    // Receita realizada vem somente das visitas/atendimentos que chegaram a Concluído.
-    return obterAgendamentosFiltradosFaturamento(intervalo);
+function itemPossuiServicoExatoFinanceiro(item, servico) {
+    if (!servico) return true;
+    return Array.isArray(item?.servicos) && item.servicos.some(s => String(s?.nome || "") === servico);
+}
+
+function aplicarFiltrosInterativosFinanceiros(dados) {
+    const f = filtrosInterativosFinanceiros;
+    return dados.filter(item => {
+        if (f.origem && item.origemFinanceira !== f.origem) return false;
+        if (f.intervalo && !dataNoIntervaloFinanceiro(item.data, f.intervalo)) return false;
+        if (f.servico && !itemPossuiServicoExatoFinanceiro(item, f.servico)) return false;
+        if (f.diaSemana && item.diaSemanaFinanceiro !== f.diaSemana) return false;
+        if (f.perfilCliente && item.perfilCliente !== f.perfilCliente) return false;
+        return true;
+    });
+}
+
+function obterLancamentosFinanceirosAtuais(intervalo = obterIntervaloFinanceiroAtual(), aplicarInterativos = true) {
+    const base = obterLancamentosFinanceirosBase(intervalo);
+    return aplicarInterativos ? aplicarFiltrosInterativosFinanceiros(base) : base;
 }
 
 async function limparAgendamentosOrfaosPacotes() {
     const idsPacotesAtuais = new Set(pacotesAdmin.map(pacote => pacote.id));
     const orfaosPendentes = agendamentos.filter(item =>
-        normalizarTextoCliente(item.origem) === "pacote" &&
-        item.pacoteId &&
-        !idsPacotesAtuais.has(item.pacoteId) &&
-        !agendamentoConcluidoCRM(item)
+        normalizarTextoCliente(item.origem) === "pacote" && item.pacoteId && !idsPacotesAtuais.has(item.pacoteId) && !agendamentoConcluidoCRM(item)
     );
-
     if (!orfaosPendentes.length) return 0;
-
     for (let i = 0; i < orfaosPendentes.length; i += 450) {
         const batch = db.batch();
-        orfaosPendentes.slice(i, i + 450).forEach(item => {
-            batch.delete(db.collection("agendamentos").doc(item.id));
-        });
+        orfaosPendentes.slice(i, i + 450).forEach(item => batch.delete(db.collection("agendamentos").doc(item.id)));
         await batch.commit();
     }
-
     const idsRemovidos = new Set(orfaosPendentes.map(item => item.id));
     agendamentos = agendamentos.filter(item => !idsRemovidos.has(item.id));
     invalidarCacheModulo("agendamentos");
@@ -849,509 +978,475 @@ async function limparAgendamentosOrfaosPacotes() {
 
 function filtrarFaturamento(tipo) {
     filtroFaturamentoAtual = tipo;
+    if (!referenciaFinanceira) referenciaFinanceira = hojeISO();
+    filtrosInterativosFinanceiros.intervalo = null;
     atualizarFaturamento();
 }
 
 function limparFiltroFaturamento() {
-    filtroFaturamentoAtual = "todos";
-
-    document.getElementById("dataInicioFaturamento").value = "";
-    document.getElementById("dataFimFaturamento").value = "";
-
-    const especie = document.getElementById("filtroEspecieFaturamento");
-    const porte = document.getElementById("filtroPorteFaturamento");
-    const servico = document.getElementById("filtroServicoFaturamento");
-
-    if (especie) especie.value = "";
-    if (porte) porte.value = "";
-    if (servico) servico.value = "";
-
+    filtroFaturamentoAtual = "mes";
+    referenciaFinanceira = hojeISO();
+    filtrosInterativosFinanceiros = { origem: "", intervalo: null, servico: "", diaSemana: "", perfilCliente: "" };
+    const inicio = document.getElementById("dataInicioFaturamento");
+    const fim = document.getElementById("dataFimFaturamento");
+    if (inicio) inicio.value = "";
+    if (fim) fim.value = "";
+    ["filtroEspecieFaturamento", "filtroPorteFaturamento", "filtroServicoFaturamento"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+    });
     atualizarFaturamento();
 }
 
+function aplicarFiltroOrigemFinanceiro(origem) {
+    filtrosInterativosFinanceiros.origem = filtrosInterativosFinanceiros.origem === origem ? "" : origem;
+    atualizarFaturamento();
+}
+
+function aplicarFiltroDiaSemanaFinanceiro(dia) {
+    filtrosInterativosFinanceiros.diaSemana = filtrosInterativosFinanceiros.diaSemana === dia ? "" : dia;
+    atualizarFaturamento();
+}
+
+function aplicarFiltroServicoFinanceiro(servico) {
+    filtrosInterativosFinanceiros.servico = filtrosInterativosFinanceiros.servico === servico ? "" : servico;
+    atualizarFaturamento();
+}
+
+function aplicarFiltroPerfilClienteFinanceiro(perfil) {
+    filtrosInterativosFinanceiros.perfilCliente = filtrosInterativosFinanceiros.perfilCliente === perfil ? "" : perfil;
+    atualizarFaturamento();
+}
+
+function aplicarFiltroIntervaloFinanceiro(inicio, fim, label = "") {
+    const atual = filtrosInterativosFinanceiros.intervalo;
+    if (atual?.inicio === inicio && atual?.fim === fim) filtrosInterativosFinanceiros.intervalo = null;
+    else filtrosInterativosFinanceiros.intervalo = { inicio, fim, label: label || `${formatarDataCurta(inicio)} a ${formatarDataCurta(fim)}` };
+    atualizarFaturamento();
+}
+
+function limparFiltroInterativoFinanceiro(tipo) {
+    if (tipo === "intervalo") filtrosInterativosFinanceiros.intervalo = null;
+    else if (tipo in filtrosInterativosFinanceiros) filtrosInterativosFinanceiros[tipo] = "";
+    atualizarFaturamento();
+}
+
+function limparFiltrosInterativosFinanceiros() {
+    filtrosInterativosFinanceiros = { origem: "", intervalo: null, servico: "", diaSemana: "", perfilCliente: "" };
+    atualizarFaturamento();
+}
+
+function renderizarFiltrosAtivosFinanceiros() {
+    const el = document.getElementById("financeActiveFilters");
+    if (!el) return;
+    const itens = [];
+    const f = filtrosInterativosFinanceiros;
+    if (f.origem) itens.push({ tipo: "origem", texto: f.origem === "avulso" ? "Avulso" : "Pacote" });
+    if (f.intervalo) itens.push({ tipo: "intervalo", texto: f.intervalo.label || `${formatarDataCurta(f.intervalo.inicio)} a ${formatarDataCurta(f.intervalo.fim)}` });
+    if (f.servico) itens.push({ tipo: "servico", texto: f.servico });
+    if (f.diaSemana) itens.push({ tipo: "diaSemana", texto: f.diaSemana });
+    if (f.perfilCliente) itens.push({ tipo: "perfilCliente", texto: f.perfilCliente === "novo" ? "Clientes novos" : f.perfilCliente === "recorrente" ? "Clientes recorrentes" : "Sem cadastro" });
+    if (!itens.length) {
+        el.innerHTML = '<span class="finance-filter-hint">Clique nos gráficos, cards ou linhas da tabela para cruzar a análise.</span>';
+        definirTexto("financeSelectionSummary", "Sem filtros adicionais");
+        return;
+    }
+    el.innerHTML = `<span class="finance-filter-label">Filtros ativos:</span>${itens.map(i => `<button type="button" class="finance-filter-chip" onclick="limparFiltroInterativoFinanceiro('${i.tipo}')">${escaparHtmlFinanceiro(i.texto)} <b>×</b></button>`).join("")}<button type="button" class="finance-clear-all" onclick="limparFiltrosInterativosFinanceiros()">Limpar cruzamentos</button>`;
+    definirTexto("financeSelectionSummary", `${itens.length} filtro${itens.length > 1 ? "s" : ""} aplicado${itens.length > 1 ? "s" : ""}`);
+}
 
 function obterPacotesAtivosFaturamento() {
     return pacotesAdmin.filter(pacote => normalizarTextoCliente(pacote.status) === "ativo");
 }
 
-function agruparPorDiaComPacotes(dados) {
-    return agruparPorCampo(dados, "data");
+function pacoteDataCriacaoISO(pacote) {
+    return dataTimestampFinanceiroISO(pacote?.criadoEm) || pacote?.dataInicio || pacote?.primeiroBanho || "";
 }
 
-function agruparPorEspecieComPacotes(dados) {
-    return agruparPorCampo(dados, "especie");
+function obterPacotesVendidosNoIntervalo(intervalo) {
+    if (filtrosInterativosFinanceiros.origem === "avulso") return [];
+    return pacotesAdmin.filter(pacote => dataNoIntervaloFinanceiro(pacoteDataCriacaoISO(pacote), intervalo));
+}
+
+function calcularReceitaFuturaPacotes() {
+    const ativos = obterPacotesAtivosFaturamento();
+    let valor = 0;
+    let visitas = 0;
+    ativos.forEach(pacote => {
+        const lista = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+        const totalVisitas = Number(pacote.quantidadeTotal || lista.length || 0);
+        const valorVisita = totalVisitas > 0 ? Number(pacote.valorPacote || 0) / totalVisitas : 0;
+        const pendentes = lista.length ? lista.filter(v => normalizarTextoCliente(v.status) !== "realizado").length : Number(pacote.quantidadePendente || 0);
+        visitas += pendentes;
+        valor += pendentes * valorVisita;
+    });
+    return { valor, visitas, ativos: ativos.length };
+}
+
+function somarValorFinanceiro(dados) {
+    return dados.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
 }
 
 function atualizarFaturamento() {
-    // Receita realizada = somente atendimentos efetivamente concluídos, atribuídos à data do atendimento (campo data).
-    // concluidoEm é apenas auditoria. O cadastro de um pacote, por si só, não gera faturamento.
-    // Cada visita PACK entra apenas ao ser concluída e permanece na data em que a visita estava agendada.
-    const lancamentos = obterLancamentosFinanceirosAtuais();
-
+    const intervalo = obterIntervaloFinanceiroAtual();
+    const dadosBase = obterLancamentosFinanceirosBase(intervalo);
+    const lancamentos = aplicarFiltrosInterativosFinanceiros(dadosBase);
     const quantidade = lancamentos.length;
-    const valorTotal = lancamentos.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
+    const valorTotal = somarValorFinanceiro(lancamentos);
     const ticketMedio = quantidade > 0 ? valorTotal / quantidade : 0;
+    const avulsos = lancamentos.filter(i => i.origemFinanceira === "avulso");
+    const pacotes = lancamentos.filter(i => i.origemFinanceira === "pacote");
+    const valorAvulsos = somarValorFinanceiro(avulsos);
+    const valorPacotesRealizados = somarValorFinanceiro(pacotes);
+    const pacotesVendidos = obterPacotesVendidosNoIntervalo(intervalo);
+    const valorPacotesVendidos = pacotesVendidos.reduce((a, p) => a + Number(p.valorPacote || 0), 0);
 
-    const pacotesAtivos = obterPacotesAtivosFaturamento();
-    const valorPacotes = pacotesAtivos.reduce((acc, pacote) => acc + Number(pacote.valorPacote || 0), 0);
-
-    definirTexto("kpiAtendimentos", quantidade);
     definirTexto("kpiValorTotal", formatarMoeda(valorTotal));
+    definirTexto("kpiReceitaAvulso", formatarMoeda(valorAvulsos));
+    definirTexto("kpiReceitaPacote", formatarMoeda(valorPacotesRealizados));
+    definirTexto("kpiReceitaAvulsoPct", `${valorTotal ? ((valorAvulsos / valorTotal) * 100).toFixed(1).replace(".", ",") : "0,0"}% da receita`);
+    definirTexto("kpiReceitaPacotePct", `${valorTotal ? ((valorPacotesRealizados / valorTotal) * 100).toFixed(1).replace(".", ",") : "0,0"}% da receita`);
+    definirTexto("kpiAtendimentos", quantidade);
     definirTexto("kpiTicketMedio", formatarMoeda(ticketMedio));
-    definirTexto("kpiPacotesAtivos", pacotesAtivos.length);
-    definirTexto("kpiValorPacotes", formatarMoeda(valorPacotes));
+    definirTexto("kpiPacotesVendidos", formatarMoeda(valorPacotesVendidos));
+    definirTexto("kpiPacotesVendidosQtd", `${pacotesVendidos.length} pacote${pacotesVendidos.length === 1 ? "" : "s"} cadastrado${pacotesVendidos.length === 1 ? "" : "s"} no período`);
 
-    const contexto = calcularContextoFinanceiro(lancamentos, valorTotal, ticketMedio);
+    const contexto = calcularContextoFinanceiro(lancamentos, dadosBase, valorTotal, ticketMedio, intervalo);
     renderizarInteligenciaFinanceira(lancamentos, contexto);
-    renderizarGraficos(lancamentos);
+    renderizarGraficos(lancamentos, dadosBase);
+    renderizarTabelaDiariaFinanceira(lancamentos);
+    renderizarDetalhamentoFinanceiro(lancamentos);
+    renderizarPerformancePacotesFinanceira(lancamentos);
+    renderizarFiltrosAtivosFinanceiros();
     atualizarEstadoFiltrosFinanceiros();
 }
+
 function definirTexto(id, valor) {
     const el = document.getElementById(id);
     if (el) el.textContent = valor;
 }
 
-function obterIntervaloFinanceiroAtual() {
-    const hoje = hojeISO();
-    if (filtroFaturamentoAtual === "hoje") return { inicio: hoje, fim: hoje, label: "Hoje" };
-    if (filtroFaturamentoAtual === "7dias") return { inicio: adicionarDias(hoje, -6), fim: hoje, label: "Últimos 7 dias" };
-    if (filtroFaturamentoAtual === "30dias") return { inicio: adicionarDias(hoje, -29), fim: hoje, label: "Últimos 30 dias" };
-    if (filtroFaturamentoAtual === "mes") return { inicio: `${hoje.slice(0, 7)}-01`, fim: hoje, label: "Este mês" };
-    if (filtroFaturamentoAtual === "personalizado") {
-        const inicio = document.getElementById("dataInicioFaturamento")?.value;
-        const fim = document.getElementById("dataFimFaturamento")?.value;
-        return { inicio, fim, label: inicio && fim ? `${formatarDataCurta(inicio)} a ${formatarDataCurta(fim)}` : "Período personalizado" };
-    }
-    return { inicio: "", fim: hoje, label: "Todo o histórico" };
-}
-
-function calcularContextoFinanceiro(dados, valorTotal, ticketMedio) {
-    const hoje = hojeISO();
-    const intervaloHoje = { inicio: hoje, fim: hoje };
-    const realizadosHoje = obterLancamentosFinanceirosAtuais(intervaloHoje);
-    const pendentesHoje = agendamentos.filter(item =>
-        protocoloEhLyne(item.protocolo) &&
-        !agendamentoConcluidoCRM(item) &&
-        normalizarTextoCliente(item.status) !== "cancelado" &&
-        item.data === hoje
-    );
-    const receitaHoje = realizadosHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
-    const previstoHoje = pendentesHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
-    const slotsDia = 14;
-    const ocupadosHoje = agendamentos.filter(i => i.data === hoje && normalizarTextoCliente(i.status) !== "cancelado").length;
-    const ocupacaoHoje = Math.min(100, Math.round((ocupadosHoje / slotsDia) * 100));
-    const intervalo = obterIntervaloFinanceiroAtual();
+function calcularContextoFinanceiro(dados, dadosBase, valorTotal, ticketMedio, intervalo) {
     const meta = Number(localStorage.getItem("petlyneMetaMensal") || 5000);
-
-    const inicioMes = `${hoje.slice(0, 7)}-01`;
-    const lancamentosMes = obterLancamentosFinanceirosAtuais({ inicio: inicioMes, fim: hoje });
-    const receitaMes = lancamentosMes.reduce((a,i)=>a+Number(i.valorTotal||0),0);
-
-    const percentualMeta = meta > 0 ? Math.min(999, (receitaMes / meta) * 100) : 0;
-    const scoreReceita = Math.min(40, percentualMeta * .4);
-    const scoreOcupacao = Math.min(25, ocupacaoHoje * .25);
-    const scoreTicket = Math.min(20, (ticketMedio / 80) * 20);
-    const concluidos = dados.length;
-    const scoreVolume = Math.min(15, concluidos * 1.5);
-    const healthScore = Math.round(scoreReceita + scoreOcupacao + scoreTicket + scoreVolume);
-    return { hoje, realizadosHoje, pendentesHoje, receitaHoje, previstoHoje, ocupacaoHoje, intervalo, meta, receitaMes, percentualMeta, healthScore, valorTotal, ticketMedio };
+    const hoje = hojeISO();
+    const inicioMesAtual = inicioMesISO(hoje);
+    const fimMesAtual = fimMesISO(hoje);
+    const receitaMes = somarValorFinanceiro(obterLancamentosFinanceirosBase({ inicio: inicioMesAtual, fim: fimMesAtual }));
+    const [ano, mes, dia] = hoje.split("-").map(Number);
+    const diasMes = new Date(ano, mes, 0).getDate();
+    const diasDecorridos = Math.min(dia, diasMes);
+    const esperadoAteHoje = meta > 0 ? (meta / diasMes) * diasDecorridos : 0;
+    const projecaoMes = diasDecorridos > 0 ? (receitaMes / diasDecorridos) * diasMes : 0;
+    const percentualMeta = meta > 0 ? (receitaMes / meta) * 100 : 0;
+    return { meta, receitaMes, esperadoAteHoje, projecaoMes, percentualMeta, intervalo, valorTotal, ticketMedio, dadosBase };
 }
+
 function renderizarInteligenciaFinanceira(dados, c) {
     definirTexto("financePeriodLabel", c.intervalo.label);
+    definirTexto("financePeriodNavLabel", c.intervalo.label);
     const metaInput = document.getElementById("metaMensalFaturamento");
     if (metaInput && document.activeElement !== metaInput) metaInput.value = c.meta || "";
     definirTexto("financeGoalPercent", `${c.percentualMeta.toFixed(0)}%`);
     definirTexto("financeGoalValue", `${formatarMoeda(c.receitaMes)} de ${formatarMoeda(c.meta)}`);
+    definirTexto("financeGoalExpected", formatarMoeda(c.esperadoAteHoje));
+    definirTexto("financeGoalForecast", formatarMoeda(c.projecaoMes));
     const goalBar = document.getElementById("financeGoalBar");
     if (goalBar) goalBar.style.width = `${Math.min(100, c.percentualMeta)}%`;
-    definirTexto("financeGoalProjection", c.percentualMeta >= 100 ? "Meta mensal atingida. Excelente desempenho." : `Faltam ${formatarMoeda(Math.max(0, c.meta-c.receitaMes))} para a meta.`);
-    definirTexto("financeHealthScore", c.healthScore);
-    definirTexto("financeHealthLabel", c.healthScore >= 80 ? "Excelente" : c.healthScore >= 60 ? "Saudável" : c.healthScore >= 40 ? "Atenção" : "Em construção");
-    definirTexto("kpiReceitaPrevista", formatarMoeda(c.previstoHoje));
-    definirTexto("kpiOcupacaoFinanceira", `${c.ocupacaoHoje}%`);
-    definirTexto("financeHojeRealizado", formatarMoeda(c.receitaHoje));
-    definirTexto("financeHojePrevisto", formatarMoeda(c.previstoHoje));
-    definirTexto("financeHojeAtendimentos", c.realizadosHoje.length + c.pendentesHoje.length);
-    definirTexto("financeProximoLivre", obterProximoHorarioLivreHoje());
-
+    const diferencaEsperada = c.receitaMes - c.esperadoAteHoje;
+    definirTexto("financeGoalProjection", c.meta <= 0 ? "Defina uma meta para acompanhar a projeção." : `${diferencaEsperada >= 0 ? "Acima" : "Abaixo"} do ritmo esperado em ${formatarMoeda(Math.abs(diferencaEsperada))}.`);
     renderizarComparacaoFinanceira(dados, c);
     renderizarInsightsFinanceiros(dados, c);
-    renderizarRankingsFinanceiros(dados);
+}
+
+function obterIntervaloAnteriorFinanceiro(intervalo) {
+    if (!intervalo?.inicio || !intervalo?.fim) return null;
+    const inicio = new Date(`${intervalo.inicio}T12:00:00`);
+    const fim = new Date(`${intervalo.fim}T12:00:00`);
+    const dias = Math.max(1, Math.round((fim - inicio) / 86400000) + 1);
+    const antFim = adicionarDias(intervalo.inicio, -1);
+    const antInicio = adicionarDias(antFim, -(dias - 1));
+    return { inicio: antInicio, fim: antFim };
 }
 
 function renderizarComparacaoFinanceira(dados, c) {
-    const intervalo = c.intervalo;
-    if (!intervalo.inicio || !intervalo.fim || filtroFaturamentoAtual === "todos") {
+    const anteriorIntervalo = obterIntervaloAnteriorFinanceiro(c.intervalo);
+    if (!anteriorIntervalo || filtroFaturamentoAtual === "todos") {
         definirTexto("kpiReceitaComparacao", "Acumulado selecionado");
         definirTexto("kpiAtendimentosComparacao", `${dados.length} lançamentos de receita`);
-        definirTexto("kpiTicketComparacao", "Acumulado selecionado");
+        definirTexto("kpiTicketComparacao", "Receita média por atendimento");
         return;
     }
-    const inicio = new Date(`${intervalo.inicio}T12:00:00`);
-    const fim = new Date(`${intervalo.fim}T12:00:00`);
-    const dias = Math.max(1, Math.round((fim-inicio)/86400000)+1);
-    const antFim = adicionarDias(intervalo.inicio, -1);
-    const antInicio = adicionarDias(antFim, -(dias-1));
-    const intervaloAnterior = { inicio: antInicio, fim: antFim };
-
-    const anterior = obterLancamentosFinanceirosAtuais(intervaloAnterior);
-
-    const valorAnterior = anterior.reduce((a,i)=>a+Number(i.valorTotal||0),0);
-    const atual = dados.reduce((a,i)=>a+Number(i.valorTotal||0),0);
-    const variacao = valorAnterior > 0 ? ((atual-valorAnterior)/valorAnterior)*100 : null;
-    definirTexto("kpiReceitaComparacao", variacao === null ? "Sem base anterior" : `${variacao >= 0 ? "▲" : "▼"} ${Math.abs(variacao).toFixed(1).replace('.',',')}% vs período anterior`);
-    definirTexto("kpiAtendimentosComparacao", `${dados.length-anterior.length >= 0 ? "+" : ""}${dados.length-anterior.length} vs período anterior`);
-    const ticketAnt = anterior.length ? valorAnterior/anterior.length : 0;
-    definirTexto("kpiTicketComparacao", ticketAnt ? `${c.ticketMedio >= ticketAnt ? "▲" : "▼"} ${formatarMoeda(Math.abs(c.ticketMedio-ticketAnt))}` : "Sem base anterior");
-}
-function renderizarInsightsFinanceiros(dados, c) {
-    const insights=[];
-    const servicos = Object.entries(agruparServicos(dados)).sort((a,b)=>b[1]-a[1]);
-    if (servicos[0]) insights.push({icone:"01", titulo:`${servicos[0][0]} lidera a receita`, texto:`Representa ${c.valorTotal ? ((servicos[0][1]/c.valorTotal)*100).toFixed(0) : 0}% do valor analisado.`});
-    const dias = agruparReceitaPorDiaSemana(dados); const topDia=Object.entries(dias).sort((a,b)=>b[1]-a[1])[0];
-    if (topDia?.[1]) insights.push({icone:"02", titulo:`${topDia[0]} é o dia mais forte`, texto:`Acumula ${formatarMoeda(topDia[1])} no período selecionado.`});
-    insights.push({icone:"03", titulo:`Ocupação de hoje em ${c.ocupacaoHoje}%`, texto:c.ocupacaoHoje < 60 ? "Ainda há capacidade para divulgar horários disponíveis." : "A agenda apresenta boa utilização operacional."});
-    insights.push({icone:"04", titulo:`Ticket médio de ${formatarMoeda(c.ticketMedio)}`, texto:c.ticketMedio < 60 ? "Serviços adicionais podem elevar o valor por atendimento." : "O valor médio por atendimento está em uma faixa positiva."});
-    const container=document.getElementById("financeInsights");
-    if (container) container.innerHTML=insights.map(i=>`<article><span>${i.icone}</span><div><strong>${i.titulo}</strong><p>${i.texto}</p></div></article>`).join("");
-}
-
-function renderizarRankingsFinanceiros(dados) {
-    const clientes={}; const horarios={};
-    dados.forEach(i=>{ const cliente=i.cliente||"Não informado"; clientes[cliente]=(clientes[cliente]||0)+Number(i.valorTotal||0); const h=i.horario||"Sem horário"; horarios[h]=(horarios[h]||0)+Number(i.valorTotal||0); });
-    renderizarRanking("financeTopClientes", Object.entries(clientes).sort((a,b)=>b[1]-a[1]).slice(0,5));
-    renderizarRanking("financeTopHorarios", Object.entries(horarios).sort((a,b)=>b[1]-a[1]).slice(0,5));
-    renderizarRanking("financeTopServicos", Object.entries(agruparServicos(dados)).sort((a,b)=>b[1]-a[1]).slice(0,5));
-}
-
-function renderizarRanking(id, itens) {
-    const el=document.getElementById(id); if(!el) return;
-    const max=itens[0]?.[1]||1;
-    el.innerHTML=itens.length ? itens.map((item,idx)=>`<article><span class="rank-number">${String(idx+1).padStart(2,"0")}</span><div><strong>${item[0]}</strong><div class="rank-track"><i style="width:${(item[1]/max)*100}%"></i></div></div><b>${formatarMoeda(item[1])}</b></article>`).join("") : '<p class="finance-empty">Sem dados no período.</p>';
+    const anterior = aplicarFiltrosInterativosFinanceiros(obterLancamentosFinanceirosBase(anteriorIntervalo));
+    const valorAnterior = somarValorFinanceiro(anterior);
+    const atual = somarValorFinanceiro(dados);
+    const variacao = valorAnterior > 0 ? ((atual - valorAnterior) / valorAnterior) * 100 : null;
+    definirTexto("kpiReceitaComparacao", variacao === null ? "Sem base anterior" : `${variacao >= 0 ? "▲" : "▼"} ${Math.abs(variacao).toFixed(1).replace(".", ",")}% vs período anterior`);
+    definirTexto("kpiAtendimentosComparacao", `${dados.length - anterior.length >= 0 ? "+" : ""}${dados.length - anterior.length} vs período anterior`);
+    const ticketAnt = anterior.length ? valorAnterior / anterior.length : 0;
+    definirTexto("kpiTicketComparacao", ticketAnt ? `${c.ticketMedio >= ticketAnt ? "▲" : "▼"} ${formatarMoeda(Math.abs(c.ticketMedio - ticketAnt))} vs período anterior` : "Sem base anterior");
 }
 
 function agruparReceitaPorDiaSemana(dados) {
-    const nomes=["Domingo","Segunda","Terça","Quarta","Quinta","Sexta","Sábado"];
-    const r={}; nomes.forEach(n=>r[n]=0);
-    dados.forEach(i=>{ if(!i.data)return; const d=new Date(`${i.data}T12:00:00`); r[nomes[d.getDay()]]+=Number(i.valorTotal||0); });
-    return r;
-}
-
-function obterProximoHorarioLivreHoje() {
-    const horarios=["09:00","09:30","10:00","10:30","11:00","11:30","13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"];
-    const agora=new Date(); const atual=`${String(agora.getHours()).padStart(2,'0')}:${String(agora.getMinutes()).padStart(2,'0')}`;
-    const ocupados=new Set(agendamentos.filter(i=>i.data===hojeISO() && i.status!=="Cancelado").map(i=>i.horario));
-    return horarios.find(h=>h>=atual && !ocupados.has(h)) || "Sem vagas";
-}
-
-function salvarMetaMensalFinanceira() {
-    const valor=Number(document.getElementById("metaMensalFaturamento")?.value||0);
-    localStorage.setItem("petlyneMetaMensal", String(valor)); atualizarFaturamento();
-}
-
-function alternarFiltrosFinanceiros() { document.getElementById("financeFiltersPanel")?.classList.toggle("is-open"); }
-function atualizarEstadoFiltrosFinanceiros() {
-    document.querySelectorAll("#financePeriodChips button").forEach(btn=>btn.classList.toggle("active", btn.dataset.periodo===filtroFaturamentoAtual));
-}
-
-function agruparPorCampo(dados, campo) {
-    return dados.reduce((acc, item) => {
-        const chave = item[campo] || "Não informado";
-        acc[chave] = (acc[chave] || 0) + Number(item.valorTotal || 0);
-        return acc;
-    }, {});
+    const nomes = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+    const resultado = {};
+    nomes.forEach(nome => resultado[nome] = 0);
+    dados.forEach(item => {
+        const nome = item.diaSemanaFinanceiro || "Não informado";
+        resultado[nome] = (resultado[nome] || 0) + Number(item.valorTotal || 0);
+    });
+    return resultado;
 }
 
 function agruparServicos(dados) {
     const resultado = {};
-
     dados.forEach(item => {
         if (!Array.isArray(item.servicos)) return;
-
         item.servicos.forEach(servico => {
-            resultado[servico.nome] = (resultado[servico.nome] || 0) + Number(servico.valor || 0);
+            const nome = servico?.nome || "Não informado";
+            resultado[nome] = (resultado[nome] || 0) + Number(servico?.valor || 0);
         });
     });
-
     return resultado;
 }
 
-function criarGradienteBarra(chart, corInicial, corFinal) {
-    const { ctx, chartArea } = chart;
+function renderizarInsightsFinanceiros(dados, c) {
+    const insights = [];
+    const servicos = Object.entries(agruparServicos(dados)).sort((a, b) => b[1] - a[1]);
+    if (servicos[0]) insights.push({ icone: "01", titulo: `${servicos[0][0]} lidera a receita`, texto: `${formatarMoeda(servicos[0][1])} em itens de serviço no filtro atual.` });
+    const dias = agruparReceitaPorDiaSemana(dados);
+    const topDia = Object.entries(dias).sort((a, b) => b[1] - a[1])[0];
+    if (topDia?.[1]) insights.push({ icone: "02", titulo: `${topDia[0]} é o dia mais forte`, texto: `${formatarMoeda(topDia[1])} de faturamento acumulado no período selecionado.` });
+    const avulso = somarValorFinanceiro(dados.filter(i => i.origemFinanceira === "avulso"));
+    const pacote = somarValorFinanceiro(dados.filter(i => i.origemFinanceira === "pacote"));
+    const total = avulso + pacote;
+    if (total > 0) insights.push({ icone: "03", titulo: `${((pacote / total) * 100).toFixed(0)}% da receita vem de pacotes`, texto: pacote > avulso ? "Pacotes são a principal origem de receita neste recorte." : "Avulsos ainda representam a maior parcela da receita." });
+    insights.push({ icone: "04", titulo: `Ticket médio de ${formatarMoeda(c.ticketMedio)}`, texto: dados.length ? `${dados.length} atendimento${dados.length > 1 ? "s" : ""} concluído${dados.length > 1 ? "s" : ""} no recorte atual.` : "Não há atendimentos concluídos neste recorte." });
+    const container = document.getElementById("financeInsights");
+    if (container) container.innerHTML = insights.map(i => `<article><span>${i.icone}</span><div><strong>${escaparHtmlFinanceiro(i.titulo)}</strong><p>${escaparHtmlFinanceiro(i.texto)}</p></div></article>`).join("");
+}
 
-    if (!chartArea) return corInicial;
+function salvarMetaMensalFinanceira() {
+    const valor = Number(document.getElementById("metaMensalFaturamento")?.value || 0);
+    localStorage.setItem("petlyneMetaMensal", String(valor));
+    atualizarFaturamento();
+}
 
-    const gradiente = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-    gradiente.addColorStop(0, corInicial);
-    gradiente.addColorStop(1, corFinal);
+function alternarFiltrosFinanceiros() {
+    document.getElementById("financeFiltersPanel")?.classList.toggle("is-open");
+}
 
-    return gradiente;
+function atualizarEstadoFiltrosFinanceiros() {
+    document.querySelectorAll("#financePeriodChips button").forEach(btn => btn.classList.toggle("active", btn.dataset.periodo === filtroFaturamentoAtual));
+    const nav = document.querySelector(".finance-period-navigation");
+    if (nav) nav.classList.toggle("disabled", !["hoje", "semana", "mes", "ano"].includes(filtroFaturamentoAtual));
+}
+
+function escaparHtmlFinanceiro(valor) {
+    return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
 }
 
 function formatarMoedaGrafico(valor) {
-    return Number(valor || 0).toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-    });
+    return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function quebrarRotuloGrafico(label, limite = 18) {
-    if (!label || label.length <= limite) return label;
+function obterCorFinanceiraOrigem(origem, alpha = 1) {
+    if (origem === "pacote") return alpha === 1 ? "#8e4c64" : `rgba(142,76,100,${alpha})`;
+    return alpha === 1 ? "#d65a7e" : `rgba(214,90,126,${alpha})`;
+}
 
-    const palavras = String(label).split(" ");
-    const linhas = [];
-    let linhaAtual = "";
-
-    palavras.forEach(palavra => {
-        if ((linhaAtual + " " + palavra).trim().length > limite) {
-            if (linhaAtual) linhas.push(linhaAtual);
-            linhaAtual = palavra;
+function obterSeriesEvolucaoFinanceira(dados) {
+    const intervalo = obterIntervaloFinanceiroAtual();
+    let mensal = filtroFaturamentoAtual === "ano";
+    if (filtroFaturamentoAtual === "todos" || filtroFaturamentoAtual === "personalizado") {
+        if (intervalo.inicio && intervalo.fim) {
+            const dias = Math.round((new Date(`${intervalo.fim}T12:00:00`) - new Date(`${intervalo.inicio}T12:00:00`)) / 86400000) + 1;
+            mensal = dias > 100;
         } else {
-            linhaAtual = `${linhaAtual} ${palavra}`.trim();
+            const datas = dados.map(i => i.data).filter(Boolean).sort();
+            if (datas.length >= 2) {
+                const dias = Math.round((new Date(`${datas[datas.length - 1]}T12:00:00`) - new Date(`${datas[0]}T12:00:00`)) / 86400000) + 1;
+                mensal = dias > 100;
+            }
         }
+    }
+    const mapa = new Map();
+    dados.forEach(item => {
+        const chave = mensal ? item.data.slice(0, 7) : item.data;
+        if (!mapa.has(chave)) mapa.set(chave, { avulso: 0, pacote: 0 });
+        mapa.get(chave)[item.origemFinanceira] += Number(item.valorTotal || 0);
     });
-
-    if (linhaAtual) linhas.push(linhaAtual);
-
-    return linhas.slice(0, 3);
-}
-
-function obterFiltrosFaturamentoAvancados() {
+    const entradas = Array.from(mapa.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    bucketsEvolucaoFinanceira = entradas.map(([chave]) => {
+        if (mensal) {
+            const inicio = `${chave}-01`;
+            const fim = fimMesISO(inicio);
+            return { inicio, fim, label: formatarMesAnoFinanceiro(inicio) };
+        }
+        return { inicio: chave, fim: chave, label: formatarDataCurta(chave) };
+    });
     return {
-        especie: document.getElementById("filtroEspecieFaturamento")?.value || "",
-        porte: document.getElementById("filtroPorteFaturamento")?.value || "",
-        servico: (document.getElementById("filtroServicoFaturamento")?.value || "").trim().toLowerCase()
+        labels: bucketsEvolucaoFinanceira.map(b => mensal ? b.label.split(" de ")[0].slice(0, 3) + "/" + b.inicio.slice(2, 4) : b.label.slice(0, 5)),
+        avulso: entradas.map(([, v]) => v.avulso),
+        pacote: entradas.map(([, v]) => v.pacote),
+        total: entradas.map(([, v]) => v.avulso + v.pacote)
     };
 }
 
-function agendamentoTemServico(agendamento, filtroServico) {
-    if (!filtroServico) return true;
-    if (!Array.isArray(agendamento.servicos)) return false;
-
-    const servicos = agendamento.servicos.map(servico => (servico.nome || "").toLowerCase());
-
-    if (filtroServico === "banho") {
-        return servicos.some(nome => nome.includes("banho"));
-    }
-
-    if (filtroServico === "tosa") {
-        return servicos.some(nome => nome.includes("tosa") && !nome.includes("higiênica") && !nome.includes("higienica"));
-    }
-
-    if (filtroServico === "avulsos") {
-        const termosAvulsos = [
-            "hidratação",
-            "hidratacao",
-            "tosa higiênica",
-            "tosa higienica",
-            "tratamento anti-parasitas",
-            "anti-parasitas",
-            "anti parasitas",
-            "corte de unha"
-        ];
-
-        return servicos.some(nome => termosAvulsos.some(termo => nome.includes(termo)));
-    }
-
-    return servicos.some(nome => nome.includes(filtroServico));
-}
-
-function aplicarFiltrosAvancadosFaturamento(dados) {
-    const filtros = obterFiltrosFaturamentoAvancados();
-
-    return dados.filter(item => {
-        const especieOk = !filtros.especie || item.especie === filtros.especie;
-        const porteOk = !filtros.porte || item.porte === filtros.porte;
-        const servicoOk = agendamentoTemServico(item, filtros.servico);
-
-        return especieOk && porteOk && servicoOk;
-    });
-}
-
-const pluginRotulosValores = {
-    id: "pluginRotulosValores",
-    afterDatasetsDraw(chart) {
-        const { ctx } = chart;
-
-        ctx.save();
-        ctx.font = "bold 12px Arial";
-        ctx.fillStyle = "#4d3f43";
-
-        chart.data.datasets.forEach((dataset, datasetIndex) => {
-            const meta = chart.getDatasetMeta(datasetIndex);
-
-            meta.data.forEach((element, index) => {
-                const valor = Number(dataset.data[index] || 0);
-                if (valor <= 0) return;
-
-                const posicao = element.tooltipPosition();
-
-                if (chart.config.type === "doughnut") {
-                    const total = dataset.data.reduce((acc, item) => acc + Number(item || 0), 0);
-                    const percentual = total > 0 ? ((valor / total) * 100).toFixed(1).replace(".", ",") : "0,0";
-
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(`${percentual}%`, posicao.x, posicao.y);
-                    return;
-                }
-
-                const texto = formatarMoedaGrafico(valor);
-
-                if (chart.options.indexAxis === "y") {
-                    ctx.textAlign = "left";
-                    ctx.textBaseline = "middle";
-                    ctx.fillText(texto, posicao.x + 8, posicao.y);
-                } else {
-                    ctx.textAlign = "center";
-                    ctx.textBaseline = "bottom";
-                    ctx.fillText(texto, posicao.x, posicao.y - 8);
-                }
-            });
-        });
-
-        ctx.restore();
-    }
-};
-
-function opcoesGraficoBarras(tituloEixo = "Faturamento", horizontal = false) {
-    if (horizontal) {
-        return {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            layout: { padding: { top: 16, right: 90, bottom: 8, left: 8 } },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label(context) {
-                            return `${context.dataset.label || tituloEixo}: ${formatarMoedaGrafico(context.raw)}`;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { color: "rgba(214, 90, 126, .14)" },
-                    ticks: {
-                        color: "#8a737b",
-                        callback(value) { return formatarMoedaGrafico(value); }
-                    }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: {
-                        color: "#4d3f43",
-                        font: { weight: "bold", size: 11 },
-                        callback(value) {
-                            return quebrarRotuloGrafico(this.getLabelForValue(value), 26);
-                        }
-                    }
-                }
-            }
-        };
-    }
-
+function opcoesBaseGraficoFinanceiro() {
     return {
         responsive: true,
         maintainAspectRatio: false,
-        layout: { padding: { top: 34, right: 18, bottom: 14, left: 8 } },
         plugins: {
-            legend: { display: false },
-            tooltip: {
-                callbacks: {
-                    label(context) {
-                        return `${context.dataset.label || tituloEixo}: ${formatarMoedaGrafico(context.raw)}`;
-                    }
-                }
-            }
+            legend: { labels: { color: "#5f4951", usePointStyle: true, pointStyle: "circle", font: { weight: "bold" } } },
+            tooltip: { callbacks: { label: context => `${context.dataset.label || "Valor"}: ${formatarMoedaGrafico(context.raw)}` } }
         },
         scales: {
-            x: {
-                grid: { display: false },
-                ticks: {
-                    color: "#4d3f43",
-                    font: { weight: "bold", size: 11 },
-                    maxRotation: 0,
-                    minRotation: 0,
-                    autoSkip: false,
-                    callback(value) {
-                        return quebrarRotuloGrafico(this.getLabelForValue(value), 16);
-                    }
-                }
-            },
-            y: {
-                beginAtZero: true,
-                grid: { color: "rgba(214, 90, 126, .14)" },
-                ticks: {
-                    color: "#8a737b",
-                    callback(value) { return formatarMoedaGrafico(value); }
-                }
-            }
+            x: { grid: { display: false }, ticks: { color: "#806b72", maxRotation: 0, autoSkip: true } },
+            y: { beginAtZero: true, grid: { color: "rgba(214,90,126,.10)" }, ticks: { color: "#806b72", callback: value => formatarMoedaGrafico(value) } }
         }
     };
 }
-
-function opcoesGraficoRosca() {
-    return {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: "62%",
-        layout: { padding: 18 },
-        plugins: {
-            legend: {
-                position: "bottom",
-                labels: {
-                    color: "#4d3f43",
-                    font: { weight: "bold" },
-                    padding: 18,
-                    usePointStyle: true,
-                    pointStyle: "circle"
-                }
-            },
-            tooltip: {
-                callbacks: {
-                    label(context) {
-                        const total = context.dataset.data.reduce((acc, item) => acc + Number(item || 0), 0);
-                        const valor = Number(context.raw || 0);
-                        const percentual = total > 0 ? ((valor / total) * 100).toFixed(1).replace(".", ",") : "0,0";
-                        return `${context.label}: ${formatarMoedaGrafico(valor)} (${percentual}%)`;
-                    }
-                }
-            }
-        }
-    };
-}
-
 
 function renderizarGraficos(dados) {
-    const porDia = agruparPorDiaComPacotes(dados);
-    const porEspecie = agruparPorEspecieComPacotes(dados);
-    const porServico = agruparServicos(dados);
-    const porDiaSemana = agruparReceitaPorDiaSemana(dados);
     if (chartFaturamentoDia) chartFaturamentoDia.destroy();
     if (chartEspecie) chartEspecie.destroy();
     if (chartServico) chartServico.destroy();
     if (chartDiaSemana) chartDiaSemana.destroy();
+    if (chartPerfilCliente) chartPerfilCliente.destroy();
 
-    const entradasDia=Object.entries(porDia).sort((a,b)=>a[0].localeCompare(b[0]));
-    chartFaturamentoDia = new Chart(document.getElementById("graficoFaturamentoDia"), {
-        type: "line",
-        data: { labels: entradasDia.map(i=>formatarDataCurta(i[0])), datasets:[{label:"Receita",data:entradasDia.map(i=>i[1]),borderColor:"#bd4267",backgroundColor:"rgba(214,90,126,.13)",fill:true,tension:.35,pointRadius:4,pointHoverRadius:7,borderWidth:3}] },
-        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>formatarMoedaGrafico(c.raw)}}},scales:{x:{grid:{display:false},ticks:{color:"#806b72"}},y:{beginAtZero:true,grid:{color:"rgba(214,90,126,.10)"},ticks:{callback:v=>formatarMoedaGrafico(v),color:"#806b72"}}}}
+    const evolucao = obterSeriesEvolucaoFinanceira(dados);
+    const canvasEvolucao = document.getElementById("graficoFaturamentoDia");
+    if (canvasEvolucao) {
+        const opcoes = opcoesBaseGraficoFinanceiro();
+        opcoes.interaction = { mode: "index", intersect: false };
+        opcoes.onClick = (_, elementos) => {
+            if (!elementos.length) return;
+            const bucket = bucketsEvolucaoFinanceira[elementos[0].index];
+            if (bucket) aplicarFiltroIntervaloFinanceiro(bucket.inicio, bucket.fim, bucket.label);
+        };
+        chartFaturamentoDia = new Chart(canvasEvolucao, {
+            type: "line",
+            data: {
+                labels: evolucao.labels,
+                datasets: [
+                    { label: "Avulso", data: evolucao.avulso, borderColor: "#d65a7e", backgroundColor: "rgba(214,90,126,.10)", tension: .32, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3 },
+                    { label: "Pacote", data: evolucao.pacote, borderColor: "#8e4c64", backgroundColor: "rgba(142,76,100,.08)", tension: .32, pointRadius: 4, pointHoverRadius: 7, borderWidth: 3 },
+                    { label: "Total", data: evolucao.total, borderColor: "#4e3941", borderDash: [6, 5], backgroundColor: "transparent", tension: .28, pointRadius: 2, borderWidth: 2 }
+                ]
+            },
+            options: opcoes
+        });
+    }
+    definirTexto("financeTrendSummary", formatarMoeda(somarValorFinanceiro(dados)));
+
+    const mix = [
+        { nome: "Avulso", chave: "avulso", valor: somarValorFinanceiro(dados.filter(i => i.origemFinanceira === "avulso")) },
+        { nome: "Pacote", chave: "pacote", valor: somarValorFinanceiro(dados.filter(i => i.origemFinanceira === "pacote")) }
+    ];
+    const canvasMix = document.getElementById("graficoEspecie");
+    if (canvasMix) chartEspecie = new Chart(canvasMix, {
+        type: "doughnut",
+        data: { labels: mix.map(i => i.nome), datasets: [{ data: mix.map(i => i.valor), backgroundColor: ["#d65a7e", "#8e4c64"], borderColor: "#fff", borderWidth: 5, hoverOffset: 7 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: "64%", plugins: { legend: { position: "bottom", labels: { color: "#5f4951", usePointStyle: true, font: { weight: "bold" } } }, tooltip: { callbacks: { label: c => `${c.label}: ${formatarMoedaGrafico(c.raw)}` } } }, onClick: (_, elementos) => { if (elementos.length) aplicarFiltroOrigemFinanceiro(mix[elementos[0].index].chave); } }
     });
-    const totalTrend=entradasDia.reduce((a,i)=>a+i[1],0); definirTexto("financeTrendSummary", formatarMoeda(totalTrend));
 
-    chartEspecie = new Chart(document.getElementById("graficoEspecie"), {type:"doughnut",data:{labels:Object.keys(porEspecie),datasets:[{data:Object.values(porEspecie),backgroundColor:["#d65a7e","#f4b9cb","#a88c7b","#8a8383"],borderColor:"#fff",borderWidth:5,hoverOffset:6}]},options:opcoesGraficoRosca(),plugins:[pluginRotulosValores]});
+    const perfis = [
+        { nome: "Novos", chave: "novo", valor: somarValorFinanceiro(dados.filter(i => i.perfilCliente === "novo")) },
+        { nome: "Recorrentes", chave: "recorrente", valor: somarValorFinanceiro(dados.filter(i => i.perfilCliente === "recorrente")) }
+    ];
+    const canvasPerfil = document.getElementById("graficoPerfilCliente");
+    if (canvasPerfil) chartPerfilCliente = new Chart(canvasPerfil, {
+        type: "doughnut",
+        data: { labels: perfis.map(i => i.nome), datasets: [{ data: perfis.map(i => i.valor), backgroundColor: ["#f1a7bb", "#a94a69"], borderColor: "#fff", borderWidth: 5, hoverOffset: 7 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: "64%", plugins: { legend: { position: "bottom", labels: { color: "#5f4951", usePointStyle: true, font: { weight: "bold" } } }, tooltip: { callbacks: { label: c => `${c.label}: ${formatarMoedaGrafico(c.raw)}` } } }, onClick: (_, elementos) => { if (elementos.length) aplicarFiltroPerfilClienteFinanceiro(perfis[elementos[0].index].chave); } }
+    });
 
-    chartDiaSemana = new Chart(document.getElementById("graficoDiaSemana"), {type:"bar",data:{labels:Object.keys(porDiaSemana).map(n=>n.slice(0,3)),datasets:[{data:Object.values(porDiaSemana),backgroundColor:"rgba(214,90,126,.75)",borderRadius:10,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>formatarMoedaGrafico(c.raw)}}},scales:{x:{grid:{display:false},ticks:{color:"#806b72",font:{weight:"bold"}}},y:{beginAtZero:true,grid:{color:"rgba(214,90,126,.10)"},ticks:{callback:v=>formatarMoedaGrafico(v),color:"#806b72"}}}}});
+    const porDiaSemana = agruparReceitaPorDiaSemana(dados);
+    const diasOrdenados = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+    const canvasSemana = document.getElementById("graficoDiaSemana");
+    if (canvasSemana) {
+        const opcoes = opcoesBaseGraficoFinanceiro();
+        opcoes.plugins.legend.display = false;
+        opcoes.onClick = (_, elementos) => { if (elementos.length) aplicarFiltroDiaSemanaFinanceiro(diasOrdenados[elementos[0].index]); };
+        chartDiaSemana = new Chart(canvasSemana, { type: "bar", data: { labels: diasOrdenados.map(n => n.slice(0, 3)), datasets: [{ label: "Faturamento", data: diasOrdenados.map(n => porDiaSemana[n] || 0), backgroundColor: "rgba(214,90,126,.78)", borderRadius: 10, borderSkipped: false }] }, options: opcoes });
+    }
 
-    const servicosOrdenados=Object.entries(porServico).sort((a,b)=>b[1]-a[1]).slice(0,10);
-    chartServico = new Chart(document.getElementById("graficoServico"), {type:"bar",data:{labels:servicosOrdenados.map(i=>i[0]),datasets:[{label:"Valor",data:servicosOrdenados.map(i=>i[1]),backgroundColor(context){return criarGradienteBarra(context.chart,"rgba(248,191,207,.92)","rgba(150,54,83,.95)");},borderColor:"#963653",borderWidth:1,borderRadius:12,borderSkipped:false,maxBarThickness:38}]},options:opcoesGraficoBarras("Valor",true),plugins:[pluginRotulosValores]});
+    const servicos = Object.entries(agruparServicos(dados)).sort((a, b) => b[1] - a[1]).slice(0, 12);
+    const canvasServico = document.getElementById("graficoServico");
+    if (canvasServico) {
+        const opcoes = opcoesBaseGraficoFinanceiro();
+        opcoes.indexAxis = "y";
+        opcoes.plugins.legend.display = false;
+        opcoes.scales.x = { beginAtZero: true, grid: { color: "rgba(214,90,126,.10)" }, ticks: { color: "#806b72", callback: value => formatarMoedaGrafico(value) } };
+        opcoes.scales.y = { grid: { display: false }, ticks: { color: "#5f4951", font: { weight: "bold" }, autoSkip: false } };
+        opcoes.onClick = (_, elementos) => { if (elementos.length) aplicarFiltroServicoFinanceiro(servicos[elementos[0].index][0]); };
+        chartServico = new Chart(canvasServico, { type: "bar", data: { labels: servicos.map(i => i[0]), datasets: [{ label: "Receita", data: servicos.map(i => i[1]), backgroundColor: "rgba(214,90,126,.76)", borderColor: "#bd4267", borderWidth: 1, borderRadius: 9, borderSkipped: false }] }, options: opcoes });
+    }
 }
 
+function renderizarTabelaDiariaFinanceira(dados) {
+    const tbody = document.getElementById("financeDailyTableBody");
+    if (!tbody) return;
+    const mapa = new Map();
+    dados.forEach(item => {
+        if (!mapa.has(item.data)) mapa.set(item.data, { avulso: 0, pacote: 0, qtd: 0 });
+        const linha = mapa.get(item.data);
+        linha[item.origemFinanceira] += Number(item.valorTotal || 0);
+        linha.qtd += 1;
+    });
+    const linhas = Array.from(mapa.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+    if (!linhas.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="finance-table-empty">Nenhum lançamento concluído neste recorte.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = linhas.map(([data, item]) => {
+        const total = item.avulso + item.pacote;
+        const ticket = item.qtd ? total / item.qtd : 0;
+        return `<tr class="finance-daily-row" onclick="aplicarFiltroIntervaloFinanceiro('${data}','${data}','${formatarDataCurta(data)}')"><td><strong>${formatarDataCurta(data)}</strong></td><td>${formatarMoeda(item.avulso)}</td><td>${formatarMoeda(item.pacote)}</td><td><strong>${formatarMoeda(total)}</strong></td><td>${item.qtd}</td><td>${formatarMoeda(ticket)}</td></tr>`;
+    }).join("");
+}
+
+function resumoServicosFinanceiro(item) {
+    if (!Array.isArray(item.servicos) || !item.servicos.length) return "—";
+    return item.servicos.map(s => s.nome || "Serviço").join(", ");
+}
+
+function renderizarDetalhamentoFinanceiro(dados) {
+    const tbody = document.getElementById("financeDetailTableBody");
+    if (!tbody) return;
+    const ordenados = [...dados].sort((a, b) => `${b.data || ""} ${b.horario || ""}`.localeCompare(`${a.data || ""} ${a.horario || ""}`));
+    definirTexto("financeDetailCount", `${ordenados.length} lançamento${ordenados.length === 1 ? "" : "s"} • ${formatarMoeda(somarValorFinanceiro(ordenados))}`);
+    if (!ordenados.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="finance-table-empty">Nenhum lançamento para exibir.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = ordenados.slice(0, 300).map(item => `<tr><td>${formatarDataCurta(item.data)}</td><td><strong>${escaparHtmlFinanceiro(item.cliente || "Não informado")}</strong></td><td>${escaparHtmlFinanceiro(item.pet || "—")}</td><td>${escaparHtmlFinanceiro(resumoServicosFinanceiro(item))}</td><td><span class="finance-origin-badge ${item.origemFinanceira}">${item.origemFinanceira === "pacote" ? "Pacote" : "Avulso"}</span></td><td><strong>${formatarMoeda(item.valorTotal || 0)}</strong></td></tr>`).join("");
+}
+
+function renderizarPerformancePacotesFinanceira(dados) {
+    const futuro = calcularReceitaFuturaPacotes();
+    const realizado = somarValorFinanceiro(dados.filter(i => i.origemFinanceira === "pacote"));
+    definirTexto("financePacotesAtivos", futuro.ativos);
+    definirTexto("financePacotesRealizado", formatarMoeda(realizado));
+    definirTexto("financePacotesFuturo", formatarMoeda(futuro.valor));
+    definirTexto("financePacotesVisitas", futuro.visitas);
+    const tipos = {};
+    obterPacotesAtivosFaturamento().forEach(p => {
+        const tipo = p.tipo || "Não informado";
+        if (!tipos[tipo]) tipos[tipo] = { qtd: 0, valor: 0 };
+        tipos[tipo].qtd += 1;
+        tipos[tipo].valor += Number(p.valorPacote || 0);
+    });
+    const el = document.getElementById("financePacotesTipos");
+    if (!el) return;
+    const entradas = Object.entries(tipos).sort((a, b) => b[1].valor - a[1].valor);
+    el.innerHTML = entradas.length ? entradas.map(([tipo, info]) => `<div><span>${escaparHtmlFinanceiro(tipo)}</span><strong>${info.qtd} • ${formatarMoeda(info.valor)}</strong></div>`).join("") : '<p class="finance-empty">Nenhum pacote ativo.</p>';
+}
 
 
 function normalizarTextoCliente(valor) {
