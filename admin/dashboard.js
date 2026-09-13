@@ -3,6 +3,7 @@ let servicosAdmin = [];
 let pacotesAdmin = [];
 let filtroRapidoPacoteAtual = "todos";
 let clientesAdmin = [];
+let pacoteClienteAutoPreenchido = false;
 let clienteSelecionadoAdminId = null;
 let crmHistorico = [];
 let crmCategoriaSelecionada = "todas";
@@ -228,9 +229,11 @@ async function abrirSecao(secao) {
                 executarCargaUnica("pacotes", () => carregarPacotesAdmin(true)),
                 executarCargaUnica("agendamentos", () => carregarAgendamentos(true))
             ]);
+            await executarCargaUnica("clientes", () => carregarClientesAdmin(true));
             await limparAgendamentosOrfaosPacotes();
             preencherHorariosPacote();
             atualizarPreviaPacote();
+            atualizarClientePacotePorTelefone();
             renderizarPacotes();
         }
 
@@ -2506,11 +2509,100 @@ function mostrarAvisoAdmin({ titulo, mensagem, icone = "ℹ️", textoConfirmar 
 
 function configurarMascaraTelefonePacote() {
     const input = document.getElementById("pacoteTelefone");
-    if (!input) return;
+    if (!input || input.dataset.mascaraConfigurada === "true") return;
 
     input.addEventListener("input", () => {
         input.value = formatarTelefonePacote(input.value);
+        atualizarClientePacotePorTelefone();
     });
+
+    input.addEventListener("blur", atualizarClientePacotePorTelefone);
+    input.dataset.mascaraConfigurada = "true";
+}
+
+function obterClientesPacotePorTelefone(telefone) {
+    const telefoneNormalizado = normalizarTelefoneCliente(telefone);
+    if (telefoneNormalizado.length < 10) return [];
+
+    return clientesAdmin.filter(item =>
+        item?.telefone && telefonesEquivalentesCliente(item.telefone, telefoneNormalizado)
+    );
+}
+
+function obterPetsUnicosClientePacote(clientes) {
+    const mapa = new Map();
+
+    clientes.forEach(item => {
+        const nomePet = String(item?.pet || "").trim();
+        if (!nomePet) return;
+
+        const chave = normalizarTextoCliente(nomePet);
+        if (!mapa.has(chave)) mapa.set(chave, nomePet);
+    });
+
+    return Array.from(mapa.values()).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+function definirCampoPetPacote(pets = []) {
+    const inputPet = document.getElementById("pacoteNomePet");
+    const selectPet = document.getElementById("pacotePetSelect");
+    if (!inputPet || !selectPet) return;
+
+    if (pets.length > 1) {
+        inputPet.style.display = "none";
+        inputPet.value = "";
+        selectPet.style.display = "block";
+        selectPet.innerHTML = [
+            '<option value="">Selecione o pet</option>',
+            ...pets.map(pet => `<option value="${escaparHTMLCRM(pet)}">${escaparHTMLCRM(pet)}</option>`)
+        ].join("");
+        return;
+    }
+
+    selectPet.style.display = "none";
+    selectPet.innerHTML = '<option value="">Selecione o pet</option>';
+    inputPet.style.display = "block";
+    inputPet.value = pets[0] || "";
+}
+
+function atualizarClientePacotePorTelefone() {
+    const inputTelefone = document.getElementById("pacoteTelefone");
+    const inputNome = document.getElementById("pacoteNomeCliente");
+    if (!inputTelefone || !inputNome) return;
+
+    const telefoneNormalizado = normalizarTelefoneCliente(inputTelefone.value);
+    if (telefoneNormalizado.length < 10) {
+        if (pacoteClienteAutoPreenchido) {
+            inputNome.value = "";
+            definirCampoPetPacote([]);
+        }
+        pacoteClienteAutoPreenchido = false;
+        return;
+    }
+
+    const encontrados = obterClientesPacotePorTelefone(inputTelefone.value);
+
+    if (encontrados.length === 0) {
+        if (pacoteClienteAutoPreenchido) {
+            inputNome.value = "";
+            definirCampoPetPacote([]);
+        }
+        pacoteClienteAutoPreenchido = false;
+        return;
+    }
+
+    const nomeCliente = encontrados.find(item => String(item?.cliente || "").trim())?.cliente || "";
+    const pets = obterPetsUnicosClientePacote(encontrados);
+
+    inputNome.value = nomeCliente;
+    definirCampoPetPacote(pets);
+    pacoteClienteAutoPreenchido = true;
+}
+
+function obterNomePetPacoteSelecionado() {
+    const selectPet = document.getElementById("pacotePetSelect");
+    if (selectPet && selectPet.style.display !== "none") return selectPet.value.trim();
+    return document.getElementById("pacoteNomePet")?.value.trim() || "";
 }
 
 function formatarTelefonePacote(valor) {
@@ -2593,7 +2685,7 @@ function existeConflitoPacote(datas, horario) {
 async function salvarPacote() {
     const nomeCliente = document.getElementById("pacoteNomeCliente").value.trim();
     const telefone = document.getElementById("pacoteTelefone").value.trim();
-    const nomePet = document.getElementById("pacoteNomePet").value.trim();
+    const nomePet = obterNomePetPacoteSelecionado();
     const tipo = document.getElementById("pacoteTipo").value;
     const dataInicio = document.getElementById("pacoteDataInicio").value;
     const primeiroBanho = document.getElementById("pacotePrimeiroBanho").value;
@@ -2690,7 +2782,8 @@ async function salvarPacote() {
 
     document.getElementById("pacoteNomeCliente").value = "";
     document.getElementById("pacoteTelefone").value = "";
-    document.getElementById("pacoteNomePet").value = "";
+    definirCampoPetPacote([]);
+    pacoteClienteAutoPreenchido = false;
     document.getElementById("pacoteTipo").value = "Mensal";
     document.getElementById("pacoteDataInicio").value = "";
     document.getElementById("pacotePrimeiroBanho").value = "";

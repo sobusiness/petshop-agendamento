@@ -1,0 +1,15 @@
+PetLyne V7.9.5 - Autopreenchimento no Cadastro de Pacotes
+
+Arquivos alterados:
+- admin/dashboard.js
+- admin/dashboard.html
+
+Ajustes:
+- Ao abrir Gestão de Pacotes, a base de clientes é carregada em cache junto aos dados necessários do módulo.
+- Ao digitar um telefone já cadastrado, o sistema identifica o cliente pelo telefone normalizado e preenche automaticamente o nome do cliente.
+- Se o telefone tiver somente um pet cadastrado, o nome do pet é preenchido automaticamente.
+- Se o telefone tiver dois ou mais pets, o campo de pet vira um seletor para escolher qual pet receberá o pacote.
+- Telefones antigos com/sem o nono dígito continuam sendo tratados como equivalentes pela regra já existente no sistema.
+- Para telefone não encontrado, os campos continuam livres para cadastro manual, preservando o comportamento anterior.
+- Após cadastrar o pacote, o seletor/autopreenchimento é resetado corretamente.
+- Cache-busting atualizado para dashboard.js?v=7.9.5.
