@@ -48,3 +48,10 @@ V8.1.1
 - Morcegos animados atravessando a página.
 - Abóboras com efeito lento de acender/apagar.
 - Ajustes específicos para mobile.
+
+V8.1.2 — Ajustes do topo e imersão
+- Corrigida a arte temporária para exibir inteira (cachorro, gato e lettering PetLyne), sem crop.
+- Corrigido excesso/corte do topo no mobile.
+- Badge Halloween 2026 reposicionado para não sobrepor abóboras no celular.
+- Abóboras agora permanecem estáticas; apenas a luz interna pulsa suavemente.
+- Adicionadas decorações laterais com abóboras, teias e morcegos para maior imersão.
