@@ -325,37 +325,28 @@ function obterDatasAgendaAberta() {
         }
     });
 
-    bloqueiosAgenda.forEach(item => {
-        if (item.status === "Ativo" && item.data) {
-            datas.add(item.data);
-        }
-    });
-
-    if (datas.size === 0) {
-        datas.add(hojeISO());
-    }
-
     return Array.from(datas).sort();
 }
 
 function obterDatasAgendaPorPeriodo() {
     const hoje = hojeISO();
+    const datasComAgendamento = obterDatasAgendaAberta();
 
     if (filtroAgendaPeriodo === "hoje") {
-        return [hoje];
+        return datasComAgendamento.filter(data => data === hoje);
     }
 
     if (filtroAgendaPeriodo === "ultimos7") {
         const inicio = adicionarDias(hoje, -6);
-        return Array.from({ length: 7 }, (_, index) => adicionarDias(inicio, index));
+        return datasComAgendamento.filter(data => data >= inicio && data <= hoje);
     }
 
     if (filtroAgendaPeriodo === "ultimos15") {
         const inicio = adicionarDias(hoje, -14);
-        return Array.from({ length: 15 }, (_, index) => adicionarDias(inicio, index));
+        return datasComAgendamento.filter(data => data >= inicio && data <= hoje);
     }
 
-    return obterDatasAgendaAberta();
+    return datasComAgendamento;
 }
 
 function formatarDataCurta(dataISO) {
@@ -492,6 +483,7 @@ function agendamentoBateFiltroProtocolo(agendamento) {
 
 let scrollAgendaTravado = false;
 let scrollAgendaConfigurado = false;
+let agendaPosicionadaNaUltimaData = false;
 
 function obterElementosScrollAgenda() {
     return {
@@ -550,6 +542,17 @@ function atualizarScrollSuperiorAgenda() {
     });
 }
 
+function posicionarAgendaNaUltimaData() {
+    if (agendaPosicionadaNaUltimaData || filtroAgendaPeriodo !== "todos") return;
+    const { bottom, top } = obterElementosScrollAgenda();
+    if (!bottom || !top) return;
+
+    const maxScroll = Math.max(0, bottom.scrollWidth - bottom.clientWidth);
+    bottom.scrollLeft = maxScroll;
+    top.scrollLeft = maxScroll;
+    agendaPosicionadaNaUltimaData = true;
+}
+
 function moverScrollAgenda(delta) {
     const { bottom, top } = obterElementosScrollAgenda();
     if (!bottom || !top) return;
@@ -599,6 +602,15 @@ function renderizarAgenda() {
     calendario.innerHTML = "";
 
     const datas = obterDatasAgendaPorPeriodo();
+
+    if (datas.length === 0) {
+        calendario.style.gridTemplateColumns = "1fr";
+        calendario.innerHTML = `<div style="padding:32px;text-align:center;color:#8a737b;font-weight:700;">Nenhum agendamento encontrado neste período.</div>`;
+        filtroInfo.textContent = "Nenhuma data com agendamento para exibir.";
+        atualizarPainelOperacionalAgenda();
+        setTimeout(atualizarScrollSuperiorAgenda, 0);
+        return;
+    }
 
     calendario.style.gridTemplateColumns = `64px repeat(${datas.length}, minmax(148px, 1fr))`;
 
@@ -718,8 +730,14 @@ function renderizarAgenda() {
     filtroInfo.textContent = textosPeriodo[filtroAgendaPeriodo] || textosPeriodo.todos;
     atualizarPainelOperacionalAgenda();
 
-    setTimeout(atualizarScrollSuperiorAgenda, 0);
-    setTimeout(atualizarScrollSuperiorAgenda, 250);
+    setTimeout(() => {
+        atualizarScrollSuperiorAgenda();
+        posicionarAgendaNaUltimaData();
+    }, 0);
+    setTimeout(() => {
+        atualizarScrollSuperiorAgenda();
+        posicionarAgendaNaUltimaData();
+    }, 250);
 }
 
 function criarCelula(conteudo, classe) {
@@ -741,6 +759,7 @@ function filtrarAgendaPeriodo(periodo) {
 
 function limparFiltroAgendamentos() {
     filtroAgendaPeriodo = "todos";
+    agendaPosicionadaNaUltimaData = false;
 
     const filtroProtocolo = document.getElementById("filtroProtocoloAgenda");
     if (filtroProtocolo) filtroProtocolo.value = "";
@@ -748,41 +767,82 @@ function limparFiltroAgendamentos() {
     renderizarAgenda();
 }
 
+function agendamentoEhAvulsoFinanceiro(item) {
+    return protocoloEhLyne(item?.protocolo) && agendamentoConcluidoCRM(item);
+}
+
+function dataPacoteFinanceiroISO(pacote) {
+    const dataCriacao = pacote?.criadoEm?.toDate?.() || (pacote?.criadoEm instanceof Date ? pacote.criadoEm : null);
+    if (dataCriacao && !Number.isNaN(dataCriacao.getTime())) return obterDataLocalISO(dataCriacao);
+    return pacote?.dataInicio || pacote?.primeiroBanho || "";
+}
+
+function dataNoIntervaloFinanceiro(data, intervalo) {
+    if (!data) return false;
+    if (intervalo?.inicio && data < intervalo.inicio) return false;
+    if (intervalo?.fim && data > intervalo.fim) return false;
+    return true;
+}
+
 function obterAgendamentosFiltradosFaturamento() {
-    const hoje = hojeISO();
-    const realizados = agendamentos.filter(item => item.status === "Concluído");
+    const intervalo = obterIntervaloFinanceiroAtual();
+    const realizados = agendamentos.filter(item =>
+        agendamentoEhAvulsoFinanceiro(item) &&
+        dataNoIntervaloFinanceiro(item.data, intervalo)
+    );
 
-    let resultado = realizados;
+    return aplicarFiltrosAvancadosFaturamento(realizados);
+}
 
-    if (filtroFaturamentoAtual === "hoje") {
-        resultado = realizados.filter(item => item.data === hoje);
-    }
+function pacotePassaFiltrosFinanceiros(pacote) {
+    const filtros = obterFiltrosFaturamentoAvancados();
+    const cadastroPet = clientesAdmin.find(c =>
+        telefonesEquivalentesCliente(c.telefone, pacote.telefone) &&
+        normalizarTextoCliente(c.pet) === normalizarTextoCliente(pacote.nomePet)
+    );
+    const especie = cadastroPet?.especie || "Cão";
+    const porte = cadastroPet?.porte || "";
 
-    if (filtroFaturamentoAtual === "7dias") {
-        const inicio = adicionarDias(hoje, -6);
-        resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
-    }
+    if (filtros.especie && especie !== filtros.especie) return false;
+    if (filtros.porte && porte !== filtros.porte) return false;
+    if (filtros.servico && filtros.servico !== "banho") return false;
+    return true;
+}
 
-    if (filtroFaturamentoAtual === "mes") {
-        const inicio = hoje.slice(0, 7) + "-01";
-        resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
-    }
+function obterPacotesFiltradosFaturamento(intervalo = obterIntervaloFinanceiroAtual()) {
+    return pacotesAdmin.filter(pacote => {
+        const status = normalizarTextoCliente(pacote.status);
+        if (status !== "ativo" && status !== "concluido") return false;
+        const dataReceita = dataPacoteFinanceiroISO(pacote);
+        return dataNoIntervaloFinanceiro(dataReceita, intervalo) && pacotePassaFiltrosFinanceiros(pacote);
+    });
+}
 
-    if (filtroFaturamentoAtual === "30dias") {
-        const inicio = adicionarDias(hoje, -29);
-        resultado = realizados.filter(item => item.data >= inicio && item.data <= hoje);
-    }
+function transformarPacoteEmLancamentoFinanceiro(pacote) {
+    const cadastroPet = clientesAdmin.find(c =>
+        telefonesEquivalentesCliente(c.telefone, pacote.telefone) &&
+        normalizarTextoCliente(c.pet) === normalizarTextoCliente(pacote.nomePet)
+    );
+    return {
+        origemFinanceira: "pacote",
+        protocolo: pacote.protocolo || pacote.id || "PACOTE",
+        cliente: pacote.nomeCliente || "Cliente",
+        telefone: pacote.telefone || "",
+        pet: pacote.nomePet || "",
+        especie: cadastroPet?.especie || "Cão",
+        porte: cadastroPet?.porte || "",
+        data: dataPacoteFinanceiroISO(pacote),
+        horario: "",
+        valorTotal: Number(pacote.valorPacote || 0),
+        servicos: [{ nome: `Pacote ${pacote.tipo || ""}`.trim(), valor: Number(pacote.valorPacote || 0) }]
+    };
+}
 
-    if (filtroFaturamentoAtual === "personalizado") {
-        const inicio = document.getElementById("dataInicioFaturamento").value;
-        const fim = document.getElementById("dataFimFaturamento").value;
-
-        if (inicio && fim) {
-            resultado = realizados.filter(item => item.data >= inicio && item.data <= fim);
-        }
-    }
-
-    return aplicarFiltrosAvancadosFaturamento(resultado);
+function obterLancamentosFinanceirosAtuais() {
+    return [
+        ...obterAgendamentosFiltradosFaturamento(),
+        ...obterPacotesFiltradosFaturamento().map(transformarPacoteEmLancamentoFinanceiro)
+    ];
 }
 
 function filtrarFaturamento(tipo) {
@@ -809,77 +869,30 @@ function limparFiltroFaturamento() {
 
 
 function obterPacotesAtivosFaturamento() {
-    return pacotesAdmin.filter(pacote => pacote.status === "Ativo");
-}
-
-function distribuirValorPacotePorVisitas(pacote) {
-    const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
-    const quantidade = visitas.length || Number(pacote.quantidadeTotal || 1) || 1;
-    const valorPorVisita = Number(pacote.valorPacote || 0) / quantidade;
-
-    return visitas.map(visita => ({
-        data: visita.data,
-        especie: pacote.especie || "Cão",
-        valor: valorPorVisita,
-        servico: `Pacote ${pacote.tipo || ""}`.trim()
-    }));
-}
-
-function obterLancamentosPacotesFaturamento() {
-    return obterPacotesAtivosFaturamento().flatMap(distribuirValorPacotePorVisitas);
+    return pacotesAdmin.filter(pacote => normalizarTextoCliente(pacote.status) === "ativo");
 }
 
 function agruparPorDiaComPacotes(dados) {
-    const resultado = agruparPorCampo(dados, "data");
-
-    obterLancamentosPacotesFaturamento().forEach(item => {
-        if (!item.data) return;
-        resultado[item.data] = (resultado[item.data] || 0) + Number(item.valor || 0);
-    });
-
-    return resultado;
+    return agruparPorCampo(dados, "data");
 }
 
 function agruparPorEspecieComPacotes(dados) {
-    const resultado = agruparPorCampo(dados, "especie");
-
-    obterLancamentosPacotesFaturamento().forEach(item => {
-        const chave = item.especie || "Não informado";
-        resultado[chave] = (resultado[chave] || 0) + Number(item.valor || 0);
-    });
-
-    return resultado;
-}
-
-
-
-function obterResumoPacotesRealizados() {
-    return pacotesAdmin.reduce((acc, pacote) => {
-        const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
-        const realizadas = visitas.filter(visita => visita.status === "Realizado").length;
-
-        // A quantidade continua refletindo os banhos realmente realizados.
-        acc.quantidade += realizadas;
-
-        // Como pacote normalmente é pago no fechamento, o valor entra no faturamento
-        // quando estiver Ativo ou Concluído. Não entra se estiver Inativo.
-        if (pacote.status === "Ativo" || pacote.status === "Concluído") {
-            acc.valor += Number(pacote.valorPacote || 0);
-        }
-
-        return acc;
-    }, { quantidade: 0, valor: 0 });
+    return agruparPorCampo(dados, "especie");
 }
 
 function atualizarFaturamento() {
-    const dados = obterAgendamentosFiltradosFaturamento();
-    const resumoPacotesRealizados = obterResumoPacotesRealizados();
-    const quantidadeAgendamentos = dados.length;
-    const valorAgendamentos = dados.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
-    const quantidade = quantidadeAgendamentos + resumoPacotesRealizados.quantidade;
-    const valorTotal = valorAgendamentos + resumoPacotesRealizados.valor;
+    const avulsos = obterAgendamentosFiltradosFaturamento();
+    const pacotesPeriodo = obterPacotesFiltradosFaturamento();
+    const lancamentos = [
+        ...avulsos,
+        ...pacotesPeriodo.map(transformarPacoteEmLancamentoFinanceiro)
+    ];
+
+    const quantidade = lancamentos.length;
+    const valorTotal = lancamentos.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
     const ticketMedio = quantidade > 0 ? valorTotal / quantidade : 0;
-    const pacotesAtivos = pacotesAdmin.filter(pacote => pacote.status === "Ativo");
+
+    const pacotesAtivos = obterPacotesAtivosFaturamento();
     const valorPacotes = pacotesAtivos.reduce((acc, pacote) => acc + Number(pacote.valorPacote || 0), 0);
 
     definirTexto("kpiAtendimentos", quantidade);
@@ -888,12 +901,11 @@ function atualizarFaturamento() {
     definirTexto("kpiPacotesAtivos", pacotesAtivos.length);
     definirTexto("kpiValorPacotes", formatarMoeda(valorPacotes));
 
-    const contexto = calcularContextoFinanceiro(dados, valorTotal, ticketMedio);
-    renderizarInteligenciaFinanceira(dados, contexto);
-    renderizarGraficos(dados);
+    const contexto = calcularContextoFinanceiro(lancamentos, valorTotal, ticketMedio);
+    renderizarInteligenciaFinanceira(lancamentos, contexto);
+    renderizarGraficos(lancamentos);
     atualizarEstadoFiltrosFinanceiros();
 }
-
 function definirTexto(id, valor) {
     const el = document.getElementById(id);
     if (el) el.textContent = valor;
@@ -915,16 +927,28 @@ function obterIntervaloFinanceiroAtual() {
 
 function calcularContextoFinanceiro(dados, valorTotal, ticketMedio) {
     const hoje = hojeISO();
-    const realizadosHoje = agendamentos.filter(item => item.status === "Concluído" && item.data === hoje);
-    const pendentesHoje = agendamentos.filter(item => item.status !== "Concluído" && item.status !== "Cancelado" && item.data === hoje);
-    const receitaHoje = realizadosHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
+    const intervaloHoje = { inicio: hoje, fim: hoje };
+    const realizadosHoje = agendamentos.filter(item => agendamentoEhAvulsoFinanceiro(item) && item.data === hoje);
+    const pacotesHoje = obterPacotesFiltradosFaturamento(intervaloHoje).map(transformarPacoteEmLancamentoFinanceiro);
+    const pendentesHoje = agendamentos.filter(item =>
+        protocoloEhLyne(item.protocolo) &&
+        !agendamentoConcluidoCRM(item) &&
+        normalizarTextoCliente(item.status) !== "cancelado" &&
+        item.data === hoje
+    );
+    const receitaHoje = [...realizadosHoje, ...pacotesHoje].reduce((a, i) => a + Number(i.valorTotal || 0), 0);
     const previstoHoje = pendentesHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
     const slotsDia = 14;
-    const ocupadosHoje = agendamentos.filter(i => i.data === hoje && i.status !== "Cancelado").length;
+    const ocupadosHoje = agendamentos.filter(i => i.data === hoje && normalizarTextoCliente(i.status) !== "cancelado").length;
     const ocupacaoHoje = Math.min(100, Math.round((ocupadosHoje / slotsDia) * 100));
     const intervalo = obterIntervaloFinanceiroAtual();
     const meta = Number(localStorage.getItem("petlyneMetaMensal") || 5000);
-    const receitaMes = agendamentos.filter(i => i.status === "Concluído" && i.data?.startsWith(hoje.slice(0,7))).reduce((a,i)=>a+Number(i.valorTotal||0),0) + pacotesAdmin.filter(p=>p.status === "Ativo" || p.status === "Concluído").reduce((a,p)=>a+Number(p.valorPacote||0),0);
+
+    const inicioMes = `${hoje.slice(0, 7)}-01`;
+    const avulsosMes = agendamentos.filter(i => agendamentoEhAvulsoFinanceiro(i) && i.data >= inicioMes && i.data <= hoje);
+    const pacotesMes = obterPacotesFiltradosFaturamento({ inicio: inicioMes, fim: hoje });
+    const receitaMes = avulsosMes.reduce((a,i)=>a+Number(i.valorTotal||0),0) + pacotesMes.reduce((a,p)=>a+Number(p.valorPacote||0),0);
+
     const percentualMeta = meta > 0 ? Math.min(999, (receitaMes / meta) * 100) : 0;
     const scoreReceita = Math.min(40, percentualMeta * .4);
     const scoreOcupacao = Math.min(25, ocupacaoHoje * .25);
@@ -932,9 +956,8 @@ function calcularContextoFinanceiro(dados, valorTotal, ticketMedio) {
     const concluidos = dados.length;
     const scoreVolume = Math.min(15, concluidos * 1.5);
     const healthScore = Math.round(scoreReceita + scoreOcupacao + scoreTicket + scoreVolume);
-    return { hoje, realizadosHoje, pendentesHoje, receitaHoje, previstoHoje, ocupacaoHoje, intervalo, meta, receitaMes, percentualMeta, healthScore, valorTotal, ticketMedio };
+    return { hoje, realizadosHoje:[...realizadosHoje, ...pacotesHoje], pendentesHoje, receitaHoje, previstoHoje, ocupacaoHoje, intervalo, meta, receitaMes, percentualMeta, healthScore, valorTotal, ticketMedio };
 }
-
 function renderizarInteligenciaFinanceira(dados, c) {
     definirTexto("financePeriodLabel", c.intervalo.label);
     const metaInput = document.getElementById("metaMensalFaturamento");
@@ -962,7 +985,8 @@ function renderizarComparacaoFinanceira(dados, c) {
     const intervalo = c.intervalo;
     if (!intervalo.inicio || !intervalo.fim || filtroFaturamentoAtual === "todos") {
         definirTexto("kpiReceitaComparacao", "Acumulado selecionado");
-        definirTexto("kpiAtendimentosComparacao", `${dados.length} registros concluídos`);
+        definirTexto("kpiAtendimentosComparacao", `${dados.length} lançamentos de receita`);
+        definirTexto("kpiTicketComparacao", "Acumulado selecionado");
         return;
     }
     const inicio = new Date(`${intervalo.inicio}T12:00:00`);
@@ -970,7 +994,14 @@ function renderizarComparacaoFinanceira(dados, c) {
     const dias = Math.max(1, Math.round((fim-inicio)/86400000)+1);
     const antFim = adicionarDias(intervalo.inicio, -1);
     const antInicio = adicionarDias(antFim, -(dias-1));
-    const anterior = aplicarFiltrosAvancadosFaturamento(agendamentos.filter(i => i.status === "Concluído" && i.data >= antInicio && i.data <= antFim));
+    const intervaloAnterior = { inicio: antInicio, fim: antFim };
+
+    const avulsosAnterior = aplicarFiltrosAvancadosFaturamento(
+        agendamentos.filter(i => agendamentoEhAvulsoFinanceiro(i) && dataNoIntervaloFinanceiro(i.data, intervaloAnterior))
+    );
+    const pacotesAnterior = obterPacotesFiltradosFaturamento(intervaloAnterior).map(transformarPacoteEmLancamentoFinanceiro);
+    const anterior = [...avulsosAnterior, ...pacotesAnterior];
+
     const valorAnterior = anterior.reduce((a,i)=>a+Number(i.valorTotal||0),0);
     const atual = dados.reduce((a,i)=>a+Number(i.valorTotal||0),0);
     const variacao = valorAnterior > 0 ? ((atual-valorAnterior)/valorAnterior)*100 : null;
@@ -979,7 +1010,6 @@ function renderizarComparacaoFinanceira(dados, c) {
     const ticketAnt = anterior.length ? valorAnterior/anterior.length : 0;
     definirTexto("kpiTicketComparacao", ticketAnt ? `${c.ticketMedio >= ticketAnt ? "▲" : "▼"} ${formatarMoeda(Math.abs(c.ticketMedio-ticketAnt))}` : "Sem base anterior");
 }
-
 function renderizarInsightsFinanceiros(dados, c) {
     const insights=[];
     const servicos = Object.entries(agruparServicos(dados)).sort((a,b)=>b[1]-a[1]);
@@ -1049,16 +1079,8 @@ function agruparServicos(dados) {
         });
     });
 
-    pacotesAdmin
-        .filter(pacote => pacote.status === "Ativo" || pacote.status === "Concluído")
-        .forEach(pacote => {
-            const nome = `Pacote ${pacote.tipo || ""}`.trim();
-            resultado[nome] = (resultado[nome] || 0) + Number(pacote.valorPacote || 0);
-        });
-
     return resultado;
 }
-
 
 function criarGradienteBarra(chart, corInicial, corFinal) {
     const { ctx, chartArea } = chart;
@@ -3241,7 +3263,7 @@ async function concluirAgendamento(id) {
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
         }, {merge:true});
 
-        const chave = clubeChaveCliente(agendamentoAtual.cliente || "Cliente");
+        const chave = clubeChaveCliente(agendamentoAtual.cliente || "Cliente", agendamentoAtual.telefone || "");
         await db.collection("clubePetlyneResgates").add({
             clienteChave: chave,
             cliente: agendamentoAtual.cliente || "",
@@ -4043,7 +4065,12 @@ function renderizarMetricasCRM() {
 // CLUBE PETLYNE V4.1 - fidelidade premium, prioridade e inteligência
 // ============================================================
 function clubeNormalizarNome(valor) { return normalizarTextoCliente(String(valor || '').trim()); }
-function clubeChaveCliente(nome) { return `dono:${clubeNormalizarNome(nome)}`; }
+function clubeChaveCliente(nome, telefone = "") {
+    const telefoneNormalizado = normalizarTelefoneCliente(telefone);
+    if (telefoneNormalizado) return `telefone:${telefoneNormalizado}`;
+    // Fallback apenas para registros legados sem telefone.
+    return `dono:${clubeNormalizarNome(nome)}`;
+}
 function clubeDataParaDate(valor) { return dataFirestoreParaDateCRM(valor); }
 function clubeDiasDesde(data) {
     if (!data) return null;
@@ -4160,12 +4187,25 @@ function calcularClientesClubePetlyne() {
     const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a));
     concluidos.forEach(a => {
         const nome = String(a.cliente || 'Cliente').trim();
-        const chave = clubeChaveCliente(nome);
+        const telefone = normalizarTelefoneCliente(a.telefone);
+        const chave = clubeChaveCliente(nome, telefone);
         if (!mapa.has(chave)) mapa.set(chave, { chave, cliente:nome, telefone:a.telefone||'', banhos:0, pets:new Set(), atendimentos:[] });
-        const item=mapa.get(chave); item.banhos++; item.atendimentos.push(a);
-        if(a.pet)item.pets.add(a.pet); if(a.telefone)item.telefone=a.telefone;
+        const item=mapa.get(chave);
+        item.banhos++;
+        item.atendimentos.push(a);
+        if(a.pet)item.pets.add(a.pet);
+        if(a.telefone)item.telefone=a.telefone;
+        // Mantém o nome mais recente do mesmo telefone sem misturar homônimos.
+        if(a.cliente)item.cliente=String(a.cliente).trim();
     });
-    clientesAdmin.forEach(c=>{const item=mapa.get(clubeChaveCliente(c.cliente)); if(!item)return; if(c.telefone)item.telefone=c.telefone; if(c.pet)item.pets.add(c.pet);});
+    clientesAdmin.forEach(c=>{
+        const chave = clubeChaveCliente(c.cliente, c.telefone);
+        const item=mapa.get(chave);
+        if(!item)return;
+        if(c.telefone)item.telefone=c.telefone;
+        if(c.pet)item.pets.add(c.pet);
+        if(c.cliente)item.cliente=String(c.cliente).trim();
+    });
 
     return [...mapa.values()].map(item=>{
         const ciclosCompletos=Math.floor(item.banhos/CLUBE_CONFIG.metaBanhos), cicloAtual=ciclosCompletos+1, progressoBruto=item.banhos%CLUBE_CONFIG.metaBanhos;

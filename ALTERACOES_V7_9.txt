@@ -1,0 +1,32 @@
+PETLYNE V7.9 — CORREÇÕES CLUBE, FATURAMENTO E AGENDA
+
+CLUBE PETLYNE
+- Cliente passa a ser identificado prioritariamente pelo telefone normalizado.
+- Clientes homônimos não são mais agrupados no mesmo card.
+- Pets ficam vinculados apenas ao telefone correto.
+- Resgates e novos benefícios passam a usar a mesma chave baseada em telefone.
+- Registros legados sem telefone mantêm fallback por nome.
+
+FATURAMENTO
+- Receita agora considera somente:
+  1) agendamentos avulsos LYNE concluídos no período;
+  2) valor integral dos pacotes cadastrados/vendidos no período.
+- Visitas PACK não entram novamente como receita, eliminando dupla contagem.
+- Hoje, 7 dias, 30 dias, Este mês, personalizado e histórico usam a mesma regra.
+- Pacotes são atribuídos ao período pela data de cadastro (criadoEm; fallback dataInicio).
+- Receita mensal/meta também usa a mesma regra corrigida.
+- Comparação com período anterior, gráficos, rankings e ticket médio passam a usar os mesmos lançamentos financeiros consistentes.
+- Cards de Pacotes Ativos continuam mostrando a carteira ativa total.
+
+AGENDA
+- Exibe somente colunas de datas que possuem pelo menos um agendamento.
+- Datas que possuem apenas bloqueio, sem agendamento, não criam coluna.
+- Bloqueios continuam visíveis normalmente quando a data possui agendamento.
+- Ao abrir/recarregar a agenda em “todos”, o scroll inicia automaticamente na data mais recente com agendamento.
+- Filtros de Hoje/7 dias/15 dias também exibem apenas datas que efetivamente possuem agendamento.
+- Adicionado estado vazio quando não há agendamentos no período.
+
+ARQUIVOS ALTERADOS
+- admin/dashboard.js
+- admin/dashboard.html
+- ALTERACOES_V7_9.txt
