@@ -1,0 +1,13 @@
+PETLYNE V7.9.6 - HORÁRIOS DO AGENDAMENTO ONLINE
+
+Alterações:
+- O agendamento público passa a exibir somente horários inteiros.
+- Horários disponíveis na grade: 09:00, 10:00, 11:00, 14:00, 15:00 e 16:00.
+- 12:00 e 13:00 permanecem visíveis como Almoço e indisponíveis para seleção.
+- Removidos do seletor público todos os intervalos de meia hora (09:30, 10:30, 11:30, 13:30, 14:30, 15:30 e 16:30).
+- As validações de ocupação, duração do serviço e ausência temporária continuam funcionando normalmente sobre os novos horários.
+- Cache do app.js atualizado para v=7.9.6.
+
+Arquivos alterados:
+- app.js
+- index.html

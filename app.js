@@ -625,15 +625,18 @@ function selecionarBeneficioClubeCliente(tipo) {
 }
 
 
-const horariosPadrao = [];
-
-for (let hora = horaInicio; hora <= horaFim; hora++) {
-    horariosPadrao.push(`${hora.toString().padStart(2, "0")}:00`);
-
-    if (hora < horaFim) {
-        horariosPadrao.push(`${hora.toString().padStart(2, "0")}:30`);
-    }
-}
+// V7.9.6 - Agendamento online somente em intervalos de 1 hora.
+// Mantemos 12:00 e 13:00 visíveis como almoço/indisponíveis.
+const horariosPadrao = [
+    "09:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00"
+];
 
 
 
@@ -1861,7 +1864,7 @@ async function executarCarregamentoHorariosDisponiveis(minhaSequencia, chaveEspe
     horariosPadrao.forEach(horario => {
         const option = document.createElement("option");
 
-        if (horario === horarioAlmoco || horario === "12:30") {
+        if (horario === horarioAlmoco || horario === "13:00") {
             option.value = horario;
             option.textContent = `${horario} - Almoço`;
             option.disabled = true;
