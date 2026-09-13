@@ -1,0 +1,30 @@
+PETLYNE V7.9.2 — FATURAMENTO + SINCRONIZAÇÃO DE PACOTES/FIREBASE
+
+1. Faturamento por data financeira correta
+- Agendamentos avulsos concluídos usam `concluidoEm` como data do faturamento.
+- Registros antigos sem `concluidoEm` mantêm fallback para a data do atendimento.
+- Pacotes existentes continuam entrando como lançamento pelo valor integral do pacote na data de cadastro (`criadoEm`).
+- Pacote excluído deixa de entrar no faturamento porque não existe mais em `pacotes`.
+
+2. Exclusão de pacote robusta no Firebase
+- Ao excluir um pacote, o sistema não depende apenas dos IDs gravados no array `visitas`.
+- Também consulta `agendamentos` por `pacoteId` e remove todos os agendamentos vinculados.
+- Isso evita visitas órfãs como as do PACK-72608 permanecerem no Firebase.
+- Operações são feitas em batch, respeitando o limite do Firestore.
+
+3. Limpeza automática de órfãos antigos
+- Ao abrir Faturamento ou Pacotes, agendamentos de pacote PENDENTES cujo `pacoteId` não existe mais na coleção `pacotes` são removidos do Firebase.
+- Agendamentos já concluídos não são apagados por essa limpeza automática, preservando histórico realizado.
+
+4. Sincronização da visita do pacote
+- Marcar uma visita como Realizada em Pacotes atualiza também o agendamento correspondente para `Concluído`, incluindo `concluidoEm`.
+- Voltar a visita para Pendente devolve o agendamento para `Pacote` e limpa `concluidoEm`.
+- Concluir pela Agenda também atualiza a visita dentro do documento do pacote, quantidades e status do pacote.
+
+5. Cache
+- dashboard.html passou a carregar dashboard.js?v=7.9.2 para evitar o navegador reutilizar a versão anterior.
+
+Caso Manuela / Remi:
+- LYNE-67148: R$ 70, concluído em 12/09/2026 -> entra em Hoje.
+- PACK-72608: pacote excluído; visitas pendentes órfãs são removidas e não entram no faturamento.
+- Sem outro pacote válido cadastrado no dia, Hoje = R$ 70, Atendimentos = 1, Ticket médio = R$ 70.

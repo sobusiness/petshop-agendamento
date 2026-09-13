@@ -184,6 +184,7 @@ async function abrirSecao(secao) {
                 executarCargaUnica("agendamentos", () => carregarAgendamentos(true)),
                 executarCargaUnica("pacotes", () => carregarPacotesAdmin(true))
             ]);
+            await limparAgendamentosOrfaosPacotes();
             atualizarFaturamento();
         }
 
@@ -227,6 +228,7 @@ async function abrirSecao(secao) {
                 executarCargaUnica("pacotes", () => carregarPacotesAdmin(true)),
                 executarCargaUnica("agendamentos", () => carregarAgendamentos(true))
             ]);
+            await limparAgendamentosOrfaosPacotes();
             preencherHorariosPacote();
             atualizarPreviaPacote();
             renderizarPacotes();
@@ -771,6 +773,18 @@ function agendamentoEhAvulsoFinanceiro(item) {
     return protocoloEhLyne(item?.protocolo) && agendamentoConcluidoCRM(item);
 }
 
+function dataTimestampFinanceiroISO(valor) {
+    const data = valor?.toDate?.() || (valor instanceof Date ? valor : null);
+    if (!data || Number.isNaN(data.getTime())) return "";
+    return obterDataLocalISO(data);
+}
+
+function dataAgendamentoFinanceiroISO(item) {
+    // A receita do avulso pertence ao dia em que o atendimento foi efetivamente concluído.
+    // Registros antigos sem concluidoEm usam a data do atendimento apenas como compatibilidade histórica.
+    return dataTimestampFinanceiroISO(item?.concluidoEm) || item?.data || "";
+}
+
 function dataPacoteFinanceiroISO(pacote) {
     const dataCriacao = pacote?.criadoEm?.toDate?.() || (pacote?.criadoEm instanceof Date ? pacote.criadoEm : null);
     if (dataCriacao && !Number.isNaN(dataCriacao.getTime())) return obterDataLocalISO(dataCriacao);
@@ -784,12 +798,17 @@ function dataNoIntervaloFinanceiro(data, intervalo) {
     return true;
 }
 
-function obterAgendamentosFiltradosFaturamento() {
-    const intervalo = obterIntervaloFinanceiroAtual();
-    const realizados = agendamentos.filter(item =>
-        agendamentoEhAvulsoFinanceiro(item) &&
-        dataNoIntervaloFinanceiro(item.data, intervalo)
-    );
+function obterAgendamentosFiltradosFaturamento(intervalo = obterIntervaloFinanceiroAtual()) {
+    const realizados = agendamentos
+        .filter(item =>
+            agendamentoEhAvulsoFinanceiro(item) &&
+            dataNoIntervaloFinanceiro(dataAgendamentoFinanceiroISO(item), intervalo)
+        )
+        .map(item => ({
+            ...item,
+            data: dataAgendamentoFinanceiroISO(item),
+            origemFinanceira: "avulso"
+        }));
 
     return aplicarFiltrosAvancadosFaturamento(realizados);
 }
@@ -838,11 +857,36 @@ function transformarPacoteEmLancamentoFinanceiro(pacote) {
     };
 }
 
-function obterLancamentosFinanceirosAtuais() {
+function obterLancamentosFinanceirosAtuais(intervalo = obterIntervaloFinanceiroAtual()) {
     return [
-        ...obterAgendamentosFiltradosFaturamento(),
-        ...obterPacotesFiltradosFaturamento().map(transformarPacoteEmLancamentoFinanceiro)
+        ...obterAgendamentosFiltradosFaturamento(intervalo),
+        ...obterPacotesFiltradosFaturamento(intervalo).map(transformarPacoteEmLancamentoFinanceiro)
     ];
+}
+
+async function limparAgendamentosOrfaosPacotes() {
+    const idsPacotesAtuais = new Set(pacotesAdmin.map(pacote => pacote.id));
+    const orfaosPendentes = agendamentos.filter(item =>
+        normalizarTextoCliente(item.origem) === "pacote" &&
+        item.pacoteId &&
+        !idsPacotesAtuais.has(item.pacoteId) &&
+        !agendamentoConcluidoCRM(item)
+    );
+
+    if (!orfaosPendentes.length) return 0;
+
+    for (let i = 0; i < orfaosPendentes.length; i += 450) {
+        const batch = db.batch();
+        orfaosPendentes.slice(i, i + 450).forEach(item => {
+            batch.delete(db.collection("agendamentos").doc(item.id));
+        });
+        await batch.commit();
+    }
+
+    const idsRemovidos = new Set(orfaosPendentes.map(item => item.id));
+    agendamentos = agendamentos.filter(item => !idsRemovidos.has(item.id));
+    invalidarCacheModulo("agendamentos");
+    return orfaosPendentes.length;
 }
 
 function filtrarFaturamento(tipo) {
@@ -881,12 +925,10 @@ function agruparPorEspecieComPacotes(dados) {
 }
 
 function atualizarFaturamento() {
-    const avulsos = obterAgendamentosFiltradosFaturamento();
-    const pacotesPeriodo = obterPacotesFiltradosFaturamento();
-    const lancamentos = [
-        ...avulsos,
-        ...pacotesPeriodo.map(transformarPacoteEmLancamentoFinanceiro)
-    ];
+    // Receita realizada = avulsos concluídos (pela data de concluidoEm) + pacotes
+    // atualmente existentes no Firebase (pela data de cadastro do pacote).
+    // Pacotes excluídos deixam de compor a receita porque deixam de existir em pacotesAdmin.
+    const lancamentos = obterLancamentosFinanceirosAtuais();
 
     const quantidade = lancamentos.length;
     const valorTotal = lancamentos.reduce((acc, item) => acc + Number(item.valorTotal || 0), 0);
@@ -928,15 +970,14 @@ function obterIntervaloFinanceiroAtual() {
 function calcularContextoFinanceiro(dados, valorTotal, ticketMedio) {
     const hoje = hojeISO();
     const intervaloHoje = { inicio: hoje, fim: hoje };
-    const realizadosHoje = agendamentos.filter(item => agendamentoEhAvulsoFinanceiro(item) && item.data === hoje);
-    const pacotesHoje = obterPacotesFiltradosFaturamento(intervaloHoje).map(transformarPacoteEmLancamentoFinanceiro);
+    const realizadosHoje = obterLancamentosFinanceirosAtuais(intervaloHoje);
     const pendentesHoje = agendamentos.filter(item =>
         protocoloEhLyne(item.protocolo) &&
         !agendamentoConcluidoCRM(item) &&
         normalizarTextoCliente(item.status) !== "cancelado" &&
         item.data === hoje
     );
-    const receitaHoje = [...realizadosHoje, ...pacotesHoje].reduce((a, i) => a + Number(i.valorTotal || 0), 0);
+    const receitaHoje = realizadosHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
     const previstoHoje = pendentesHoje.reduce((a, i) => a + Number(i.valorTotal || 0), 0);
     const slotsDia = 14;
     const ocupadosHoje = agendamentos.filter(i => i.data === hoje && normalizarTextoCliente(i.status) !== "cancelado").length;
@@ -945,9 +986,8 @@ function calcularContextoFinanceiro(dados, valorTotal, ticketMedio) {
     const meta = Number(localStorage.getItem("petlyneMetaMensal") || 5000);
 
     const inicioMes = `${hoje.slice(0, 7)}-01`;
-    const avulsosMes = agendamentos.filter(i => agendamentoEhAvulsoFinanceiro(i) && i.data >= inicioMes && i.data <= hoje);
-    const pacotesMes = obterPacotesFiltradosFaturamento({ inicio: inicioMes, fim: hoje });
-    const receitaMes = avulsosMes.reduce((a,i)=>a+Number(i.valorTotal||0),0) + pacotesMes.reduce((a,p)=>a+Number(p.valorPacote||0),0);
+    const lancamentosMes = obterLancamentosFinanceirosAtuais({ inicio: inicioMes, fim: hoje });
+    const receitaMes = lancamentosMes.reduce((a,i)=>a+Number(i.valorTotal||0),0);
 
     const percentualMeta = meta > 0 ? Math.min(999, (receitaMes / meta) * 100) : 0;
     const scoreReceita = Math.min(40, percentualMeta * .4);
@@ -956,7 +996,7 @@ function calcularContextoFinanceiro(dados, valorTotal, ticketMedio) {
     const concluidos = dados.length;
     const scoreVolume = Math.min(15, concluidos * 1.5);
     const healthScore = Math.round(scoreReceita + scoreOcupacao + scoreTicket + scoreVolume);
-    return { hoje, realizadosHoje:[...realizadosHoje, ...pacotesHoje], pendentesHoje, receitaHoje, previstoHoje, ocupacaoHoje, intervalo, meta, receitaMes, percentualMeta, healthScore, valorTotal, ticketMedio };
+    return { hoje, realizadosHoje, pendentesHoje, receitaHoje, previstoHoje, ocupacaoHoje, intervalo, meta, receitaMes, percentualMeta, healthScore, valorTotal, ticketMedio };
 }
 function renderizarInteligenciaFinanceira(dados, c) {
     definirTexto("financePeriodLabel", c.intervalo.label);
@@ -996,11 +1036,7 @@ function renderizarComparacaoFinanceira(dados, c) {
     const antInicio = adicionarDias(antFim, -(dias-1));
     const intervaloAnterior = { inicio: antInicio, fim: antFim };
 
-    const avulsosAnterior = aplicarFiltrosAvancadosFaturamento(
-        agendamentos.filter(i => agendamentoEhAvulsoFinanceiro(i) && dataNoIntervaloFinanceiro(i.data, intervaloAnterior))
-    );
-    const pacotesAnterior = obterPacotesFiltradosFaturamento(intervaloAnterior).map(transformarPacoteEmLancamentoFinanceiro);
-    const anterior = [...avulsosAnterior, ...pacotesAnterior];
+    const anterior = obterLancamentosFinanceirosAtuais(intervaloAnterior);
 
     const valorAnterior = anterior.reduce((a,i)=>a+Number(i.valorTotal||0),0);
     const atual = dados.reduce((a,i)=>a+Number(i.valorTotal||0),0);
@@ -3083,24 +3119,24 @@ async function alternarStatusVisitaPacote(pacoteId, visitaNumero) {
     if (!pacote) return;
 
     const visitas = Array.isArray(pacote.visitas) ? pacote.visitas : [];
+    const visitaAtual = visitas.find(visita => Number(visita.numero) === Number(visitaNumero));
+    if (!visitaAtual) return;
 
+    const marcarRealizado = visitaAtual.status !== "Realizado";
     const novasVisitas = visitas.map(visita => {
-        if (visita.numero !== visitaNumero) return visita;
-
-        return {
-            ...visita,
-            status: visita.status === "Realizado" ? "Pendente" : "Realizado"
-        };
+        if (Number(visita.numero) !== Number(visitaNumero)) return visita;
+        return { ...visita, status: marcarRealizado ? "Realizado" : "Pendente" };
     });
 
     const realizadas = novasVisitas.filter(v => v.status === "Realizado").length;
     const pendentes = novasVisitas.length - realizadas;
-
     const statusAutomatico = novasVisitas.length > 0 && realizadas === novasVisitas.length
         ? "Concluído"
-        : (pacote.status === "Concluído" && pendentes > 0 ? "Ativo" : pacote.status || "Ativo");
+        : "Ativo";
 
-    await db.collection("pacotes").doc(pacoteId).update({
+    const batch = db.batch();
+    const pacoteRef = db.collection("pacotes").doc(pacoteId);
+    batch.update(pacoteRef, {
         visitas: novasVisitas,
         quantidadeRealizada: realizadas,
         quantidadePendente: pendentes,
@@ -3109,7 +3145,19 @@ async function alternarStatusVisitaPacote(pacoteId, visitaNumero) {
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    if (visitaAtual.agendamentoId) {
+        const agendamentoRef = db.collection("agendamentos").doc(visitaAtual.agendamentoId);
+        batch.update(agendamentoRef, {
+            status: marcarRealizado ? "Concluído" : "Pacote",
+            concluidoEm: marcarRealizado ? firebase.firestore.FieldValue.serverTimestamp() : null,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    }
+
+    await batch.commit();
+    await carregarAgendamentos();
     await carregarPacotesAdmin();
+    renderizarAgenda();
     renderizarPacotes();
     atualizarFaturamento();
 }
@@ -3136,7 +3184,7 @@ async function enviarRenovacaoPacote(pacoteId) {
 async function excluirPacote(id) {
     const confirmar = await mostrarConfirmacaoAdmin({
         titulo: "Excluir pacote",
-        mensagem: "Deseja excluir este pacote e liberar os horários vinculados a ele?",
+        mensagem: "Deseja excluir este pacote e liberar todos os horários vinculados a ele?",
         icone: "🗑️",
         textoConfirmar: "Excluir",
         textoCancelar: "Voltar"
@@ -3145,15 +3193,26 @@ async function excluirPacote(id) {
     if (!confirmar) return;
 
     const pacote = pacotesAdmin.find(item => item.id === id);
-    const visitas = pacote && Array.isArray(pacote.visitas) ? pacote.visitas : [];
+    const idsAgendamentos = new Set(
+        (Array.isArray(pacote?.visitas) ? pacote.visitas : [])
+            .map(visita => visita?.agendamentoId)
+            .filter(Boolean)
+    );
 
-    for (const visita of visitas) {
-        if (visita.agendamentoId) {
-            await db.collection("agendamentos").doc(visita.agendamentoId).delete();
-        }
+    // Busca também pelo pacoteId. Isso remove visitas órfãs mesmo quando o array
+    // de visitas do pacote ficou desatualizado ou perdeu algum agendamentoId.
+    const vinculadosSnap = await db.collection("agendamentos").where("pacoteId", "==", id).get();
+    vinculadosSnap.forEach(doc => idsAgendamentos.add(doc.id));
+
+    const refs = [...idsAgendamentos].map(agendamentoId => db.collection("agendamentos").doc(agendamentoId));
+    refs.push(db.collection("pacotes").doc(id));
+
+    // Firestore aceita no máximo 500 operações por batch.
+    for (let i = 0; i < refs.length; i += 450) {
+        const batch = db.batch();
+        refs.slice(i, i + 450).forEach(ref => batch.delete(ref));
+        await batch.commit();
     }
-
-    await db.collection("pacotes").doc(id).delete();
 
     await carregarAgendamentos();
     await carregarPacotesAdmin();
@@ -3161,6 +3220,7 @@ async function excluirPacote(id) {
     renderizarAgenda();
     renderizarPacotes();
     atualizarFaturamento();
+    preencherHorariosPacote();
 }
 
 function limparFiltrosPacotes() {
@@ -3251,6 +3311,33 @@ async function concluirAgendamento(id) {
         concluidoEm: firebase.firestore.FieldValue.serverTimestamp(),
         ...(agendamentoAtual?.beneficioClube ? {"beneficioClube.status":"Resgatado"} : {})
     });
+
+    // Se o atendimento pertence a um pacote, mantém o documento do pacote
+    // sincronizado com o que acabou de ser concluído na Agenda.
+    if (agendamentoAtual?.pacoteId) {
+        const pacoteRef = db.collection("pacotes").doc(agendamentoAtual.pacoteId);
+        const pacoteSnap = await pacoteRef.get();
+        if (pacoteSnap.exists) {
+            const pacoteDados = pacoteSnap.data() || {};
+            const visitas = Array.isArray(pacoteDados.visitas) ? pacoteDados.visitas : [];
+            const novasVisitas = visitas.map(visita =>
+                (visita.agendamentoId === id || Number(visita.numero) === Number(agendamentoAtual.visitaNumero))
+                    ? { ...visita, status: "Realizado", agendamentoId: visita.agendamentoId || id }
+                    : visita
+            );
+            const realizadas = novasVisitas.filter(v => v.status === "Realizado").length;
+            const pendentes = Math.max(0, novasVisitas.length - realizadas);
+            const pacoteConcluido = novasVisitas.length > 0 && pendentes === 0;
+            await pacoteRef.update({
+                visitas: novasVisitas,
+                quantidadeRealizada: realizadas,
+                quantidadePendente: pendentes,
+                status: pacoteConcluido ? "Concluído" : "Ativo",
+                concluidoEm: pacoteConcluido ? firebase.firestore.FieldValue.serverTimestamp() : null,
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+    }
 
     if (agendamentoAtual?.beneficioClube) {
         const tel = normalizarTelefoneCliente(agendamentoAtual.telefone);
