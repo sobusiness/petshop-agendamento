@@ -1,20 +1,9 @@
-PetLyne V8.1.5 - Trilha sonora Halloween
+PetLyne V8.1.6 - Música Halloween ligada por padrão
 
-Arquivos alterados/adicionados nesta entrega:
-- index.html
-- halloween.css
-- halloween-theme.mp3
-- ALTERACOES_V8_1_HALLOWEEN.txt
-
-Melhorias:
-- Música ambiente de Halloween em looping no agendamento online.
-- Volume inicial discreto em 18%.
-- Tentativa de reprodução automática ao abrir a página.
-- Caso o navegador bloqueie autoplay com áudio, a música começa na primeira interação/toque/clique do usuário.
-- Botão flutuante para ligar/desligar a música.
-- Preferência de som salva no navegador.
-- Controle compacto no celular para não interferir no formulário.
-- Admin não recebe música nesta versão.
-
-Observação:
-Navegadores modernos podem bloquear autoplay com som até a primeira interação do usuário. Esse comportamento é do navegador e não pode ser contornado de forma confiável pelo site.
+- Remove a persistência que fazia o site reabrir com a trilha desligada.
+- Toda nova abertura/recarregamento inicia com a preferência de música ATIVADA.
+- O botão já aparece como som ligado desde a abertura.
+- O sistema tenta autoplay imediatamente.
+- Se Chrome/Safari bloquear áudio com som, a música inicia automaticamente na primeira interação do usuário com a página.
+- O usuário ainda pode desligar/ligar pelo botão flutuante durante a visita.
+- Nenhuma alteração em Firebase ou regras de agendamento.

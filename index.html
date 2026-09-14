@@ -7,7 +7,7 @@
     <title>Petlyne - Banho e Tosa</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="halloween.css?v=8.1.5">
+    <link rel="stylesheet" href="halloween.css?v=8.1.6">
 </head>
 
 <body class="theme-halloween">
@@ -335,39 +335,46 @@
     const toggle = document.getElementById('halloweenMusicToggle');
     if (!audio || !toggle) return;
 
-    const STORAGE_KEY = 'petlyneHalloweenMusicMuted';
+    // V8.1.6: toda nova abertura começa com a trilha ATIVADA.
+    // Se o navegador bloquear autoplay com som, ela é liberada na primeira interação.
     audio.volume = 0.18;
+    audio.muted = false;
 
-    let mutedByUser = localStorage.getItem(STORAGE_KEY) === '1';
+    let musicEnabled = true;
     let started = false;
 
     function renderState() {
-        const isPlaying = !audio.paused && !audio.muted;
-        toggle.classList.toggle('is-muted', !isPlaying);
-        toggle.setAttribute('aria-label', isPlaying ? 'Desativar música de Halloween' : 'Ativar música de Halloween');
-        toggle.title = isPlaying ? 'Desativar música de Halloween' : 'Ativar música de Halloween';
+        // O botão representa a preferência atual. Enquanto o navegador aguarda
+        // a primeira interação, a trilha continua visualmente como ATIVADA.
+        toggle.classList.toggle('is-muted', !musicEnabled);
+        toggle.setAttribute('aria-label', musicEnabled ? 'Desativar música de Halloween' : 'Ativar música de Halloween');
+        toggle.title = musicEnabled ? 'Desativar música de Halloween' : 'Ativar música de Halloween';
     }
 
     async function startMusic() {
-        if (mutedByUser) {
-            renderState();
-            return false;
-        }
+        if (!musicEnabled) return false;
         try {
             audio.muted = false;
             await audio.play();
             started = true;
-            renderState();
             removeUnlockListeners();
             return true;
         } catch (e) {
-            renderState();
+            // Chrome/Safari podem exigir o primeiro clique/toque.
             return false;
+        } finally {
+            renderState();
         }
     }
 
     function unlockMusic() {
-        if (!started && !mutedByUser) startMusic();
+        if (musicEnabled && audio.paused) startMusic();
+    }
+
+    function addUnlockListeners() {
+        document.addEventListener('pointerdown', unlockMusic, true);
+        document.addEventListener('touchstart', unlockMusic, true);
+        document.addEventListener('keydown', unlockMusic, true);
     }
 
     function removeUnlockListeners() {
@@ -376,39 +383,30 @@
         document.removeEventListener('keydown', unlockMusic, true);
     }
 
-    document.addEventListener('pointerdown', unlockMusic, true);
-    document.addEventListener('touchstart', unlockMusic, true);
-    document.addEventListener('keydown', unlockMusic, true);
+    addUnlockListeners();
 
     toggle.addEventListener('click', async function (event) {
         event.preventDefault();
         event.stopPropagation();
 
-        if (!audio.paused && !audio.muted) {
+        if (musicEnabled) {
+            musicEnabled = false;
             audio.pause();
-            mutedByUser = true;
-            localStorage.setItem(STORAGE_KEY, '1');
+            removeUnlockListeners();
             renderState();
             return;
         }
 
-        mutedByUser = false;
-        localStorage.setItem(STORAGE_KEY, '0');
-        try {
-            audio.currentTime = audio.currentTime || 0;
-            audio.muted = false;
-            await audio.play();
-            started = true;
-            removeUnlockListeners();
-        } catch (e) {}
+        musicEnabled = true;
+        addUnlockListeners();
+        await startMusic();
         renderState();
     });
 
-    audio.addEventListener('play', renderState);
-    audio.addEventListener('pause', renderState);
-
+    // Não persiste o estado desligado entre visitas: recarregou/abriu o site,
+    // o tema Halloween volta com a música habilitada por padrão.
     renderState();
-    if (!mutedByUser) startMusic();
+    startMusic();
 })();
 </script>
 
