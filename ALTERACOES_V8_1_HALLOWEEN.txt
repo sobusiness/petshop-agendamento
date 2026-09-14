@@ -1,9 +1,6 @@
-PetLyne V8.1.6 - Música Halloween ligada por padrão
+V8.1.8 - Admin totalmente restaurado ao tema padrão
 
-- Remove a persistência que fazia o site reabrir com a trilha desligada.
-- Toda nova abertura/recarregamento inicia com a preferência de música ATIVADA.
-- O botão já aparece como som ligado desde a abertura.
-- O sistema tenta autoplay imediatamente.
-- Se Chrome/Safari bloquear áudio com som, a música inicia automaticamente na primeira interação do usuário com a página.
-- O usuário ainda pode desligar/ligar pelo botão flutuante durante a visita.
-- Nenhuma alteração em Firebase ou regras de agendamento.
+- Restaurada a tela de login do módulo Admin ao layout original PetLyne.
+- Removidos do login os textos e elementos visuais Halloween/Preview.
+- O tema Halloween permanece exclusivamente no agendamento online.
+- Nenhuma lógica de Firebase, autenticação ou regras de negócio foi alterada.
