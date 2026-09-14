@@ -13,3 +13,6 @@ O Preview usa o mesmo firebase-config.js da produção. Portanto, ao clicar em C
 o fluxo existente grava o agendamento no projeto Firebase real da PetLyne, caso a gravação
 esteja permitida pelas regras atuais. Use dados de teste apenas se você quiser que o registro
 apareça realmente na agenda, ou evite confirmar até configurarmos um Firebase separado/bloqueio de escrita no Preview.
+
+V8.1.4
+- Removido o selo “🎃 Agendamento Halloween” exibido antes do campo Telefone Celular no formulário público.

@@ -141,12 +141,6 @@ body.theme-halloween .pacotes-card {
     color: #f5efff;
 }
 body.theme-halloween .card:first-of-type { position: relative; }
-body.theme-halloween .card:first-of-type::before {
-    content: "🎃 Agendamento Halloween";
-    display: inline-flex; margin-bottom: 20px; padding: 8px 13px; border-radius: 999px;
-    color: #ffd8aa; background: rgba(255,122,24,.12); border: 1px solid rgba(255,122,24,.32);
-    font-weight: 900; letter-spacing:.02em;
-}
 body.theme-halloween label,
 body.theme-halloween h2,
 body.theme-halloween h3,
