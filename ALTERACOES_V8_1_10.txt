@@ -1,0 +1,7 @@
+PetLyne V8.1.10 — Correção do popup no tema padrão
+
+- Corrigido o modal "Revise seu agendamento" no ?theme=default.
+- Corrigido o modal "Agendamento confirmado" no ?theme=default.
+- Removida a regra CSS com `revert` que anulava o fundo original do `.popup-card`.
+- Fora do Halloween, os popups voltam a ser estilizados exclusivamente pelo `style.css` original.
+- Nenhuma lógica de Firebase, agendamento ou Preview foi alterada.
