@@ -7,10 +7,50 @@
     <title>Petlyne - Banho e Tosa</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="halloween.css?v=8.1.6">
+    <link rel="stylesheet" href="halloween.css?v=8.1.9">
+    <script>
+    (function () {
+        const params = new URLSearchParams(window.location.search);
+        const override = (params.get('theme') || '').toLowerCase();
+        const host = window.location.hostname.toLowerCase();
+        const productionHosts = new Set([
+            'petlyne-agendamento-two.vercel.app'
+        ]);
+        const isVercel = host.endsWith('.vercel.app');
+        const isPreview = isVercel && !productionHosts.has(host);
+
+        function dataSaoPauloISO() {
+            try {
+                const parts = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: 'America/Sao_Paulo',
+                    year: 'numeric', month: '2-digit', day: '2-digit'
+                }).formatToParts(new Date());
+                const obj = Object.fromEntries(parts.map(p => [p.type, p.value]));
+                return `${obj.year}-${obj.month}-${obj.day}`;
+            } catch (_) {
+                const d = new Date();
+                return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            }
+        }
+
+        const hojeSP = dataSaoPauloISO();
+        const automaticHalloween = hojeSP >= '2026-10-01' && hojeSP <= '2026-10-31';
+        const halloween = override === 'halloween' ? true : override === 'default' ? false : automaticHalloween;
+
+        window.PetLyneThemeConfig = {
+            halloween,
+            override: override || null,
+            hojeSP,
+            isPreview,
+            isProductionHost: productionHosts.has(host)
+        };
+
+        document.documentElement.classList.toggle('theme-halloween-boot', halloween);
+    })();
+    </script>
 </head>
 
-<body class="theme-halloween">
+<body>
     <audio id="halloweenMusic" preload="auto" loop playsinline>
         <source src="halloween-theme.mp3" type="audio/mpeg">
     </audio>
@@ -48,6 +88,10 @@
         <span class="side-pumpkin side-pumpkin-b">🎃</span>
         <span class="side-web web-bottom">🕸️</span>
     </div>
+
+    <header class="client-hero-banner petlyne-default-hero">
+        <img src="bannerpetlyne.png" alt="PetLyne - Banho e Tosa | Agendamento Online">
+    </header>
 
     <header class="client-hero-banner halloween-hero halloween-hero-compact">
         <div class="halloween-hero-moon" aria-hidden="true"></div>
@@ -327,40 +371,48 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js?v=7.0.0"></script>
-<script src="app.js?v=7.9.7"></script>
+<script src="app.js?v=8.1.9"></script>
 
 <script>
 (function () {
+    const cfg = window.PetLyneThemeConfig || {};
+    document.body.classList.toggle('theme-halloween', !!cfg.halloween);
+    document.body.classList.toggle('petlyne-preview', !!cfg.isPreview);
+
+    const strip = document.querySelector('.halloween-preview-strip');
+    if (strip) strip.hidden = !(cfg.halloween && cfg.isPreview);
+
     const audio = document.getElementById('halloweenMusic');
     const toggle = document.getElementById('halloweenMusicToggle');
     if (!audio || !toggle) return;
 
-    // V8.1.6: toda nova abertura começa com a trilha ATIVADA.
-    // Se o navegador bloquear autoplay com som, ela é liberada na primeira interação.
+    // Fora do Halloween não existe trilha nem botão de áudio.
+    if (!cfg.halloween) {
+        audio.pause();
+        toggle.hidden = true;
+        return;
+    }
+
+    toggle.hidden = false;
     audio.volume = 0.18;
     audio.muted = false;
 
     let musicEnabled = true;
-    let started = false;
 
     function renderState() {
-        // O botão representa a preferência atual. Enquanto o navegador aguarda
-        // a primeira interação, a trilha continua visualmente como ATIVADA.
         toggle.classList.toggle('is-muted', !musicEnabled);
         toggle.setAttribute('aria-label', musicEnabled ? 'Desativar música de Halloween' : 'Ativar música de Halloween');
         toggle.title = musicEnabled ? 'Desativar música de Halloween' : 'Ativar música de Halloween';
     }
 
     async function startMusic() {
-        if (!musicEnabled) return false;
+        if (!musicEnabled || !cfg.halloween) return false;
         try {
             audio.muted = false;
             await audio.play();
-            started = true;
             removeUnlockListeners();
             return true;
         } catch (e) {
-            // Chrome/Safari podem exigir o primeiro clique/toque.
             return false;
         } finally {
             renderState();
@@ -388,7 +440,6 @@
     toggle.addEventListener('click', async function (event) {
         event.preventDefault();
         event.stopPropagation();
-
         if (musicEnabled) {
             musicEnabled = false;
             audio.pause();
@@ -396,15 +447,12 @@
             renderState();
             return;
         }
-
         musicEnabled = true;
         addUnlockListeners();
         await startMusic();
         renderState();
     });
 
-    // Não persiste o estado desligado entre visitas: recarregou/abriu o site,
-    // o tema Halloween volta com a música habilitada por padrão.
     renderState();
     startMusic();
 })();

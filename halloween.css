@@ -896,3 +896,34 @@ body.theme-halloween .halloween-music-toggle.is-muted { opacity: .82; }
         transition: none;
     }
 }
+
+/* ============================================================
+   V8.1.9 — Ativação sazonal e isolamento visual
+   ============================================================ */
+body:not(.theme-halloween) .halloween-page-bats,
+body:not(.theme-halloween) .halloween-side-decor,
+body:not(.theme-halloween) .halloween-hero,
+body:not(.theme-halloween) .halloween-preview-strip,
+body:not(.theme-halloween) .halloween-music-toggle,
+body:not(.theme-halloween) .halloween-popup-decor {
+    display: none !important;
+}
+
+body.theme-halloween .petlyne-default-hero {
+    display: none !important;
+}
+
+body:not(.theme-halloween) .petlyne-default-hero {
+    display: block;
+}
+
+/* Quando o tema está desligado, os popups voltam 100% ao visual original. */
+body:not(.theme-halloween) .halloween-final-card,
+body:not(.theme-halloween) .halloween-success-card {
+    background: revert;
+    border-color: revert;
+    box-shadow: revert;
+}
+
+/* Evita flash do banner padrão enquanto o JS aplica o tema. */
+html.theme-halloween-boot .petlyne-default-hero { display:none !important; }

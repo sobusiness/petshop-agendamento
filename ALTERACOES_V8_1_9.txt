@@ -1,0 +1,31 @@
+PetLyne V8.1.9 — Segurança do Preview + Tema Halloween Automático
+
+ALTERAÇÕES
+- O tema Halloween deixa de ficar fixo no HTML.
+- Ativação automática pelo horário de São Paulo:
+  * Até 30/09/2026: tema normal PetLyne.
+  * 01/10/2026 a 31/10/2026: tema Halloween.
+  * A partir de 01/11/2026: tema normal PetLyne.
+- Overrides manuais para testes:
+  * ?theme=halloween força Halloween.
+  * ?theme=default força o tema normal.
+- O banner normal do PetLyne foi recolocado no HTML e alterna automaticamente com o banner Halloween.
+- Música, morcegos, teias, abóboras e decorações são carregados visualmente apenas quando o Halloween está ativo.
+- A faixa "Ambiente de teste" aparece somente no Preview da Vercel e apenas quando o Halloween estiver ativo.
+
+SEGURANÇA DO PREVIEW
+- Preview da Vercel é identificado automaticamente.
+- O host oficial petlyne-agendamento-two.vercel.app continua tratado como produção.
+- Ao confirmar um agendamento em Preview:
+  * valida a disponibilidade normalmente;
+  * NÃO grava o agendamento no Firestore;
+  * NÃO converte prospect;
+  * NÃO cria/atualiza cadastro do cliente;
+  * gera protocolo TESTE-XXXXXX;
+  * mostra a tela final normalmente;
+  * exibe aviso explícito de SIMULAÇÃO DE PREVIEW.
+
+ARQUIVOS ALTERADOS
+- index.html
+- app.js
+- halloween.css

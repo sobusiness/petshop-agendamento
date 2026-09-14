@@ -2330,19 +2330,32 @@ async function confirmarAgendamentoFinal() {
             return;
         }
 
-        const protocolo = gerarProtocolo();
+        const ambientePreview = !!window.PetLyneThemeConfig?.isPreview;
+        const protocolo = ambientePreview
+            ? `TESTE-${String(Date.now()).slice(-6)}`
+            : gerarProtocolo();
 
-        await salvarAgendamentoFirebase(dadosPreAgendamento, protocolo);
-        // A conversão do prospect é acessória e nunca bloqueia a confirmação.
-        converterProspectCallbackSeExistir(dadosPreAgendamento.telefone, protocolo).catch(() => {});
-        await salvarCadastroClienteAutomatico(dadosPreAgendamento);
+        if (!ambientePreview) {
+            await salvarAgendamentoFirebase(dadosPreAgendamento, protocolo);
+            // A conversão do prospect é acessória e nunca bloqueia a confirmação.
+            converterProspectCallbackSeExistir(dadosPreAgendamento.telefone, protocolo).catch(() => {});
+            await salvarCadastroClienteAutomatico(dadosPreAgendamento);
+        } else {
+            console.info('[PetLyne Preview] Confirmação simulada. Nenhum dado foi gravado no Firebase.', {
+                protocolo,
+                data: dadosPreAgendamento.data,
+                horario: dadosPreAgendamento.horario
+            });
+        }
 
-        agendamentosExistentes.push({
-            data: dadosPreAgendamento.data,
-            horario: dadosPreAgendamento.horario,
-            duracaoMinutos: dadosPreAgendamento.duracaoMinutos || calcularDuracaoAgendamentoMinutos(),
-            protocolo
-        });
+        if (!ambientePreview) {
+            agendamentosExistentes.push({
+                data: dadosPreAgendamento.data,
+                horario: dadosPreAgendamento.horario,
+                duracaoMinutos: dadosPreAgendamento.duracaoMinutos || calcularDuracaoAgendamentoMinutos(),
+                protocolo
+            });
+        }
 
         fecharPrevia();
 
@@ -2377,7 +2390,12 @@ function mostrarPopupConfirmacao(dados, protocolo) {
         return `${item.nome}: <strong>${formatarMoeda(item.valor)}</strong>`;
     }).join("<br>");
 
+    const avisoPreview = window.PetLyneThemeConfig?.isPreview
+        ? `<div style="margin:0 0 16px;padding:12px 14px;border-radius:12px;background:rgba(255,122,24,.12);border:1px solid rgba(255,122,24,.4);color:#ffcf9c;font-weight:800;">🧪 SIMULAÇÃO DE PREVIEW — nenhum agendamento foi gravado na agenda real.</div>`
+        : "";
+
     document.getElementById("mensagemConfirmacao").innerHTML = `
+        ${avisoPreview}
         Protocolo: <strong>${protocolo}</strong><br><br>
         <strong>${dados.cliente}</strong>, o agendamento do pet <strong>${dados.pet}</strong> foi confirmado.<br><br>
         ${servicosHtml}<br><br>
