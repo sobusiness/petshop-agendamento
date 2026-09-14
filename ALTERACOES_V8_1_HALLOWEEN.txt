@@ -1,57 +1,15 @@
-PETLYNE V8.1 — HALLOWEEN EDITION 2026
-======================================
+PetLyne V8.1.3 — Halloween Preview
 
-Objetivo
---------
-Criar uma versão visual sazonal completa para testes na branch halloween-2026,
-sem alterar regras de negócio, consultas Firebase, agendamentos ou cálculos.
+Ajustes desta versão:
+- Tela "Revise seu agendamento" ganhou teias, morcegos e abóboras temáticas.
+- Tela "Agendamento confirmado" recebeu a mesma ambientação Halloween.
+- As abóboras permanecem estáticas; apenas a iluminação interna pulsa suavemente.
+- Morcegos flutuam discretamente sem interferir nos botões e textos.
+- Responsividade ajustada para mobile.
+- Nenhuma regra de Firebase, agendamento, disponibilidade ou gravação foi alterada nesta versão.
 
-Alterações
-----------
-1. Agendamento online
-   - Nova identidade visual Halloween em roxo profundo, preto, lilás e âmbar/laranja.
-   - Hero sazonal completo com lua, morcegos, abóboras e selo Halloween Edition 2026.
-   - Cards, formulários, selects, inputs, adicionais, pacotes e popups tematizados.
-   - Layout responsivo preservado.
-   - Faixa superior indicando ambiente de teste.
-
-2. Painel administrativo
-   - Tema aplicado ao Admin completo: header, navegação, agenda, CRM, Clube,
-     Pacotes, Catálogo, Dias/Horários, Monitoramento e Financeiro V8.
-   - Superfícies escuras com iluminação roxa e pontos de destaque em laranja/âmbar.
-   - Login administrativo tematizado.
-   - Modais, tabelas, inputs, scrollbars, filtros e botões adaptados.
-   - Financeiro V8 com paleta dos gráficos ajustada para o Halloween.
-   - Faixa superior indicando Preview Halloween 2026.
-
-3. Segurança da implementação
-   - Tema isolado em halloween.css e admin/halloween.css.
-   - CSS original continua intacto.
-   - Nenhuma alteração em Firebase, regras de negócio ou estrutura de dados.
-   - Destinado exclusivamente à branch halloween-2026 / Preview da Vercel.
-
-Arquivos alterados/adicionados no pacote
------------------------------------------
-index.html
-halloween.css
-admin/index.html
-admin/dashboard.html
-admin/dashboard.js
-admin/halloween.css
-ALTERACOES_V8_1_HALLOWEEN.txt
-
-V8.1.1
-- Topo do agendamento refeito em formato compacto.
-- Nova arte Halloween temporária aplicada como identidade visual do topo.
-- Texto e pills do hero removidos para reduzir altura e melhorar legibilidade.
-- Correção de largura no desktop para evitar hero/logo cortados.
-- Morcegos animados atravessando a página.
-- Abóboras com efeito lento de acender/apagar.
-- Ajustes específicos para mobile.
-
-V8.1.2 — Ajustes do topo e imersão
-- Corrigida a arte temporária para exibir inteira (cachorro, gato e lettering PetLyne), sem crop.
-- Corrigido excesso/corte do topo no mobile.
-- Badge Halloween 2026 reposicionado para não sobrepor abóboras no celular.
-- Abóboras agora permanecem estáticas; apenas a luz interna pulsa suavemente.
-- Adicionadas decorações laterais com abóboras, teias e morcegos para maior imersão.
+IMPORTANTE SOBRE O AMBIENTE DE PREVIEW:
+O Preview usa o mesmo firebase-config.js da produção. Portanto, ao clicar em CONFIRMAR,
+o fluxo existente grava o agendamento no projeto Firebase real da PetLyne, caso a gravação
+esteja permitida pelas regras atuais. Use dados de teste apenas se você quiser que o registro
+apareça realmente na agenda, ou evite confirmar até configurarmos um Firebase separado/bloqueio de escrita no Preview.
