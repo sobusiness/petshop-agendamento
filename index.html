@@ -7,10 +7,20 @@
     <title>Petlyne - Banho e Tosa</title>
     <link rel="icon" type="image/png" href="favicon.png">
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="halloween.css?v=8.1.2">
+    <link rel="stylesheet" href="halloween.css?v=8.1.5">
 </head>
 
 <body class="theme-halloween">
+    <audio id="halloweenMusic" preload="auto" loop playsinline>
+        <source src="halloween-theme.mp3" type="audio/mpeg">
+    </audio>
+
+    <button id="halloweenMusicToggle" class="halloween-music-toggle" type="button" aria-label="Desativar música de Halloween" title="Música de Halloween">
+        <span class="music-icon music-on" aria-hidden="true">🔊</span>
+        <span class="music-icon music-off" aria-hidden="true">🔇</span>
+        <span class="music-label">Halloween</span>
+    </button>
+
     <div class="halloween-page-bats" aria-hidden="true">
         <span class="bat bat-1">🦇</span>
         <span class="bat bat-2">🦇</span>
@@ -318,6 +328,89 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js?v=7.0.0"></script>
 <script src="app.js?v=7.9.7"></script>
+
+<script>
+(function () {
+    const audio = document.getElementById('halloweenMusic');
+    const toggle = document.getElementById('halloweenMusicToggle');
+    if (!audio || !toggle) return;
+
+    const STORAGE_KEY = 'petlyneHalloweenMusicMuted';
+    audio.volume = 0.18;
+
+    let mutedByUser = localStorage.getItem(STORAGE_KEY) === '1';
+    let started = false;
+
+    function renderState() {
+        const isPlaying = !audio.paused && !audio.muted;
+        toggle.classList.toggle('is-muted', !isPlaying);
+        toggle.setAttribute('aria-label', isPlaying ? 'Desativar música de Halloween' : 'Ativar música de Halloween');
+        toggle.title = isPlaying ? 'Desativar música de Halloween' : 'Ativar música de Halloween';
+    }
+
+    async function startMusic() {
+        if (mutedByUser) {
+            renderState();
+            return false;
+        }
+        try {
+            audio.muted = false;
+            await audio.play();
+            started = true;
+            renderState();
+            removeUnlockListeners();
+            return true;
+        } catch (e) {
+            renderState();
+            return false;
+        }
+    }
+
+    function unlockMusic() {
+        if (!started && !mutedByUser) startMusic();
+    }
+
+    function removeUnlockListeners() {
+        document.removeEventListener('pointerdown', unlockMusic, true);
+        document.removeEventListener('touchstart', unlockMusic, true);
+        document.removeEventListener('keydown', unlockMusic, true);
+    }
+
+    document.addEventListener('pointerdown', unlockMusic, true);
+    document.addEventListener('touchstart', unlockMusic, true);
+    document.addEventListener('keydown', unlockMusic, true);
+
+    toggle.addEventListener('click', async function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+
+        if (!audio.paused && !audio.muted) {
+            audio.pause();
+            mutedByUser = true;
+            localStorage.setItem(STORAGE_KEY, '1');
+            renderState();
+            return;
+        }
+
+        mutedByUser = false;
+        localStorage.setItem(STORAGE_KEY, '0');
+        try {
+            audio.currentTime = audio.currentTime || 0;
+            audio.muted = false;
+            await audio.play();
+            started = true;
+            removeUnlockListeners();
+        } catch (e) {}
+        renderState();
+    });
+
+    audio.addEventListener('play', renderState);
+    audio.addEventListener('pause', renderState);
+
+    renderState();
+    if (!mutedByUser) startMusic();
+})();
+</script>
 
 </body>
 </html>

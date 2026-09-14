@@ -1,18 +1,20 @@
-PetLyne V8.1.3 — Halloween Preview
+PetLyne V8.1.5 - Trilha sonora Halloween
 
-Ajustes desta versão:
-- Tela "Revise seu agendamento" ganhou teias, morcegos e abóboras temáticas.
-- Tela "Agendamento confirmado" recebeu a mesma ambientação Halloween.
-- As abóboras permanecem estáticas; apenas a iluminação interna pulsa suavemente.
-- Morcegos flutuam discretamente sem interferir nos botões e textos.
-- Responsividade ajustada para mobile.
-- Nenhuma regra de Firebase, agendamento, disponibilidade ou gravação foi alterada nesta versão.
+Arquivos alterados/adicionados nesta entrega:
+- index.html
+- halloween.css
+- halloween-theme.mp3
+- ALTERACOES_V8_1_HALLOWEEN.txt
 
-IMPORTANTE SOBRE O AMBIENTE DE PREVIEW:
-O Preview usa o mesmo firebase-config.js da produção. Portanto, ao clicar em CONFIRMAR,
-o fluxo existente grava o agendamento no projeto Firebase real da PetLyne, caso a gravação
-esteja permitida pelas regras atuais. Use dados de teste apenas se você quiser que o registro
-apareça realmente na agenda, ou evite confirmar até configurarmos um Firebase separado/bloqueio de escrita no Preview.
+Melhorias:
+- Música ambiente de Halloween em looping no agendamento online.
+- Volume inicial discreto em 18%.
+- Tentativa de reprodução automática ao abrir a página.
+- Caso o navegador bloqueie autoplay com áudio, a música começa na primeira interação/toque/clique do usuário.
+- Botão flutuante para ligar/desligar a música.
+- Preferência de som salva no navegador.
+- Controle compacto no celular para não interferir no formulário.
+- Admin não recebe música nesta versão.
 
-V8.1.4
-- Removido o selo “🎃 Agendamento Halloween” exibido antes do campo Telefone Celular no formulário público.
+Observação:
+Navegadores modernos podem bloquear autoplay com som até a primeira interação do usuário. Esse comportamento é do navegador e não pode ser contornado de forma confiável pelo site.
