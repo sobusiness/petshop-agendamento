@@ -1097,6 +1097,7 @@ function limparSeletorPetsCadastrados() {
     if (!box || !select) return;
 
     petsEncontradosTelefone = [];
+    document.getElementById("selecionarTodosPetsCadastrados").style.display = "none";
     select.innerHTML = `<option value="">Selecione o pet</option>`;
     box.style.display = "none";
 }
@@ -1116,6 +1117,10 @@ function renderizarPetsCadastrados(pets) {
         select.appendChild(option);
     });
 
+    document.getElementById("selecionarTodosPetsCadastrados").style.display = pets.length > 1 ? "inline-block" : "none";
+    document.getElementById("petsCadastradosAjuda").textContent = pets.length > 1
+        ? "Encontramos mais de um pet para este telefone. Selecione um deles ou todos. Depois configure os serviços de cada pet e clique em Adicionar / atualizar este pet."
+        : "Selecione o pet para configurar os serviços.";
     box.style.display = "block";
 }
 
@@ -2563,6 +2568,6 @@ montarDadosAgendamentoFirestore=function(dados,protocolo){return {...montarOrigi
 const limparOriginalV9=limparFormulario;
 limparFormulario=function(){limparOriginalV9();petsReservaV9=[];document.getElementById('adicionalDentes').checked=false;renderizarReservaV9();};
 document.getElementById('adicionalDentes').addEventListener('change',atualizarResumoServicos);
-document.getElementById('telefone').addEventListener('input',()=>{petsReservaV9=[];renderizarReservaV9();});
+document.getElementById('telefone').addEventListener('input',()=>{document.getElementById('selecionarTodosPetsCadastrados').style.display='none';petsReservaV9=[];renderizarReservaV9();});
 renderizarReservaV9();
 iniciarPagina();
