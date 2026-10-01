@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petlyne - Dashboard Administrativo</title>
     <link rel="icon" type="image/png" href="../favicon.png">
-    <link rel="stylesheet" href="admin.css?v=8.0.0">
+    <link rel="stylesheet" href="admin.css?v=9.0.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
 
@@ -37,7 +37,7 @@
         <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
         <button class="tab-button" onclick="abrirSecao('prospect-callback')"><i class="fa-brands fa-whatsapp"></i> Prospect Callback</button>
         <button class="tab-button" onclick="abrirSecao('logs')">Monitoramento</button>
-    </nav>
+    <button class="tab-button" onclick="abrirSecao('contas-pagar')">Contas a pagar</button></nav>
 
     <section id="secao-agendamentos" class="admin-section active">
         <div class="section-title-row">
@@ -352,6 +352,7 @@
         </div>
 
         <div id="formNovoCliente" class="novo-cliente-form" style="display:none;">
+<label>Observação do profissional (somente Admin)<textarea id="novoClienteProfissional" rows="4"></textarea></label>
             <div class="cliente-form-grid">
                 <label>
                     <span>Nome do Cliente</span>
@@ -607,7 +608,7 @@
 
             <label>
                 <span>Tipo de Pacote</span>
-                <select id="pacoteTipo" onchange="atualizarHorariosPacoteDisponiveis()">
+                <select id="pacoteTipo" onchange="atualizarPrecoPacoteV9();atualizarHorariosPacoteDisponiveis()">
                     <option value="Mensal">Mensal - 4 banhos</option>
                     <option value="Quinzenal">Quinzenal - 2 banhos</option>
                 </select>
@@ -635,9 +636,10 @@
                 <input type="text" id="pacoteDataFim" placeholder="Data fim calculada" readonly>
             </label>
 
+            <label><span>Porte</span><select id="pacotePorte" onchange="atualizarPrecoPacoteV9()"><option value="">Selecione</option><option>Pequeno</option><option>Médio</option><option>Grande</option></select></label>
             <label>
                 <span>Valor do Pacote</span>
-                <input type="number" id="pacoteValor" placeholder="R$" step="0.01">
+                <input type="number" id="pacoteValor" readonly placeholder="R$" step="0.01">
             </label>
 
             <button onclick="salvarPacote()">Cadastrar Pacote</button>
@@ -918,7 +920,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="../js/firebase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="dashboard.js?v=8.0.0"></script>
+<script src="../js/precos-v9.js?v=9.0.0"></script>
+<script src="dashboard.js?v=9.0.0"></script>
 
 
 <div id="modalConfirmacaoAdmin" class="admin-modal-overlay">

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petlyne - Banho e Tosa</title>
     <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=9.0.0">
 </head>
 
 <body>
@@ -38,7 +38,7 @@
                 <select id="petCadastradoSelect">
                     <option value="">Selecione o pet</option>
                 </select>
-                <small>Encontramos mais de um pet para este telefone. Selecione qual deseja agendar.</small>
+                <small>Encontramos mais de um pet para este telefone. Selecione um pet para configurar os serviços ou use Selecionar todos abaixo.</small>
             </div>
 
 
@@ -136,7 +136,7 @@
 
             <label class="checkbox-line">
                 <input type="checkbox" id="adicionalHidratacao" value="Hidratação">
-                <span>Hidratação</span>
+                <span>Hidratação — R$ 25,00</span>
             </label>
 
             <label class="checkbox-line">
@@ -145,20 +145,22 @@
             </label>
 
             <label class="checkbox-line">
-                <input type="checkbox" id="adicionalAntiParasitas" value="Tratamento Anti-Parasitas">
-                <span>Tratamento Anti-Parasitas — R$ 25,00</span>
+                <input type="checkbox" id="adicionalAntiParasitas" value="Tratamento Anti-Pulgas">
+                <span>Tratamento Anti-Pulgas — R$ 25,00</span>
             </label>
 
             <label class="checkbox-line">
                 <input type="checkbox" id="adicionalCorteUnha" value="Corte de Unha">
-                <span>Corte de Unha — R$ 12,00</span>
+                <span>Corte de Unha — R$ 10,00</span>
             </label>
 
             <label class="checkbox-line">
                 <input type="checkbox" id="adicionalDesembolo" value="Desembolo">
-                <span>Desembolo — conforme porte</span>
+                <span>Desembolo — R$ 25,00</span>
             </label>
+        <label class="checkbox-line"><input type="checkbox" id="adicionalDentes"><span>Escovação de Dentes — R$ 10,00</span></label>
         </div>
+        <div class="resumo-box" id="multipetV9"><h3>Pets deste agendamento</h3><p>Configure o serviço de cada pet e adicione à reserva. Todos terão a mesma data e horário.</p><button type="button" onclick="adicionarPetV9()">Adicionar / atualizar este pet</button><button type="button" onclick="selecionarTodosPetsV9()">Selecionar todos os pets cadastrados</button><div id="listaPetsV9"></div></div>
 
         <div id="resumoServicos" class="resumo-box">
             <h3>Resumo do Agendamento</h3>
@@ -255,7 +257,8 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js?v=7.0.0"></script>
-<script src="app.js?v=7.9.7"></script>
+<script src="js/precos-v9.js?v=9.0.0"></script>
+<script src="app.js?v=9.0.0"></script>
 
 </body>
 </html>

@@ -617,3 +617,8 @@ form h2,
         flex-basis:30px;
     }
 }
+
+/* V9 — pets de uma única reserva */
+#listaPetsV9 .resumo-item{align-items:flex-start;gap:16px;flex-wrap:wrap;padding:14px 0;border-bottom:1px solid #f1dbe3}#listaPetsV9 button,#multipetV9>button{width:auto;font-size:14px;padding:10px 14px;margin:6px 4px 6px 0}#areaPelagem{display:none!important}#mensagemPrevia{overflow-wrap:anywhere}#popupPrevia .popup-content{max-height:85vh;overflow-y:auto}
+
+#popupPrevia .popup-card,#popupConfirmacao .popup-card{max-height:88vh;overflow-y:auto;background:#fff}#listaPetsV9 .resumo-item>div{max-width:100%;overflow-wrap:anywhere}

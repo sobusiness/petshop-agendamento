@@ -1192,7 +1192,7 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
 
         if (registrosPorId.size === 0 && primeiroErro) throw primeiroErro;
 
-        const registros = Array.from(registrosPorId.values());
+        const registros = Array.from(registrosPorId.values()).flatMap(expandirPetsV9);
         registros.sort((a, b) => `${b.data || ""} ${b.horario || ""}`.localeCompare(`${a.data || ""} ${a.horario || ""}`));
 
         const mapaPets = new Map();
@@ -1533,6 +1533,7 @@ function servicoPrecisaTipoTosa(nomeServico, especie) {
 function atualizarServicosPorEspecie() {
     const especie = document.getElementById("especie").value;
     const servicoPrincipal = document.getElementById("servicoPrincipal");
+    document.getElementById("adicionalDentes") && (document.getElementById("adicionalDentes").checked = false);
     const adicionalHidratacao = document.getElementById("adicionalHidratacao");
     const adicionalTosaHigienica = document.getElementById("adicionalTosaHigienica");
     const adicionalCorteUnha = document.getElementById("adicionalAntiParasitas");
@@ -2454,9 +2455,114 @@ document.addEventListener("visibilitychange", () => {
 });
 setInterval(() => atualizarAgendaAoRetornar(), 5 * 60 * 1000);
 
-iniciarPagina();
+/* Inicialização após extensões V9. */
 
 
 // V7.0 - O formulário público não altera mais os prototypes internos do SDK Firebase.
 // O monitoramento técnico continua disponível no painel administrativo, enquanto
 // o fluxo crítico de agendamento permanece isolado e sem interceptadores globais.
+// V9 — catálogo por porte e reserva com serviços individuais por pet.
+let petsReservaV9 = [];
+const camposPetV9=['pet','especie','sexo','raca','porte','observacaoPet','servicoPrincipal','tipoTosa'];
+const adicionaisPetV9={adicionalHidratacao:'Hidratação',adicionalTosaHigienica:'Tosa Higiênica Avulsa',adicionalAntiParasitas:'Tratamento Anti-Pulgas',adicionalCorteUnha:'Corte de Unha',adicionalDesembolo:'Desembolo',adicionalDentes:'Escovação de Dentes'};
+carregarServicosPrincipaisCliente = async function(){
+ await lerCatalogoV9();
+ servicosPrincipaisCliente=catalogoV9.filter(r=>!Object.values(adicionaisPetV9).includes(r.nome));
+};
+servicoPrecisaPelagem=()=>false;
+controlarCamposServico=function(){
+ document.getElementById('areaPelagem').style.display='none';
+ document.getElementById('pelagem').value='';
+ const principal=obterServicoPrincipalSelecionado()?.nome || document.getElementById('servicoPrincipal').value;
+ document.getElementById('areaTipoTosa').style.display=principal==='Tosa'?'block':'none';
+ if(principal!=='Tosa') document.getElementById('tipoTosa').value='';
+ atualizarResumoServicos();
+};
+calcularServicosSelecionados=function(){
+ const especie=document.getElementById('especie').value;
+ const porte=obterPortePorRaca(document.getElementById('raca').value,especie);
+ document.getElementById('porte').value=porte||'';
+ const nome=obterServicoPrincipalSelecionado()?.nome || document.getElementById('servicoPrincipal').value;
+ const regra=precoRegraV9(nome,especie,porte,document.getElementById('tipoTosa').value);
+ const itens=[];
+ if(regra && (!/Trimming/i.test(nome)||racaSelecionadaEhGoldenRetriever())) itens.push({nome:regra.nome+(regra.tipoTosa?' '+regra.tipoTosa:'')+(regra.porte?' ('+regra.porte+')':''),valor:Number(regra.preco),regraId:regra.id});
+ Object.entries(adicionaisPetV9).forEach(([id,n])=>{
+  if(document.getElementById(id)?.checked){const r=precoRegraV9(n,especie,porte);if(r)itens.push({nome:n,valor:Number(r.preco),regraId:r.id});}
+ });
+ if(beneficioClubeSelecionado && document.getElementById('pet').value.trim()===beneficioClubeSelecionado.pet){
+  const tipo=beneficioClubeSelecionado.tipo;
+  let item=itens.find(i=>tipo==='hidratacao'?i.nome==='Hidratação':/^Banho/.test(i.nome));
+  if(tipo==='hidratacao'&&!item){item={nome:'Hidratação',valor:0};itens.push(item);}
+  if(item){item.valor=0;item.beneficioClube=tipo;item.nome+=' — Prêmio Clube PetLyne';}
+ }
+ return {itens,total:itens.reduce((v,i)=>v+i.valor,0)};
+};
+validarAgendamento=function(){
+ for(const id of ['cliente','telefone','pet','especie','sexo','raca','porte','observacaoPet','data','horario']){
+  if(!document.getElementById(id).value.trim()){mostrarAlerta('Preencha todos os dados obrigatórios.');return false;}
+ }
+ if(!telefoneBrasileiroValido(document.getElementById('telefone').value.replace(/\D/g,''))){mostrarAlerta('Digite um telefone válido com DDD.');return false;}
+ const resumo=calcularServicosSelecionados();
+ const principal=obterServicoPrincipalSelecionado()?.nome || document.getElementById('servicoPrincipal').value;
+ if(principal&&!precoRegraV9(principal,document.getElementById('especie').value,document.getElementById('porte').value,document.getElementById('tipoTosa').value)){mostrarAlerta('Selecione um serviço e tipo de tosa disponíveis para a raça e porte.');return false;}
+ if(!resumo.itens.length){mostrarAlerta('Selecione pelo menos um serviço para este pet.');return false;}
+ if(beneficioClubeSelecionado?.tipo==='banhoGratis' && beneficioClubeSelecionado.pet===document.getElementById('pet').value.trim() && !resumo.itens.some(i=>i.beneficioClube==='banhoGratis')){mostrarAlerta('Selecione Banho para utilizar o banho grátis.');return false;}
+ const data=document.getElementById('data').value;const hora=document.getElementById('horario').value;
+ const hoje=new Date();const dia=new Date(data+'T00:00:00');
+ if(!/^\d{2}:\d{2}$/.test(hora)||hora==='12:00'||hora==='12:30'||diasFechados.includes(dia.getDay())||new Date(data+'T'+hora)<hoje){mostrarAlerta('Selecione uma data e horário disponíveis.');return false;}
+ return true;
+};
+function capturarPetV9(){
+ const p={};camposPetV9.forEach(id=>p[id]=document.getElementById(id).value.trim());
+ p.adicionais={};Object.keys(adicionaisPetV9).forEach(id=>p.adicionais[id]=document.getElementById(id).checked);
+ const resumo=calcularServicosSelecionados();p.servicos=resumo.itens;p.valorTotal=resumo.total;
+ return p;
+}
+function adicionarPetV9(){
+ // Data e horário pertencem à reserva, não ao cadastro individual.
+ 
+ for(const id of ['pet','especie','sexo','raca','observacaoPet'])if(!document.getElementById(id).value.trim()){mostrarAlerta('Complete os dados deste pet antes de adicioná-lo.');return;}
+ const p=capturarPetV9();const nome=obterServicoPrincipalSelecionado()?.nome||p.servicoPrincipal;
+ if(nome && (!precoRegraV9(nome,p.especie,p.porte,p.tipoTosa)||/Trimming/i.test(nome)&&!racaSelecionadaEhGoldenRetriever())){mostrarAlerta('Este serviço não está disponível para a raça, porte ou tipo de tosa selecionados.');return;}
+ if(!p.porte||!p.servicos.length){mostrarAlerta('Configure os serviços deste pet.');return;}
+ const i=petsReservaV9.findIndex(x=>x.pet.toLocaleLowerCase()===p.pet.toLocaleLowerCase());
+ if(i<0)petsReservaV9.push(p);else petsReservaV9[i]=p;
+ renderizarReservaV9();atualizarResumoServicos();
+}
+function renderizarReservaV9(){
+ document.getElementById('listaPetsV9').innerHTML=petsReservaV9.map((p,i)=>`<div class="resumo-item"><div><strong>${escaparV9(p.pet)}</strong><br>${p.servicos.map(s=>escaparV9(s.nome)+' — '+formatarMoeda(s.valor)).join('<br>')}<br><strong>Subtotal: ${formatarMoeda(p.valorTotal)}</strong></div><div><button type="button" onclick="editarPetReservaV9(${i})">Editar serviços</button><button type="button" onclick="petsReservaV9.splice(${i},1);renderizarReservaV9()">Remover</button></div></div>`).join('')+`<p><strong>Total dos pets adicionados: ${formatarMoeda(petsReservaV9.reduce((t,p)=>t+p.valorTotal,0))}</strong></p>`;
+}
+function editarPetReservaV9(i){
+ const p=petsReservaV9[i];aplicarCadastroPet(p);
+ document.getElementById('servicoPrincipal').value=p.servicoPrincipal;controlarCamposServico();
+ document.getElementById('tipoTosa').value=p.tipoTosa;
+ Object.keys(adicionaisPetV9).forEach(id=>document.getElementById(id).checked=!!p.adicionais?.[id]);atualizarResumoServicos();
+ document.getElementById('pet').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function selecionarTodosPetsV9(){
+ if(!petsEncontradosTelefone.length){mostrarAlerta('Informe o telefone para localizar os pets cadastrados.');return;}
+ const atual=capturarPetV9();
+ petsReservaV9=petsEncontradosTelefone.map(p=>({...p,servicoPrincipal:'',tipoTosa:'',adicionais:{},servicos:[],valorTotal:0}));
+ if(atual.pet&&atual.servicos.length){const i=petsReservaV9.findIndex(p=>p.pet===atual.pet);if(i>=0)petsReservaV9[i]=atual;}
+ renderizarReservaV9();mostrarAlerta('Pets selecionados. Use Editar serviços em cada pet e depois Adicionar / atualizar este pet.');
+}
+const abrirPreviaOriginalV9=abrirPreviaAgendamento;
+abrirPreviaAgendamento=function(){
+ if(!validarAgendamento())return;
+ if(!petsReservaV9.length || petsReservaV9.some(p=>p.pet.toLocaleLowerCase()===document.getElementById('pet').value.trim().toLocaleLowerCase())) adicionarPetV9();
+ if(petsReservaV9.some(p=>!p.servicos.length)){mostrarAlerta('Configure os serviços de todos os pets selecionados.');return;}
+ if(beneficioClubeSelecionado && !petsReservaV9.some(p=>p.pet===beneficioClubeSelecionado.pet&&p.servicos.some(s=>s.beneficioClube===beneficioClubeSelecionado.tipo))){mostrarAlerta('Inclua o pet e o serviço do benefício Clube selecionado nesta reserva.');return;}
+ abrirPreviaOriginalV9();if(!dadosPreAgendamento)return;
+ dadosPreAgendamento.pets=petsReservaV9.map(p=>({...p,adicionais:{...p.adicionais},servicos:p.servicos.map(s=>({...s}))}));
+ dadosPreAgendamento.pet=dadosPreAgendamento.pets.map(p=>p.pet).join(', ');
+ dadosPreAgendamento.resumo={itens:dadosPreAgendamento.pets.flatMap(p=>p.servicos.map(s=>({...s,nome:p.pet+' — '+s.nome}))),total:dadosPreAgendamento.pets.reduce((t,p)=>t+p.valorTotal,0)};
+ document.getElementById('mensagemPrevia').innerHTML=`Cliente: <strong>${escaparV9(dadosPreAgendamento.cliente)}</strong><br>Data: ${escaparV9(dadosPreAgendamento.dataFormatada)} — ${escaparV9(dadosPreAgendamento.horario)}<br>`+dadosPreAgendamento.pets.map(p=>`<hr><strong>${escaparV9(p.pet)}</strong> — ${escaparV9(p.raca)} / ${escaparV9(p.porte)}<br>${escaparV9(p.observacaoPet)}<br>${p.servicos.map(s=>escaparV9(s.nome)+' — '+formatarMoeda(s.valor)).join('<br>')}<br><strong>Subtotal: ${formatarMoeda(p.valorTotal)}</strong>`).join('')+`<hr><strong>Total: ${formatarMoeda(dadosPreAgendamento.resumo.total)}</strong>`;
+};
+const montarOriginalV9=montarDadosAgendamentoFirestore;
+montarDadosAgendamentoFirestore=function(dados,protocolo){return {...montarOriginalV9(dados,protocolo),pets:dados.pets,versaoPreco:'9.0.0',vigenciaPreco:'2026-10-01'};};
+const limparOriginalV9=limparFormulario;
+limparFormulario=function(){limparOriginalV9();petsReservaV9=[];document.getElementById('adicionalDentes').checked=false;renderizarReservaV9();};
+document.getElementById('adicionalDentes').addEventListener('change',atualizarResumoServicos);
+document.getElementById('telefone').addEventListener('input',()=>{petsReservaV9=[];renderizarReservaV9();});
+renderizarReservaV9();
+iniciarPagina();

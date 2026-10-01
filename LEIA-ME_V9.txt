@@ -1,0 +1,45 @@
+PETLYNE V9 — ATUALIZAÇÃO SOBRE O ZIP ESTÁVEL ENVIADO
+
+APLICAÇÃO
+1. No Firebase Console > Firestore Database > Regras, substitua o texto pelas regras completas de REGRAS_FIRESTORE_V9.rules e publique.
+2. Copie os arquivos deste ZIP sobre a pasta do projeto, preservando os caminhos. Os arquivos que não estão neste ZIP permanecem como estão.
+3. Suba os arquivos ao GitHub e aguarde a publicação da Vercel. Atualize a página do Admin.
+4. Abra Produtos e Serviços e clique em Salvar catálogo V9. Isso grava servicos/v9_catalogo com a nova tabela. O formulário já usa os preços V9 como padrão quando esse documento ainda não existe.
+5. Confira um agendamento de teste. As coleções contasPagar e historicoEdicoesAgendamento são criadas automaticamente na primeira gravação autenticada.
+
+HISTÓRICO E PREÇOS
+Vigência de referência: 01/10/2026. A nova tabela passa a ser utilizada pelos protocolos gerados com esta atualização. Não existe migração ou reprecificação dos protocolos antigos.
+Reagendar mantém os valores dos itens existentes. Na edição, adicionar um serviço utiliza o catálogo V9. Valores também podem ser corrigidos individualmente no Admin. As alterações ficam registradas no histórico administrativo.
+Banho por porte: Pequeno 65; Médio 80; Grande 130.
+Tosa Bebê: Pequeno 105; Médio 115; Grande indisponível.
+Tosa Geral: Pequeno 85; Médio 95; Grande 115.
+Tosa Tesoura: Pequeno 125; Médio 135; Grande 135.
+Tosa Verão: Pequeno 95; Médio 110; Grande 130.
+Trimming (Golden): Grande 380, exclusivo de Golden Retriever.
+Adicionais: Hidratação 25; Corte de Unha 10; Desembolo 25; Tratamento Anti-Pulgas 25; Tosa Higiênica 12; Escovação de Dentes 10.
+Pacote quinzenal: Pequeno 115; Médio 135; Grande 215.
+Pacote mensal: Pequeno 210; Médio 240; Grande 360.
+Gatos: banho a seco permanece em 80; não foi fornecida nova tarifa para esse serviço.
+Porte continua derivado da raça. Pelagem não participa da nova precificação.
+As regras antigas de serviços permanecem no Firebase, mas o novo catálogo usa um documento separado. Os valores dos protocolos antigos são lidos diretamente do histórico.
+
+MULTIPET
+Configure o pet e seus serviços, clique em Adicionar / atualizar este pet, configure o próximo e repita. Todos compartilham data e horário e geram um único protocolo.
+Para pets encontrados pelo telefone, Selecionar todos prepara a lista. Use Editar serviços em cada pet e Adicionar / atualizar para confirmar sua configuração. Remova da lista os pets que não participarão.
+A revisão mostra serviços, adicionais, subtotal de cada pet e total da reserva. O WhatsApp reúne os serviços com o nome do respectivo pet.
+Um protocolo multipet corresponde a uma reserva de 30 minutos, conforme a duração da versão-base. Não há multiplicação de horários pelo número de pets.
+O cadastro, faturamento, CRM e Clube reconhecem os pets da lista. O faturamento distribui os valores por pet, sem somar o total do protocolo novamente.
+
+ADMIN
+Pacotes: selecione o porte; tipo e porte preenchem o preço. Quando o pet já existe no cadastro, seu porte é preenchido pela raça.
+Callback: cada telefone mostra se existe agendamento e quais protocolos foram encontrados. A marcação independe da conversão automática do formulário.
+Cadastro: Observação do profissional é um campo livre, salvo somente em clientes, coleção que exige autenticação. Não é copiado ao protocolo público.
+Agenda: Editar permite trocar data/horário, remover/incluir serviços e ajustar valores por pet sem novo protocolo. Reagendamento verifica conflitos e bloqueios. Visitas de pacote também são atualizadas no documento do pacote.
+Contas a pagar: lançamentos à vista ou em parcelas mensais, fornecedor, categoria, observação, vencimento, baixa e reabertura. O total parcelado preserva os centavos e ajusta vencimentos ao último dia do mês quando necessário.
+Os indicadores distinguem compras feitas no mês, pagamentos efetuados no mês, contas pendentes com vencimento no mês e contas vencidas no mês. A distribuição por categoria usa a data de pagamento. A tabela usa o mês de vencimento.
+Editar e excluir uma parcela não altera as outras parcelas da mesma compra.
+
+VALIDAÇÃO
+Testes automatizados em Chromium com Firestore simulado: serviços individuais de dois pets; protocolo único; ocultação de pelagem; preço antigo ao reagendar; parcelas e arredondamento; último dia do mês; baixa de pagamento; preço de pacote; observação profissional; callback; bloqueio de conflito; faturamento multipet; layout de Admin em 390px. Sem erros de JavaScript nesses testes.
+A autenticação, a publicação das regras e gravações no Firebase real devem ser conferidas após a aplicação. Nenhum dado de produção foi alterado durante o desenvolvimento.
+Dias fechados preservados da base enviada: domingo e segunda-feira. Nenhum tema Halloween foi implementado.

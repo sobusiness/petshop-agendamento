@@ -176,7 +176,7 @@ async function abrirSecao(secao) {
 
     document.getElementById(`secao-${secao}`).classList.add("active");
 
-    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "clube", "pacotes", "servicos", "prospect-callback", "logs"];
+    const mapaSecoes = ["agendamentos", "faturamento", "dias-horarios", "clientes", "crm", "clube", "pacotes", "servicos", "prospect-callback", "logs", "contas-pagar"];
     const indice = mapaSecoes.indexOf(secao);
     const botoes = document.querySelectorAll(".tab-button");
     if (indice >= 0 && botoes[indice]) botoes[indice].classList.add("active");
@@ -252,7 +252,9 @@ async function abrirSecao(secao) {
             renderizarServicosAdmin();
         }
 
+        if (secao === "contas-pagar") await carregarContasV9();
         if (secao === "prospect-callback") {
+            await carregarAgendamentos(true);
             await carregarProspectCallbacks(true);
             renderizarProspectCallbacks();
         }
@@ -704,6 +706,7 @@ function renderizarAgenda() {
                             </div>
                             ${ehInicio ? `
                                 <div class="agenda-event-actions">
+                                    <button onclick="editarAgendamentoV9('${agendamento.id}')">Editar</button>
                                     <button onclick="concluirAgendamento('${agendamento.id}')">Concluir</button>
                                     <button class="secondary-button" onclick="cancelarAgendamento('${agendamento.id}')">Cancelar</button>
                                 </div>
@@ -902,6 +905,7 @@ function aplicarFiltrosAvancadosFaturamento(dados) {
 }
 
 function obterMapaPrimeiroAtendimentoCliente() {
+    const agendamentos=todosPetsAgendadosV9();
     const mapa = new Map();
     agendamentos.filter(agendamentoEhRealizadoFinanceiro).forEach(item => {
         const telefone = normalizarTelefoneCliente(item.telefone || item.telefoneNormalizado || "");
@@ -931,7 +935,7 @@ function enriquecerLancamentoFinanceiro(item, mapaPrimeiroAtendimento) {
 
 function obterLancamentosFinanceirosBase(intervalo = obterIntervaloFinanceiroAtual()) {
     const mapaPrimeiro = obterMapaPrimeiroAtendimentoCliente();
-    const realizados = agendamentos
+    const realizados = agendamentos.flatMap(expandirPetsV9)
         .filter(item => agendamentoEhRealizadoFinanceiro(item) && dataNoIntervaloFinanceiro(dataAgendamentoFinanceiroISO(item), intervalo))
         .map(item => enriquecerLancamentoFinanceiro(item, mapaPrimeiro));
     return aplicarFiltrosAvancadosFaturamento(realizados);
@@ -1548,7 +1552,7 @@ async function carregarClientesAdmin(forcar = false) {
     }
 
     try {
-        agendamentos.forEach(agendamento => {
+        agendamentos.flatMap(expandirPetsV9).forEach(agendamento => {
             const cliente = { ...montarClienteAPartirAgendamento(agendamento), origemCadastro: "agendamentos" };
             const chave = chaveClientePet(cliente);
 
@@ -1699,7 +1703,7 @@ function atualizarPorteNovoCliente() {
 }
 
 function limparFormularioNovoCliente() {
-    ["novoClienteNome", "novoClienteTelefone", "novoClientePet"].forEach(id => {
+    ["novoClienteNome", "novoClienteTelefone", "novoClientePet", "novoClienteProfissional"].forEach(id => {
         const campo = document.getElementById(id);
         if (campo) campo.value = "";
     });
@@ -1731,6 +1735,7 @@ async function gravarNovoCliente() {
         raca: document.getElementById("novoClienteRaca")?.value || "",
         porte: document.getElementById("novoClientePorte")?.value || "",
         observacaoPet: document.getElementById("novoClienteObservacao")?.value || "",
+        observacaoProfissional: document.getElementById("novoClienteProfissional")?.value || "",
         criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -1904,6 +1909,7 @@ function renderizarClientesAdmin() {
                 </select></label>
             </div>
 
+            <label><span>Observação do profissional (somente Admin)</span><textarea id="cliente-profissional-${item.id}" rows="4">${escaparV9(item.observacaoProfissional || "")}</textarea></label>
             <div class="cliente-card-actions cliente-card-actions-duplo">
                 <button onclick="salvarClienteAdmin('${item.id}')">Salvar Alterações</button>
                 <button class="secondary-button" onclick="excluirClienteAdmin('${item.id}')">Excluir Cadastro</button>
@@ -1923,6 +1929,7 @@ async function salvarClienteAdmin(idAtual) {
         raca: document.getElementById(`cliente-raca-${idAtual}`).value.trim(),
         porte: document.getElementById(`cliente-porte-${idAtual}`).value,
         observacaoPet: document.getElementById(`cliente-observacao-${idAtual}`).value,
+        observacaoProfissional: document.getElementById(`cliente-profissional-${idAtual}`).value,
         origemCadastro: "clientes",
         criadoEm: cadastroAnterior.criadoEm || firebase.firestore.FieldValue.serverTimestamp(),
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
@@ -2691,6 +2698,7 @@ function atualizarClientePacotePorTelefone() {
 
     inputNome.value = nomeCliente;
     definirCampoPetPacote(pets);
+    atualizarPortePacoteV9();
     pacoteClienteAutoPreenchido = true;
 }
 
@@ -2785,6 +2793,8 @@ async function salvarPacote() {
     const dataInicio = document.getElementById("pacoteDataInicio").value;
     const primeiroBanho = document.getElementById("pacotePrimeiroBanho").value;
     const horario = document.getElementById("pacoteHorario").value;
+    atualizarPrecoPacoteV9();
+    const portePacote = document.getElementById("pacotePorte").value;
     const valorPacote = Number(document.getElementById("pacoteValor").value || 0);
 
     if (!nomeCliente || !telefone || !nomePet || !tipo || !dataInicio || !primeiroBanho || !horario || !valorPacote) {
@@ -2828,6 +2838,8 @@ async function salvarPacote() {
         nomePet,
         tipo,
         valorPacote,
+        porte: portePacote,
+        versaoPreco: "9.0.0",
         dataInicio,
         primeiroBanho,
         dataFim: datas[datas.length - 1],
@@ -2852,7 +2864,7 @@ async function salvarPacote() {
             especie: "Cão",
             sexo: "",
             raca: "",
-            porte: "",
+            porte: portePacote,
             observacaoPet: `Banho ${visita.numero}/${visitas.length} do pacote ${protocolo}`,
             data: visita.data,
             dataFormatada: formatarDataCurta(visita.data),
@@ -4012,6 +4024,7 @@ function prioridadeCategoriaCRM(categoria) {
 }
 
 function calcularCRM() {
+    const agendamentos=todosPetsAgendadosV9();
     const donos = new Map();
     clientesAdmin.forEach(cliente => {
         const chaveDono = chaveDonoCRM(cliente.cliente, cliente.telefone);
@@ -4160,6 +4173,7 @@ function crmChaveAgendamento(item) {
     return chaveDonoCRM(item?.cliente, item?.telefone);
 }
 function crmHistoricoOrdenado() {
+    const agendamentos=todosPetsAgendadosV9();
     return [...crmHistorico].sort((a,b) => {
         const da = dataFirestoreParaDateCRM(a.criadoEm || a.dataEnvio)?.getTime() || 0;
         const dbb = dataFirestoreParaDateCRM(b.criadoEm || b.dataEnvio)?.getTime() || 0;
@@ -4167,6 +4181,7 @@ function crmHistoricoOrdenado() {
     });
 }
 function crmAcoesComRetorno() {
+    const agendamentos=todosPetsAgendadosV9();
     const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a) && crmDataAgendamento(a));
     return crmHistoricoOrdenado().map(acao => {
         const dataAcao = dataFirestoreParaDateCRM(acao.criadoEm || acao.dataEnvio);
@@ -4179,6 +4194,7 @@ function crmAcoesComRetorno() {
     });
 }
 function calcularMetricasCRMAvancadas() {
+    const agendamentos=todosPetsAgendadosV9();
     const concluidosLyne = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a) && dataISOValidaCRM(a.data));
     const clientesUnicos = new Set(clientesAdmin.map(c => chaveDonoCRM(c.cliente, c.telefone))).size;
     const acoes = crmAcoesComRetorno();
@@ -4196,6 +4212,7 @@ function calcularMetricasCRMAvancadas() {
     return { clientesUnicos, concluidosLyne, acoes, retornos, recuperados, solicitacoesAvaliacao, ticket, receita, taxaRetorno, taxaRecuperacao, taxaRecorrencia };
 }
 function calcularProximoFollowCRM() {
+    const agendamentos=todosPetsAgendadosV9();
     const hoje = new Date(); hoje.setHours(0,0,0,0);
     let melhor = null;
     const donos = new Map();
@@ -4222,6 +4239,7 @@ function calcularProximoFollowCRM() {
     return melhor;
 }
 function calcularRankingCRM(campo) {
+    const agendamentos=todosPetsAgendadosV9();
     const mapa = new Map();
     const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a));
     concluidos.forEach(a => {
@@ -4413,6 +4431,7 @@ async function atualizarResumoClubeAposMudanca(telefone) {
 }
 
 function calcularClientesClubePetlyne() {
+    const agendamentos=todosPetsAgendadosV9();
     const mapa = new Map();
     const concluidos = agendamentos.filter(a => protocoloEhLyne(a.protocolo) && agendamentoConcluidoCRM(a));
     concluidos.forEach(a => {
@@ -4991,13 +5010,14 @@ function renderizarProspectCallbacks() {
         const numeroWhats = String(item.telefoneNormalizado || telefone).replace(/\D/g,"");
         const numeroBR = numeroWhats.startsWith("55") ? numeroWhats : `55${numeroWhats}`;
         const status = item.status || "Pendente";
+        const reservas = agendamentos.filter(a => telefonesEquivalentesCliente(a.telefone, telefone) && normalizarTextoCliente(a.status) !== "cancelado");
         return `
             <article class="prospect-card ${prioridade.classe}">
                 <div class="prospect-card-main">
                     <div class="prospect-card-title">
                         <strong>${prospectEscapar(telefone)}</strong>
                         <span class="prospect-badge ${prioridade.classe}">${prioridade.texto}</span>
-                        <span class="prospect-status">${prospectEscapar(status)}</span>
+                        <span class="prospect-status">${prospectEscapar(status)}</span><span class="prospect-status">${reservas.length ? "Agendou: " + reservas.map(a=>prospectEscapar(a.protocolo)).join(", ") : "Sem agendamento"}</span>
                     </div>
                     <div class="prospect-meta">
                         <span><i class="fa-regular fa-clock"></i> Há ${prospectTempoDecorrido(criado)}</span>
@@ -5078,3 +5098,146 @@ async function descartarProspectCallback(id) {
         console.error("Erro ao descartar prospect:", e);
     }
 }
+
+/* V9 — manutenção administrativa; nenhum histórico é reprecificado. */
+carregarServicosAdmin=async function(){servicosAdmin=await lerCatalogoV9();};
+renderizarServicosAdmin=function(){
+ const sec=document.getElementById('secao-servicos');
+ sec.innerHTML=`<h2>Produtos e Serviços</h2><p>Preços por porte, sem pelagem. Os protocolos existentes mantêm os valores gravados.</p><div class="v9-panel"><h3>Banhos, tosas e serviços avulsos</h3><div class="v9-table-wrap"><table class="v9-table"><thead><tr><th>Serviço</th><th>Espécie</th><th>Porte</th><th>Tipo de tosa</th><th>Preço</th><th>Ativo</th></tr></thead><tbody>${catalogoV9.map((r,i)=>`<tr><td>${escaparV9(r.nome)}</td><td>${escaparV9(r.especie)}</td><td>${escaparV9(r.porte||'Todos')}</td><td>${escaparV9(r.tipoTosa||'—')}</td><td><input aria-label="Preço ${escaparV9(r.nome+' '+r.porte+' '+r.tipoTosa)}" type="number" min="0.01" step="0.01" id="v9-preco-${i}" value="${r.preco}"></td><td><input aria-label="Ativo ${escaparV9(r.nome)}" type="checkbox" id="v9-ativo-${i}" ${r.ativo!==false?'checked':''}></td></tr>`).join('')}</tbody></table></div><button onclick="salvarCatalogoV9(this)">Salvar catálogo V9</button><span id="v9CatalogoMensagem" role="status"></span></div>`;
+};
+async function salvarCatalogoV9(btn){
+ const regras=catalogoV9.map((r,i)=>({...r,preco:Number(document.getElementById('v9-preco-'+i).value),ativo:document.getElementById('v9-ativo-'+i).checked}));
+ if(regras.some(r=>!Number.isFinite(r.preco)||r.preco<=0)){await mostrarAvisoAdmin({titulo:'Preço inválido',mensagem:'Informe valores maiores que zero.'});return;}
+ btn.disabled=true;
+ try{await db.collection('servicos').doc('v9_catalogo').set({nome:'Catálogo V9',versao:'9.0.0',vigencia:'2026-10-01',regras,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});catalogoV9=regras;servicosAdmin=regras;document.getElementById('v9CatalogoMensagem').textContent=' Catálogo salvo. Histórico preservado.';}
+ catch(e){await mostrarAvisoAdmin({titulo:'Falha ao salvar',mensagem:e.message});}finally{btn.disabled=false;}
+}
+function atualizarPrecoPacoteV9(){
+ const p=document.getElementById('pacotePorte').value,t=document.getElementById('pacoteTipo').value;
+ document.getElementById('pacoteValor').value=PETLYNE_V9.pacotes[t]?.[p]||'';
+ atualizarPreviaPacote();
+}
+function atualizarPortePacoteV9(){
+ const pet=obterNomePetPacoteSelecionado();
+ const cadastro=obterClientesPacotePorTelefone(document.getElementById('pacoteTelefone').value).find(c=>c.pet===pet);
+ document.getElementById('pacotePorte').value=cadastro?(obterPortePorRacaAdmin(cadastro.raca,cadastro.especie)||cadastro.porte):'';
+ atualizarPrecoPacoteV9();
+}
+['pacotePetSelect','pacoteNomePet'].forEach(id=>document.getElementById(id).addEventListener('change',atualizarPortePacoteV9));
+
+function abrirDialogoV9(titulo,conteudo){
+ let d=document.getElementById('dialogoV9');if(!d){d=document.createElement('dialog');d.id='dialogoV9';d.className='v9-dialog';document.body.appendChild(d);}
+ d.innerHTML=`<header><h2>${escaparV9(titulo)}</h2><button type="button" onclick="document.getElementById('dialogoV9').close()" aria-label="Fechar">×</button></header>${conteudo}`;d.showModal();return d;
+}
+let edicaoReservaV9=null;
+async function editarAgendamentoV9(id){
+ const a=agendamentos.find(x=>x.id===id);if(!a)return;
+ await lerCatalogoV9();
+ edicaoReservaV9={id,original:a,pets:petsAgendamentoV9(a).map(p=>({...p,servicos:(p.servicos||[]).map(s=>({...s}))}))};
+ const html=`<p>Protocolo <strong>${escaparV9(a.protocolo)}</strong> • ${escaparV9(a.cliente)}. Valores existentes são preservados; novos serviços usam o catálogo V9.</p><form id="formEdicaoV9"><div class="v9-grid"><label>Data<input type="date" id="edicaoDataV9" required value="${escaparV9(a.data)}"></label><label>Horário<input type="time" id="edicaoHoraV9" required step="1800" value="${escaparV9(a.horario)}"></label></div><div id="edicaoPetsV9"></div><p id="edicaoTotalV9"></p><button type="submit">Salvar alterações</button><p id="edicaoErroV9" role="alert"></p></form>`;
+ abrirDialogoV9('Editar agendamento',html);renderizarEdicaoPetsV9();
+ document.getElementById('formEdicaoV9').addEventListener('submit',salvarEdicaoAgendamentoV9);
+}
+function renderizarEdicaoPetsV9(){
+ document.getElementById('edicaoPetsV9').innerHTML=edicaoReservaV9.pets.map((p,i)=>{
+ const regras=catalogoV9.filter(r=>r.ativo!==false&&(r.especie===p.especie||r.especie==='Ambos')&&(!r.porte||r.porte===p.porte)&&(!/Trimming/.test(r.nome)||normalizarTextoCliente(p.raca).includes('golden')));
+ return `<section class="v9-panel"><h3>${escaparV9(p.pet)} • ${escaparV9(p.porte||'Porte não informado')}</h3><p>${escaparV9(p.raca||'')}</p><div>${p.servicos.map((s,j)=>`<div class="v9-service"><span>${escaparV9(s.nome)}</span><label>R$ <input aria-label="Valor ${escaparV9(s.nome)}" type="number" min="0" step="0.01" value="${Number(s.valor||0)}" onchange="alterarValorServicoV9(${i},${j},this.value)"></label><button type="button" onclick="removerServicoEdicaoV9(${i},${j})">Remover</button></div>`).join('')}</div><div class="v9-grid"><label>Adicionar serviço<select id="edicaoServicoV9-${i}"><option value="">Selecione</option>${regras.map(r=>`<option value="${escaparV9(r.id)}">${escaparV9(r.nome+' '+(r.tipoTosa||''))} — ${formatarMoeda(r.preco)}</option>`).join('')}</select></label><button type="button" onclick="adicionarServicoEdicaoV9(${i})">Adicionar</button></div></section>`;
+ }).join('');atualizarTotalEdicaoV9();
+}
+function alterarValorServicoV9(i,j,v){edicaoReservaV9.pets[i].servicos[j].valor=Number(v);atualizarTotalEdicaoV9();}
+function removerServicoEdicaoV9(i,j){edicaoReservaV9.pets[i].servicos.splice(j,1);renderizarEdicaoPetsV9();}
+function adicionarServicoEdicaoV9(i){
+ const r=catalogoV9.find(r=>r.id===document.getElementById('edicaoServicoV9-'+i).value);if(!r)return;
+ edicaoReservaV9.pets[i].servicos.push({nome:r.nome+(r.tipoTosa?' '+r.tipoTosa:'')+(r.porte?' ('+r.porte+')':''),valor:Number(r.preco),regraId:r.id});renderizarEdicaoPetsV9();
+}
+function atualizarTotalEdicaoV9(){document.getElementById('edicaoTotalV9').textContent='Total: '+formatarMoeda(edicaoReservaV9.pets.reduce((t,p)=>t+p.servicos.reduce((v,s)=>v+Number(s.valor||0),0),0));}
+async function salvarEdicaoAgendamentoV9(e){
+ e.preventDefault();const btn=e.target.querySelector('[type=submit]');btn.disabled=true;
+ const erro=document.getElementById('edicaoErroV9');erro.textContent='';
+ try{
+  const {id,original,pets}=edicaoReservaV9;
+  if(pets.some(p=>!p.servicos.length||p.servicos.some(s=>!Number.isFinite(s.valor)||s.valor<0)))throw Error('Cada pet precisa ter um serviço e valores válidos.');
+  const data=document.getElementById('edicaoDataV9').value,horario=document.getElementById('edicaoHoraV9').value;
+  const duracao=Number(original.duracaoMinutos||30);const inicio=horarioParaMinutos(horario),fim=inicio+duracao;
+  const mudou=data!==original.data||horario!==original.horario;
+  if(mudou){
+   if([0,1].includes(new Date(data+'T12:00:00').getDay())||inicio<540||fim>1020||inicio<780&&fim>720||inicio%30!==0||new Date(data+'T'+horario)<new Date())throw Error('Escolha um horário válido: 09h–17h, sem almoço, domingo ou segunda-feira (dias fechados na base enviada).');
+   const [s,b]=await Promise.all([db.collection('agendamentos').where('data','==',data).get(),db.collection('bloqueiosAgenda').where('data','==',data).get()]);
+   if(s.docs.some(d=>d.id!==id&&d.data().status!=='Cancelado'&&horariosSobrepostos(horario,duracao,d.data().horario,Number(d.data().duracaoMinutos||30))))throw Error('Já existe uma reserva neste horário.');
+   if(b.docs.some(d=>d.data().status==='Ativo'&&horariosSobrepostos(horario,duracao,d.data().inicio,horarioParaMinutos(d.data().fim)-horarioParaMinutos(d.data().inicio))))throw Error('Este horário está bloqueado.');
+  }
+  const novos=pets.map(p=>({...p,valorTotal:p.servicos.reduce((t,s)=>t+Number(s.valor),0)}));
+  if(original.beneficioClube && !novos.some(p=>p.pet===original.beneficioClube.pet && p.servicos.some(s=>s.beneficioClube===original.beneficioClube.tipo || /Prêmio Clube/.test(s.nome))))throw Error('Preserve o serviço do prêmio Clube neste agendamento.');
+  const campos={data,horario,dataFormatada:formatarDataCurta(data),pets:novos,pet:novos.map(p=>p.pet).join(', '),servicos:novos.flatMap(p=>p.servicos.map(s=>({...s,nome:novos.length>1?p.pet+' — '+s.nome:s.nome}))),valorTotal:novos.reduce((t,p)=>t+p.valorTotal,0),atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
+  await db.runTransaction(async tx=>{
+   const ref=db.collection('agendamentos').doc(id);const atual=await tx.get(ref);
+   if(!atual.exists)throw Error('O agendamento foi removido.');
+   const anterior=atual.data();
+   if(anterior.data!==original.data||anterior.horario!==original.horario||Number(anterior.valorTotal)!==Number(original.valorTotal)||JSON.stringify(anterior.servicos)!==JSON.stringify(original.servicos))throw Error('O agendamento foi alterado por outra sessão. Reabra a edição.');
+   let packRef,packDoc;
+   if(original.pacoteId){packRef=db.collection('pacotes').doc(original.pacoteId);packDoc=await tx.get(packRef);}
+   tx.update(ref,campos);
+   if(packDoc?.exists){const visitas=packDoc.data().visitas.map(v=>v.agendamentoId===id?{...v,data,horario}:v);tx.update(packRef,{visitas,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});}
+   tx.set(db.collection('historicoEdicoesAgendamento').doc(),{protocolo:original.protocolo,agendamentoId:id,antes:{data:anterior.data,horario:anterior.horario,servicos:anterior.servicos,valorTotal:anterior.valorTotal},depois:{data,horario,servicos:campos.servicos,valorTotal:campos.valorTotal},criadoEm:firebase.firestore.FieldValue.serverTimestamp()});
+  });
+  document.getElementById('dialogoV9').close();await carregarAgendamentos(true);renderizarAgenda();atualizarFaturamento();
+ }catch(ex){erro.textContent=ex.message;}finally{btn.disabled=false;}
+}
+
+// Contas a pagar: valores de compra e saída de caixa são acompanhados separadamente.
+let contasV9=[];
+const categoriasContasV9=['Produtos e insumos','Equipamentos','Aluguel','Água','Energia','Telefone e internet','Impostos','Manutenção','Outros'];
+function hojeISOv9(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+const contasSecV9=document.createElement('section');contasSecV9.id='secao-contas-pagar';contasSecV9.className='admin-section';
+contasSecV9.innerHTML=`<h2>Contas a pagar</h2><p>Acompanhe compras, vencimentos e o dinheiro pago por categoria.</p><div class="v9-panel v9-grid"><label>Mês<input type="month" id="contasMesV9" value="${hojeISOv9().slice(0,7)}" onchange="renderizarContasV9()"></label><label>Categoria<select id="contasCategoriaV9" onchange="renderizarContasV9()"><option value="">Todas</option>${categoriasContasV9.map(c=>`<option>${c}</option>`).join('')}</select></label><label>Status<select id="contasStatusV9" onchange="renderizarContasV9()"><option value="">Todos</option><option>Pendente</option><option>Pago</option><option>Vencido</option></select></label><button onclick="editarContaV9()">Lançar compra / conta</button><button class="secondary-button" onclick="carregarContasV9()">Atualizar</button></div><div id="contasIndicadoresV9" class="v9-grid"></div><div class="v9-grid"><div class="v9-panel"><h3>Dinheiro pago por categoria</h3><div id="contasAnaliseV9"></div></div><div class="v9-panel"><h3>Próximos vencimentos</h3><div id="contasProximasV9"></div></div></div><div class="v9-panel v9-table-wrap"><table class="v9-table"><thead><tr><th>Vencimento</th><th>Compra / fornecedor</th><th>Categoria</th><th>Valor</th><th>Status / pagamento</th><th>Ações</th></tr></thead><tbody id="contasListaV9"></tbody></table></div>`;
+document.querySelector('main').appendChild(contasSecV9);
+async function carregarContasV9(){const s=await db.collection('contasPagar').orderBy('vencimento').get();contasV9=s.docs.map(d=>({id:d.id,...d.data()}));renderizarContasV9();}
+function statusContaV9(c){return c.status==='Pago'?'Pago':c.vencimento<hojeISOv9()?'Vencido':'Pendente';}
+function renderizarContasV9(){
+ const mes=document.getElementById('contasMesV9').value,cat=document.getElementById('contasCategoriaV9').value,status=document.getElementById('contasStatusV9').value;
+ const categoria=contasV9.filter(c=>!cat||c.categoria===cat);
+ const vencimentos=categoria.filter(c=>c.vencimento?.startsWith(mes));
+ const pagos=categoria.filter(c=>c.status==='Pago'&&c.dataPagamento?.startsWith(mes));
+ const sum=cs=>cs.reduce((t,c)=>t+Number(c.valor||0),0);
+ const abertos=vencimentos.filter(c=>c.status!=='Pago');const vencidos=abertos.filter(c=>statusContaV9(c)==='Vencido');
+ const compras=categoria.filter(c=>c.dataCompra?.startsWith(mes));
+ document.getElementById('contasIndicadoresV9').innerHTML=[['Compras no mês',sum(compras)],['Pago no mês',sum(pagos)],['A pagar (vencimento no mês)',sum(abertos)],['Vencido no mês',sum(vencidos)]].map(([t,v])=>`<article class="v9-panel"><span>${t}</span><h3>${formatarMoeda(v)}</h3></article>`).join('');
+ const total=sum(pagos);const grupos=categoriasContasV9.map(c=>[c,sum(pagos.filter(p=>p.categoria===c))]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+ document.getElementById('contasAnaliseV9').innerHTML=grupos.map(([c,v])=>`<p>${escaparV9(c)} <strong>${formatarMoeda(v)} • ${(v/total*100).toFixed(1).replace('.',',')}%</strong></p><div class="v9-bar"><span style="width:${v/total*100}%"></span></div>`).join('')||'<p>Nenhum pagamento registrado neste mês.</p>';
+ document.getElementById('contasProximasV9').innerHTML=categoria.filter(c=>c.status!=='Pago').slice(0,8).map(c=>`<p>${formatarDataCurta(c.vencimento)} • ${escaparV9(c.descricao)} — <strong>${formatarMoeda(c.valor)}</strong> (${statusContaV9(c)})</p>`).join('')||'<p>Nenhuma conta pendente.</p>';
+ const lista=vencimentos.filter(c=>!status||statusContaV9(c)===status);
+ document.getElementById('contasListaV9').innerHTML=lista.map(c=>`<tr><td>${formatarDataCurta(c.vencimento)}</td><td><strong>${escaparV9(c.descricao)}</strong><br>${escaparV9(c.fornecedor||'')}<br><small>Compra: ${formatarDataCurta(c.dataCompra)}${c.parcelas>1?' • Parcela '+c.parcela+'/'+c.parcelas:''}</small></td><td>${escaparV9(c.categoria)}</td><td>${formatarMoeda(c.valor)}</td><td>${statusContaV9(c)}${c.dataPagamento?'<br>'+formatarDataCurta(c.dataPagamento):''}</td><td><button onclick="editarContaV9('${c.id}')">Editar</button>${c.status!=='Pago'?`<button onclick="pagarContaV9('${c.id}')">Pagar</button>`:`<button class="secondary-button" onclick="reabrirContaV9('${c.id}')">Reabrir</button>`}<button class="secondary-button" onclick="excluirContaV9('${c.id}')">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6">Nenhuma conta neste filtro.</td></tr>';
+}
+function editarContaV9(id){
+ const c=contasV9.find(c=>c.id===id)||{};
+ abrirDialogoV9(id?'Editar conta':'Lançar compra / conta',`<form id="formContaV9"><div class="v9-grid"><label>Descrição<input id="contaDescricaoV9" required maxlength="250" value="${escaparV9(c.descricao||'')}"></label><label>Fornecedor<input id="contaFornecedorV9" maxlength="250" value="${escaparV9(c.fornecedor||'')}"></label><label>Categoria<select id="contaCategoriaV9">${categoriasContasV9.map(x=>`<option ${c.categoria===x?'selected':''}>${x}</option>`).join('')}</select></label><label>Data da compra<input type="date" id="contaCompraV9" required value="${c.dataCompra||hojeISOv9()}"></label><label>${id?'Valor da parcela':'Valor total da compra'}<input type="number" step="0.01" min="0.01" id="contaValorV9" required value="${c.valor||''}"></label><label>${id?'Vencimento':'Primeiro vencimento'}<input type="date" id="contaVencimentoV9" required value="${c.vencimento||hojeISOv9()}"></label>${id?'':`<label>Parcelas mensais<input type="number" id="contaParcelasV9" min="1" max="60" value="1" required></label>`}<label>Observação<textarea id="contaObsV9" maxlength="3000">${escaparV9(c.observacao||'')}</textarea></label></div><button type="submit">Salvar</button><p id="contaErroV9" role="alert"></p></form>`);
+ document.getElementById('formContaV9').addEventListener('submit',async e=>{
+  e.preventDefault();const btn=e.target.querySelector('button[type=submit]');btn.disabled=true;
+  try{
+   const v=id=>document.getElementById(id).value;
+   const valor=Number(v('contaValorV9')),n=id?1:Number(v('contaParcelasV9'));
+   if(!Number.isFinite(valor)||valor<=0||!Number.isInteger(n)||n<1||n>60||Math.round(valor*100)<n)throw Error('Informe um valor e número de parcelas válidos.');
+   const dados={descricao:v('contaDescricaoV9').trim(),fornecedor:v('contaFornecedorV9').trim(),categoria:v('contaCategoriaV9'),dataCompra:v('contaCompraV9'),vencimento:v('contaVencimentoV9'),observacao:v('contaObsV9'),atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
+   if(!dados.descricao)throw Error('Informe a descrição.');
+   if(id)await db.collection('contasPagar').doc(id).update({...dados,valor});
+   else{
+    const compraId=db.collection('contasPagar').doc().id;const batch=db.batch();const cents=Math.round(valor*100);const base=Math.floor(cents/n);const resto=cents%n;
+    const [ano,mes,dia]=dados.vencimento.split('-').map(Number);
+    for(let i=0;i<n;i++){
+     const dt=new Date(ano,mes-1+i,1,12);const max=new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate();dt.setDate(Math.min(dia,max));
+     const venc=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+     batch.set(db.collection('contasPagar').doc(),{...dados,vencimento:venc,compraId,parcela:i+1,parcelas:n,valor:(base+(i<resto?1:0))/100,status:'Pendente',criadoEm:firebase.firestore.FieldValue.serverTimestamp()});
+    }await batch.commit();
+   }
+   document.getElementById('dialogoV9').close();await carregarContasV9();
+  }catch(ex){document.getElementById('contaErroV9').textContent=ex.message;}finally{btn.disabled=false;}
+ });
+}
+function pagarContaV9(id){
+ abrirDialogoV9('Registrar pagamento',`<form id="formPagamentoV9"><label>Data do pagamento<input type="date" id="pagamentoDataV9" required value="${hojeISOv9()}"></label><label>Forma de pagamento<select id="pagamentoFormaV9"><option>PIX</option><option>Dinheiro</option><option>Cartão</option><option>Boleto</option><option>Transferência</option></select></label><button type="submit">Confirmar pagamento</button><p id="pagamentoErroV9" role="alert"></p></form>`);
+ document.getElementById('formPagamentoV9').addEventListener('submit',async e=>{e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;try{const data=document.getElementById('pagamentoDataV9').value;if(data>hojeISOv9())throw Error('A data de pagamento não pode ser futura.');await db.collection('contasPagar').doc(id).update({status:'Pago',dataPagamento:data,formaPagamento:document.getElementById('pagamentoFormaV9').value,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});document.getElementById('dialogoV9').close();await carregarContasV9();}catch(ex){document.getElementById('pagamentoErroV9').textContent=ex.message;}finally{btn.disabled=false;}});
+}
+async function reabrirContaV9(id){if(!await mostrarConfirmacaoAdmin({titulo:'Reabrir conta',mensagem:'Remover a baixa e tornar esta parcela pendente?',textoConfirmar:'Reabrir'}))return;try{await db.collection('contasPagar').doc(id).update({status:'Pendente',dataPagamento:'',formaPagamento:'',atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});await carregarContasV9();}catch(e){await mostrarAvisoAdmin({titulo:'Falha',mensagem:e.message});}}
+async function excluirContaV9(id){if(!await mostrarConfirmacaoAdmin({titulo:'Excluir parcela',mensagem:'Excluir somente esta parcela? As outras parcelas da compra serão preservadas.',textoConfirmar:'Excluir'}))return;try{await db.collection('contasPagar').doc(id).delete();await carregarContasV9();}catch(e){await mostrarAvisoAdmin({titulo:'Falha',mensagem:e.message});}}
+
+function todosPetsAgendadosV9(){return agendamentos.flatMap(expandirPetsV9);}
