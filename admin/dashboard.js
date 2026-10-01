@@ -5127,6 +5127,7 @@ function atualizarPortePacoteV9(){
 
 function abrirDialogoV9(titulo,conteudo){
  let d=document.getElementById('dialogoV9');if(!d){d=document.createElement('dialog');d.id='dialogoV9';d.className='v9-dialog';document.body.appendChild(d);}
+ d.className='v9-dialog';
  d.innerHTML=`<header><h2>${escaparV9(titulo)}</h2><button type="button" onclick="document.getElementById('dialogoV9').close()" aria-label="Fechar">×</button></header>${conteudo}`;d.showModal();return d;
 }
 let edicaoReservaV9=null;
@@ -5262,7 +5263,8 @@ function alternarParcelamentoV94(){
 async function excluirContaV9(id){
  const c=contasV9.find(x=>x.id===id);if(!c)return;
  const grupo=c.compraId?contasV9.filter(x=>x.compraId===c.compraId):[c];
- abrirDialogoV9('Excluir conta',`<p>Selecione o que deseja excluir de <strong>${escaparV9(c.descricao)}</strong>.</p><p>A exclusão é definitiva e inclui os registros de pagamento selecionados.</p><button onclick="confirmarExclusaoContaV94('${id}',false)">Excluir somente esta parcela</button>${grupo.length>1?`<button onclick="confirmarExclusaoContaV94('${id}',true)">Excluir compra inteira (${grupo.length} parcelas)</button>`:''}<p id="exclusaoContaErroV94" role="alert"></p>`);
+ const dialog=abrirDialogoV9('Excluir conta',`<div class="exclusao-intro-v95"><span class="exclusao-legenda-v95">COMPRA SELECIONADA</span><strong>${escaparV9(c.descricao)}</strong><span>${escaparV9(c.fornecedor||'')}${c.fornecedor?' • ':''}${formatarMoeda(c.valor)}${c.parcelas>1?' • Parcela '+c.parcela+'/'+c.parcelas:''}</span></div><p class="exclusao-instrucao-v95">Escolha quais registros deseja excluir.</p><div class="exclusao-opcoes-v95"><article><h3>Somente esta parcela</h3><p>Remove apenas a parcela selecionada. As demais permanecem na compra.</p><button type="button" class="exclusao-parcela-v95" onclick="confirmarExclusaoContaV94('${id}',false)">Excluir parcela</button></article>${grupo.length>1?`<article class="exclusao-compra-v95"><h3>Compra inteira</h3><p>Remove as ${grupo.length} parcelas restantes desta compra, incluindo as pagas.</p><button type="button" onclick="confirmarExclusaoContaV94('${id}',true)">Excluir ${grupo.length} parcelas</button></article>`:''}</div><p class="exclusao-aviso-v95">Esta ação é definitiva e remove também os pagamentos dos registros excluídos.</p><p id="exclusaoContaErroV94" role="alert"></p><footer class="exclusao-rodape-v95"><button type="button" onclick="document.getElementById('dialogoV9').close()">Cancelar</button></footer>`);
+ dialog.classList.add('exclusao-dialog-v95');
 }
 async function confirmarExclusaoContaV94(id,todas){
  const c=contasV9.find(x=>x.id===id);if(!c)return;

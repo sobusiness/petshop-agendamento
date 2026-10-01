@@ -2992,3 +2992,30 @@ dialog.v9-dialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;max-wi
 .conta-status-v94{display:inline-block;border-radius:30px;padding:4px 10px;font-size:12px;font-weight:700;background:#fff1d5;color:#805800}
 .conta-status-v94.pago{background:#e2f5eb;color:#26734d}.conta-status-v94.vencido{background:#ffe5e9;color:#a42a45}
 @media(max-width:700px){#secao-contas-pagar{padding:16px}#contasIndicadoresV9{grid-template-columns:repeat(2,minmax(0,1fr))}.v9-dialog .v9-grid{grid-template-columns:1fr}}
+
+/* V9.0.5 — opções de exclusão organizadas */
+dialog.exclusao-dialog-v95{width:620px;padding:26px;text-align:left}
+.exclusao-dialog-v95 header{margin:0 0 22px;padding:0 0 18px}
+.exclusao-dialog-v95 header h2{font-size:23px;line-height:1.3;margin:0;font-weight:700}
+.exclusao-dialog-v95 header button{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;margin:0;padding:0;background:#fff1f5;color:#9b3b5b;font-size:22px}
+.exclusao-intro-v95{display:flex;flex-direction:column;gap:7px;padding:16px 18px;background:#fff7fa;border:1px solid #f0dce4;border-radius:12px;overflow-wrap:anywhere}
+.exclusao-legenda-v95{font-size:10px;font-weight:700;letter-spacing:1.1px;color:#a37888}
+.exclusao-intro-v95 strong{font-size:18px;line-height:1.4;color:#533443}
+.exclusao-intro-v95>span:last-child{font-size:13px;line-height:1.5;color:#8a6b79}
+.exclusao-dialog-v95 p.exclusao-instrucao-v95{font-size:14px;margin:22px 0 12px;color:#6e5260}
+.exclusao-opcoes-v95{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.exclusao-opcoes-v95 article{display:flex;flex-direction:column;align-items:stretch;padding:18px;border:1px solid #eadce2;border-radius:14px;background:#fff}
+.exclusao-opcoes-v95 article:only-child{grid-column:1/-1}
+.exclusao-opcoes-v95 h3{margin:0;font-size:16px;line-height:1.4;color:#533443}
+.exclusao-dialog-v95 .exclusao-opcoes-v95 p{margin:10px 0 18px;font-size:13px;line-height:1.65;color:#89717d;flex:1}
+.exclusao-dialog-v95 .exclusao-opcoes-v95 button{margin:0;width:100%;min-height:42px;padding:11px 12px;font-size:13px;font-weight:700;line-height:1.4;border-radius:9px;white-space:normal}
+.exclusao-dialog-v95 button.exclusao-parcela-v95{background:#fff;color:#a43c5f;border:1px solid #dca9bb}
+.exclusao-opcoes-v95 article.exclusao-compra-v95{border-color:#e8bdcb;background:#fffbfc}
+.exclusao-dialog-v95 p.exclusao-aviso-v95{font-size:12px;line-height:1.6;margin:18px 0;color:#967280}
+.exclusao-dialog-v95 #exclusaoContaErroV94:empty{display:none}
+.exclusao-rodape-v95{display:flex;justify-content:flex-end;padding-top:16px;border-top:1px solid #f0e3e8}
+.exclusao-dialog-v95 .exclusao-rodape-v95 button{margin:0;background:#f5eef1;color:#6f5360;min-height:40px;padding:10px 24px;font-size:13px;font-weight:700}
+.exclusao-dialog-v95 button:hover{filter:brightness(.96)}
+.exclusao-dialog-v95 button:focus-visible{outline:3px solid #e7b0c2;outline-offset:3px}
+.exclusao-dialog-v95 button:disabled{opacity:.55;cursor:wait}
+@media(max-width:540px){dialog.exclusao-dialog-v95{padding:20px}.exclusao-opcoes-v95{grid-template-columns:1fr}.exclusao-dialog-v95 header h2{font-size:21px}.exclusao-rodape-v95 button{width:100%}}
