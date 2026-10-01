@@ -628,3 +628,6 @@ form h2,
 
 /* V9.0.2 — um único resumo, com subtotais quando houver vários pets */
 .resumo-pet-v92{padding:12px 0;border-bottom:1px solid #edd2dd}.resumo-pet-v92:last-child{border-bottom:0}.resumo-pet-v92>strong{color:#a83a62}.resumo-pet-v92 .resumo-item{padding:8px 0}#multipetV9 .alerta-resumo{margin:6px 0}
+
+/* V9.0.3 — inclusão de pets sem cadastro prévio */
+.novo-pet-acoes-v93{margin:18px 0;padding:14px 0;border-top:1px solid #eed4df}.novo-pet-acoes-v93 small{display:block;line-height:1.5;color:#795461}.novo-pet-acoes-v93 button{width:auto;margin:10px 8px 0 0;padding:10px 15px;font-size:14px}#cancelarNovoPetV93{background:#8c7c82}

@@ -1398,6 +1398,7 @@ document.getElementById("servicoPrincipal").addEventListener("change", carregarH
 document.getElementById("petCadastradoSelect")?.addEventListener("change", function () {
     if (!this.value) return;
     const index = Number(this.value);
+    if(novoPetEmCadastroV93){mostrarAlerta("Inclua o novo pet ou cancele a inclusão antes de selecionar outro.");return;}
     modoPetsV92 = "unico";
     petsReservaV9 = [];
 
@@ -2442,6 +2443,8 @@ let petsReservaV9 = [];
 let modoPetsV92 = "unico";
 let carregandoPetV92 = false;
 let atualizandoResumoV92 = false;
+let novoPetEmCadastroV93 = false;
+let modeloServicosV93 = null;
 const camposPetV9=['pet','especie','sexo','raca','porte','observacaoPet','servicoPrincipal','tipoTosa'];
 const adicionaisPetV9={adicionalHidratacao:'Hidratação',adicionalTosaHigienica:'Tosa Higiênica Avulsa',adicionalAntiParasitas:'Tratamento Anti-Pulgas',adicionalCorteUnha:'Corte de Unha',adicionalDesembolo:'Desembolo',adicionalDentes:'Escovação de Dentes'};
 carregarServicosPrincipaisCliente = async function(){
@@ -2484,7 +2487,7 @@ calcularServicosSelecionados=function(){
  const resumo=montarServicosPetV92(camposAtuaisPetV92());document.getElementById('porte').value=resumo.porte||'';return resumo;
 };
 function aplicarMesmoServicoV92(){
- if(modoPetsV92!=='todos'||carregandoPetV92)return;
+ if(modoPetsV92!=='todos'||carregandoPetV92||novoPetEmCadastroV93)return;
  const atual=camposAtuaisPetV92();
  petsReservaV9=petsReservaV9.map(p=>{
   const cadastro=p.pet===atual.pet?{...p,...atual}:p;
@@ -2500,7 +2503,7 @@ function atualizarResumoUnificadoV92(){
   aplicarMesmoServicoV92();renderizarReservaV9();
   const lista=document.getElementById('listaResumo');
   if(petsReservaV9.length>1){
-   lista.innerHTML=petsReservaV9.map(p=>`<div class="resumo-pet-v92"><strong>${escaparV9(p.pet)} — ${escaparV9(p.porte||'')}</strong>${p.erroServico?`<p class="alerta-resumo">${escaparV9(p.erroServico)}</p>`:''}${p.servicos.length?p.servicos.map(s=>`<div class="resumo-item"><span>${escaparV9(s.nome)}</span><strong>${formatarMoeda(s.valor)}</strong></div>`).join(''):'<p>Selecione os serviços.</p>'}<div class="resumo-item"><span>Subtotal</span><strong>${formatarMoeda(p.valorTotal)}</strong></div></div>`).join('');
+   lista.innerHTML=petsReservaV9.map(p=>`<div class="resumo-pet-v92"><strong>${escaparV9(p.pet)} — ${escaparV9(p.porte||'')}</strong>${p.erroServico?`<p class="alerta-resumo">${escaparV9(p.erroServico)}</p>`:''}${p.servicos.length?p.servicos.map(s=>`<div class="resumo-item"><span>${escaparV9(s.nome)}</span><strong>${formatarMoeda(s.valor)}</strong></div>`).join(''):'<p>Selecione os serviços.</p>'}</div>`).join('');
    document.getElementById('totalAgendamento').textContent=formatarMoeda(petsReservaV9.reduce((t,p)=>t+p.valorTotal,0));
   }else{
    const r=calcularServicosSelecionados();
@@ -2529,6 +2532,7 @@ function capturarPetV9(){
  return {...p,porte:r.porte,servicos:r.itens,valorTotal:r.total,erroServico:r.erro};
 }
 function adicionarPetV9(){
+ if(novoPetEmCadastroV93)return incluirNovoPetV93();
  if(modoPetsV92==='todos'){atualizarResumoServicos();return true;}
  for(const id of ['pet','especie','sexo','raca','observacaoPet'])if(!document.getElementById(id).value.trim()){mostrarAlerta('Complete os dados deste pet.');return false;}
  const p=capturarPetV9();
@@ -2542,6 +2546,7 @@ function adicionarPetV9(){
  atualizarResumoServicos();return true;
 }
 function renderizarReservaV9(){
+ atualizarControlesNovoPetV93();
  const section=document.getElementById('multipetV9');section.style.display=petsReservaV9.length>1?'block':'none';
  document.getElementById('multipetOrientacaoV92').textContent=modoPetsV92==='todos'
   ? 'Os serviços escolhidos acima serão aplicados a todos os pets, com o preço pelo porte de cada um. Use Editar serviços somente se quiser uma escolha diferente para algum pet.'
@@ -2559,11 +2564,13 @@ function preencherPetReservaV92(p){
  atualizarResumoServicos();
 }
 function editarPetReservaV9(i){
+ if(novoPetEmCadastroV93){mostrarAlerta('Inclua o novo pet ou cancele a inclusão antes de editar outro pet.');return;}
  aplicarMesmoServicoV92();modoPetsV92='individual';
  preencherPetReservaV92(petsReservaV9[i]);
  document.getElementById('pet').scrollIntoView({behavior:'smooth',block:'center'});
 }
 function removerPetReservaV92(i){
+ if(novoPetEmCadastroV93){mostrarAlerta('Inclua o novo pet ou cancele a inclusão antes de remover outro pet.');return;}
  const removido=petsReservaV9[i];petsReservaV9.splice(i,1);
  if(petsReservaV9.length>1&&removido.pet===document.getElementById('pet').value.trim())preencherPetReservaV92(petsReservaV9[0]);
  if(petsReservaV9.length===1){modoPetsV92='unico';preencherPetReservaV92(petsReservaV9[0]);}
@@ -2571,6 +2578,7 @@ function removerPetReservaV92(i){
  atualizarResumoServicos();
 }
 function selecionarTodosPetsV9(){
+ if(novoPetEmCadastroV93){mostrarAlerta('Inclua o novo pet ou cancele a inclusão antes de selecionar os cadastrados.');return;}
  if(petsEncontradosTelefone.length<2)return;
  const atual=camposAtuaisPetV92();
  const referencia=petsEncontradosTelefone.find(p=>p.pet===atual.pet)||petsEncontradosTelefone[0];
@@ -2581,8 +2589,55 @@ function selecionarTodosPetsV9(){
  select.value='';
  document.getElementById('petsCadastradosAjuda').textContent='Todos os pets selecionados. Escolha os serviços uma vez para todos. Para serviços diferentes, use Editar serviços no pet desejado.';
 }
+// Inclusão manual de pets, disponível também para tutores sem histórico.
+function atualizarControlesNovoPetV93(){
+ document.getElementById('adicionarOutroPetV93').style.display=novoPetEmCadastroV93?'none':'inline-block';
+ document.getElementById('incluirNovoPetV93').style.display=novoPetEmCadastroV93?'inline-block':'none';
+ document.getElementById('cancelarNovoPetV93').style.display=novoPetEmCadastroV93?'inline-block':'none';
+ document.getElementById('novoPetAjudaV93').textContent=novoPetEmCadastroV93
+  ? 'Preencha nome, espécie, sexo, raça e observação do novo pet e clique em Incluir este pet. Os serviços serão os mesmos dos demais; depois você pode editar individualmente.'
+  : 'Tem mais de um pet? Preencha os dados do primeiro e adicione os demais. Todos terão a mesma data, horário e protocolo.';
+}
+function validarDadosPetV93(p){
+ for(const k of ['pet','especie','sexo','raca','observacaoPet'])if(!p[k]){mostrarAlerta('Preencha nome, espécie, sexo, raça e observação deste pet antes de continuar.');return false;}
+ if(!obterPortePorRaca(p.raca,p.especie)){mostrarAlerta('Selecione uma raça válida para definir o porte.');return false;}
+ return true;
+}
+function adicionarOutroPetV93(){
+ if(novoPetEmCadastroV93)return;
+ const p=capturarPetV9();if(!validarDadosPetV93(p))return;
+ if(modoPetsV92==='todos')aplicarMesmoServicoV92();
+ const i=petsReservaV9.findIndex(x=>x.pet.toLocaleLowerCase()===p.pet.toLocaleLowerCase());
+ if(i<0)petsReservaV9.push(p);else petsReservaV9[i]=p;
+ modeloServicosV93={servicoPrincipal:p.servicoPrincipal,tipoTosa:p.tipoTosa,adicionais:{...p.adicionais}};
+ if(modoPetsV92==='unico')modoPetsV92='todos';
+ novoPetEmCadastroV93=true;carregandoPetV92=true;
+ try{
+  for(const id of ['pet','especie','sexo','porte','observacaoPet'])document.getElementById(id).value='';
+  popularSelectRacasCliente();document.getElementById('raca').value='';
+  atualizarServicosPorEspecie();document.getElementById('petCadastradoSelect').value='';
+ }finally{carregandoPetV92=false;}
+ atualizarResumoServicos();document.getElementById('pet').scrollIntoView({behavior:'smooth',block:'center'});document.getElementById('pet').focus();
+}
+function incluirNovoPetV93(){
+ if(!novoPetEmCadastroV93)return true;
+ let p=capturarPetV9();if(!validarDadosPetV93(p))return false;
+ if(petsReservaV9.some(x=>x.pet.toLocaleLowerCase()===p.pet.toLocaleLowerCase())){mostrarAlerta('Este nome de pet já está na reserva. Informe um nome diferente ou cancele para editar o pet existente.');return false;}
+ // Reutiliza a escolha comum, sem copiar dados cadastrais de um pet para outro.
+ if(modoPetsV92==='todos'&&modeloServicosV93?.servicoPrincipal)p={...p,...modeloServicosV93,adicionais:{...modeloServicosV93.adicionais}};
+ else if(modoPetsV92==='todos'&&modeloServicosV93&&Object.values(modeloServicosV93.adicionais).some(Boolean))p={...p,...modeloServicosV93,adicionais:{...modeloServicosV93.adicionais}};
+ const r=montarServicosPetV92(p);p={...p,porte:r.porte,servicos:r.itens,valorTotal:r.total,erroServico:r.erro};
+ petsReservaV9.push(p);novoPetEmCadastroV93=false;
+ preencherPetReservaV92(p);return true;
+}
+function cancelarNovoPetV93(){
+ novoPetEmCadastroV93=false;
+ if(petsReservaV9.length===1)modoPetsV92='unico';
+ const p=petsReservaV9[petsReservaV9.length-1];if(p)preencherPetReservaV92(p);else atualizarResumoServicos();
+}
 const abrirPreviaOriginalV9=abrirPreviaAgendamento;
 abrirPreviaAgendamento=function(){
+ if(novoPetEmCadastroV93&&incluirNovoPetV93()===false)return;
  if(!validarAgendamento())return;
  if(modoPetsV92==='todos') aplicarMesmoServicoV92();
  else if(adicionarPetV9()===false)return;
@@ -2594,13 +2649,13 @@ abrirPreviaAgendamento=function(){
  dadosPreAgendamento.pets=petsReservaV9.map(p=>({...p,adicionais:{...p.adicionais},servicos:p.servicos.map(s=>({...s}))}));
  dadosPreAgendamento.pet=dadosPreAgendamento.pets.map(p=>p.pet).join(', ');
  dadosPreAgendamento.resumo={itens:dadosPreAgendamento.pets.flatMap(p=>p.servicos.map(s=>({...s,nome:p.pet+' — '+s.nome}))),total:dadosPreAgendamento.pets.reduce((t,p)=>t+p.valorTotal,0)};
- document.getElementById('mensagemPrevia').innerHTML=`Cliente: <strong>${escaparV9(dadosPreAgendamento.cliente)}</strong><br>Data: ${escaparV9(dadosPreAgendamento.dataFormatada)} — ${escaparV9(dadosPreAgendamento.horario)}<br>`+dadosPreAgendamento.pets.map(p=>`<hr><strong>${escaparV9(p.pet)}</strong> — ${escaparV9(p.raca)} / ${escaparV9(p.porte)}<br>${escaparV9(p.observacaoPet)}<br>${p.servicos.map(s=>escaparV9(s.nome)+' — '+formatarMoeda(s.valor)).join('<br>')}<br><strong>Subtotal: ${formatarMoeda(p.valorTotal)}</strong>`).join('')+`<hr><strong>Total: ${formatarMoeda(dadosPreAgendamento.resumo.total)}</strong>`;
+ document.getElementById('mensagemPrevia').innerHTML=`Cliente: <strong>${escaparV9(dadosPreAgendamento.cliente)}</strong><br>Data: ${escaparV9(dadosPreAgendamento.dataFormatada)} — ${escaparV9(dadosPreAgendamento.horario)}<br>`+dadosPreAgendamento.pets.map(p=>`<hr><strong>${escaparV9(p.pet)}</strong> — ${escaparV9(p.raca)} / ${escaparV9(p.porte)}<br>${escaparV9(p.observacaoPet)}<br>${p.servicos.map(s=>escaparV9(s.nome)+' — '+formatarMoeda(s.valor)).join('<br>')}`).join('')+`<hr><strong>Total: ${formatarMoeda(dadosPreAgendamento.resumo.total)}</strong>`;
 };
 const montarOriginalV9=montarDadosAgendamentoFirestore;
 montarDadosAgendamentoFirestore=function(dados,protocolo){return {...montarOriginalV9(dados,protocolo),pets:dados.pets,versaoPreco:'9.0.0',vigenciaPreco:'2026-10-01'};};
 const limparOriginalV9=limparFormulario;
-limparFormulario=function(){limparOriginalV9();modoPetsV92='unico';petsReservaV9=[];document.getElementById('adicionalDentes').checked=false;renderizarReservaV9();};
+limparFormulario=function(){limparOriginalV9();novoPetEmCadastroV93=false;modeloServicosV93=null;modoPetsV92='unico';petsReservaV9=[];document.getElementById('adicionalDentes').checked=false;renderizarReservaV9();};
 document.getElementById('adicionalDentes').addEventListener('change',atualizarResumoServicos);
-document.getElementById('telefone').addEventListener('input',()=>{document.getElementById('selecionarTodosPetsCadastrados').style.display='none';modoPetsV92='unico';petsReservaV9=[];atualizarResumoServicos();});
+document.getElementById('telefone').addEventListener('input',()=>{document.getElementById('selecionarTodosPetsCadastrados').style.display='none';novoPetEmCadastroV93=false;modeloServicosV93=null;modoPetsV92='unico';petsReservaV9=[];atualizarResumoServicos();});
 renderizarReservaV9();
 iniciarPagina();

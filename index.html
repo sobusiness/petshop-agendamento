@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Petlyne - Banho e Tosa</title>
     <link rel="icon" type="image/png" href="favicon.png">
-    <link rel="stylesheet" href="style.css?v=9.0.2">
+    <link rel="stylesheet" href="style.css?v=9.0.3">
 </head>
 
 <body>
@@ -130,6 +130,13 @@
                     <option>Selecione uma data primeiro</option>
                 </select>
             </div>
+        </div>
+
+        <div class="novo-pet-acoes-v93">
+            <small id="novoPetAjudaV93">Tem mais de um pet? Preencha os dados do primeiro e adicione os demais.</small>
+            <button type="button" id="adicionarOutroPetV93" onclick="adicionarOutroPetV93()">Adicionar outro pet</button>
+            <button type="button" id="incluirNovoPetV93" style="display:none;" onclick="incluirNovoPetV93()">Incluir este pet</button>
+            <button type="button" id="cancelarNovoPetV93" style="display:none;" onclick="cancelarNovoPetV93()">Cancelar inclusão</button>
         </div>
 
         <div id="areaAdicionais" class="adicionais-box">
@@ -259,7 +266,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js?v=7.0.0"></script>
 <script src="js/precos-v9.js?v=9.0.0"></script>
-<script src="app.js?v=9.0.2"></script>
+<script src="app.js?v=9.0.3"></script>
 
 </body>
 </html>
