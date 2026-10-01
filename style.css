@@ -631,3 +631,9 @@ form h2,
 
 /* V9.0.3 — inclusão de pets sem cadastro prévio */
 .novo-pet-acoes-v93{margin:18px 0;padding:14px 0;border-top:1px solid #eed4df}.novo-pet-acoes-v93 small{display:block;line-height:1.5;color:#795461}.novo-pet-acoes-v93 button{width:auto;margin:10px 8px 0 0;padding:10px 15px;font-size:14px}#cancelarNovoPetV93{background:#8c7c82}
+
+/* V9.0.4 — revisão com espaço entre os blocos */
+#mensagemPrevia{line-height:1.85;margin:20px 0;text-align:left}
+#mensagemPrevia hr{border:0;border-top:1px solid #eedce3;margin:18px 0}
+#popupPrevia .popup-card{max-height:90dvh;overflow-y:auto}
+#popupPrevia .popup-actions{margin-top:24px}

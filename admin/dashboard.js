@@ -5189,13 +5189,15 @@ let contasV9=[];
 const categoriasContasV9=['Produtos e insumos','Equipamentos','Aluguel','Água','Energia','Telefone e internet','Impostos','Manutenção','Outros'];
 function hojeISOv9(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 const contasSecV9=document.createElement('section');contasSecV9.id='secao-contas-pagar';contasSecV9.className='admin-section';
-contasSecV9.innerHTML=`<h2>Contas a pagar</h2><p>Acompanhe compras, vencimentos e o dinheiro pago por categoria.</p><div class="v9-panel v9-grid"><label>Mês<input type="month" id="contasMesV9" value="${hojeISOv9().slice(0,7)}" onchange="renderizarContasV9()"></label><label>Categoria<select id="contasCategoriaV9" onchange="renderizarContasV9()"><option value="">Todas</option>${categoriasContasV9.map(c=>`<option>${c}</option>`).join('')}</select></label><label>Status<select id="contasStatusV9" onchange="renderizarContasV9()"><option value="">Todos</option><option>Pendente</option><option>Pago</option><option>Vencido</option></select></label><button onclick="editarContaV9()">Lançar compra / conta</button><button class="secondary-button" onclick="carregarContasV9()">Atualizar</button></div><div id="contasIndicadoresV9" class="v9-grid"></div><div class="v9-grid"><div class="v9-panel"><h3>Dinheiro pago por categoria</h3><div id="contasAnaliseV9"></div></div><div class="v9-panel"><h3>Próximos vencimentos</h3><div id="contasProximasV9"></div></div></div><div class="v9-panel v9-table-wrap"><table class="v9-table"><thead><tr><th>Vencimento</th><th>Compra / fornecedor</th><th>Categoria</th><th>Valor</th><th>Status / pagamento</th><th>Ações</th></tr></thead><tbody id="contasListaV9"></tbody></table></div>`;
+contasSecV9.innerHTML=`<h2>Contas a pagar</h2><p>Acompanhe compras, vencimentos e o dinheiro pago por categoria.</p><div class="v9-panel v9-grid"><label>Período<select id="contasPeriodoV94" onchange="renderizarContasV9()"><option value="mes">Mês selecionado</option><option value="todos">Todos os meses</option></select></label><label>Mês<input type="month" id="contasMesV9" value="${hojeISOv9().slice(0,7)}" onchange="renderizarContasV9()"></label><label>Buscar<input id="contasBuscaV94" placeholder="Compra ou fornecedor" oninput="renderizarContasV9()"></label><label>Categoria<select id="contasCategoriaV9" onchange="renderizarContasV9()"><option value="">Todas</option>${categoriasContasV9.map(c=>`<option>${c}</option>`).join('')}</select></label><label>Status<select id="contasStatusV9" onchange="renderizarContasV9()"><option value="">Todos</option><option>Pendente</option><option>Pago</option><option>Vencido</option></select></label><button onclick="editarContaV9()">Lançar compra / conta</button><button class="secondary-button" onclick="carregarContasV9()">Atualizar</button></div><div id="contasIndicadoresV9" class="v9-grid"></div><div class="v9-grid"><div class="v9-panel"><h3>Dinheiro pago por categoria</h3><div id="contasAnaliseV9"></div></div><div class="v9-panel"><h3>Próximos vencimentos</h3><div id="contasProximasV9"></div></div></div><div class="v9-panel v9-table-wrap"><table class="v9-table"><thead><tr><th>Vencimento</th><th>Compra / fornecedor</th><th>Categoria</th><th>Valor</th><th>Status / pagamento</th><th>Ações</th></tr></thead><tbody id="contasListaV9"></tbody></table></div>`;
 document.querySelector('main').appendChild(contasSecV9);
-async function carregarContasV9(){const s=await db.collection('contasPagar').orderBy('vencimento').get();contasV9=s.docs.map(d=>({id:d.id,...d.data()}));renderizarContasV9();}
+async function carregarContasV9(){try{const s=await db.collection('contasPagar').get();contasV9=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||''));renderizarContasV9();}catch(e){await mostrarAvisoAdmin({titulo:'Não foi possível carregar as contas',mensagem:e.message});}}
 function statusContaV9(c){return c.status==='Pago'?'Pago':c.vencimento<hojeISOv9()?'Vencido':'Pendente';}
 function renderizarContasV9(){
  const mes=document.getElementById('contasMesV9').value,cat=document.getElementById('contasCategoriaV9').value,status=document.getElementById('contasStatusV9').value;
- const categoria=contasV9.filter(c=>!cat||c.categoria===cat);
+ const busca=document.getElementById('contasBuscaV94').value.trim().toLocaleLowerCase();
+ const categoria=contasV9.filter(c=>(!cat||c.categoria===cat)&&(!busca||[c.descricao,c.fornecedor,c.observacao].join(' ').toLocaleLowerCase().includes(busca)));
+ document.getElementById('contasMesV9').disabled=document.getElementById('contasPeriodoV94').value==='todos';
  const vencimentos=categoria.filter(c=>c.vencimento?.startsWith(mes));
  const pagos=categoria.filter(c=>c.status==='Pago'&&c.dataPagamento?.startsWith(mes));
  const sum=cs=>cs.reduce((t,c)=>t+Number(c.valor||0),0);
@@ -5204,22 +5206,32 @@ function renderizarContasV9(){
  document.getElementById('contasIndicadoresV9').innerHTML=[['Compras no mês',sum(compras)],['Pago no mês',sum(pagos)],['A pagar (vencimento no mês)',sum(abertos)],['Vencido no mês',sum(vencidos)]].map(([t,v])=>`<article class="v9-panel"><span>${t}</span><h3>${formatarMoeda(v)}</h3></article>`).join('');
  const total=sum(pagos);const grupos=categoriasContasV9.map(c=>[c,sum(pagos.filter(p=>p.categoria===c))]).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
  document.getElementById('contasAnaliseV9').innerHTML=grupos.map(([c,v])=>`<p>${escaparV9(c)} <strong>${formatarMoeda(v)} • ${(v/total*100).toFixed(1).replace('.',',')}%</strong></p><div class="v9-bar"><span style="width:${v/total*100}%"></span></div>`).join('')||'<p>Nenhum pagamento registrado neste mês.</p>';
- document.getElementById('contasProximasV9').innerHTML=categoria.filter(c=>c.status!=='Pago').slice(0,8).map(c=>`<p>${formatarDataCurta(c.vencimento)} • ${escaparV9(c.descricao)} — <strong>${formatarMoeda(c.valor)}</strong> (${statusContaV9(c)})</p>`).join('')||'<p>Nenhuma conta pendente.</p>';
- const lista=vencimentos.filter(c=>!status||statusContaV9(c)===status);
- document.getElementById('contasListaV9').innerHTML=lista.map(c=>`<tr><td>${formatarDataCurta(c.vencimento)}</td><td><strong>${escaparV9(c.descricao)}</strong><br>${escaparV9(c.fornecedor||'')}<br><small>Compra: ${formatarDataCurta(c.dataCompra)}${c.parcelas>1?' • Parcela '+c.parcela+'/'+c.parcelas:''}</small></td><td>${escaparV9(c.categoria)}</td><td>${formatarMoeda(c.valor)}</td><td>${statusContaV9(c)}${c.dataPagamento?'<br>'+formatarDataCurta(c.dataPagamento):''}</td><td><button onclick="editarContaV9('${c.id}')">Editar</button>${c.status!=='Pago'?`<button onclick="pagarContaV9('${c.id}')">Pagar</button>`:`<button class="secondary-button" onclick="reabrirContaV9('${c.id}')">Reabrir</button>`}<button class="secondary-button" onclick="excluirContaV9('${c.id}')">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6">Nenhuma conta neste filtro.</td></tr>';
+ document.getElementById('contasProximasV9').innerHTML=categoria.filter(c=>c.status!=='Pago').slice(0,8).map(c=>`<p>${formatarDataCurta(c.vencimento)} • ${escaparV9(c.descricao)} — <strong>${formatarMoeda(c.valor)}</strong> (${statusContaV9(c)}) <button onclick="editarContaV9('${c.id}')">Editar</button><button class="secondary-button" onclick="excluirContaV9('${c.id}')">Excluir</button></p>`).join('')||'<p>Nenhuma conta pendente.</p>';
+ const lista=(document.getElementById('contasPeriodoV94').value==='todos'?categoria:vencimentos).filter(c=>!status||statusContaV9(c)===status);
+ document.getElementById('contasListaV9').innerHTML=lista.map(c=>`<tr><td>${formatarDataCurta(c.vencimento)}</td><td><strong>${escaparV9(c.descricao)}</strong><br>${escaparV9(c.fornecedor||'')}<br><small>Compra: ${formatarDataCurta(c.dataCompra)}${c.parcelas>1?' • Parcela '+c.parcela+'/'+c.parcelas:''}</small></td><td>${escaparV9(c.categoria)}</td><td>${formatarMoeda(c.valor)}</td><td><span class="conta-status-v94 ${statusContaV9(c).toLowerCase()}">${statusContaV9(c)}</span>${c.dataPagamento?'<br>'+formatarDataCurta(c.dataPagamento):''}</td><td><button onclick="editarContaV9('${c.id}')">Editar</button>${c.status!=='Pago'?`<button onclick="pagarContaV9('${c.id}')">Pagar</button>`:`<button class="secondary-button" onclick="reabrirContaV9('${c.id}')">Reabrir</button>`}<button class="secondary-button" onclick="excluirContaV9('${c.id}')">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6">Nenhuma conta neste filtro.</td></tr>';
 }
 function editarContaV9(id){
  const c=contasV9.find(c=>c.id===id)||{};
- abrirDialogoV9(id?'Editar conta':'Lançar compra / conta',`<form id="formContaV9"><div class="v9-grid"><label>Descrição<input id="contaDescricaoV9" required maxlength="250" value="${escaparV9(c.descricao||'')}"></label><label>Fornecedor<input id="contaFornecedorV9" maxlength="250" value="${escaparV9(c.fornecedor||'')}"></label><label>Categoria<select id="contaCategoriaV9">${categoriasContasV9.map(x=>`<option ${c.categoria===x?'selected':''}>${x}</option>`).join('')}</select></label><label>Data da compra<input type="date" id="contaCompraV9" required value="${c.dataCompra||hojeISOv9()}"></label><label>${id?'Valor da parcela':'Valor total da compra'}<input type="number" step="0.01" min="0.01" id="contaValorV9" required value="${c.valor||''}"></label><label>${id?'Vencimento':'Primeiro vencimento'}<input type="date" id="contaVencimentoV9" required value="${c.vencimento||hojeISOv9()}"></label>${id?'':`<label>Parcelas mensais<input type="number" id="contaParcelasV9" min="1" max="60" value="1" required></label>`}<label>Observação<textarea id="contaObsV9" maxlength="3000">${escaparV9(c.observacao||'')}</textarea></label></div><button type="submit">Salvar</button><p id="contaErroV9" role="alert"></p></form>`);
+ abrirDialogoV9(id?'Editar conta':'Lançar compra / conta',`<form id="formContaV9"><div class="v9-grid"><label>Descrição<input id="contaDescricaoV9" required maxlength="250" value="${escaparV9(c.descricao||'')}"></label><label>Fornecedor<input id="contaFornecedorV9" maxlength="250" value="${escaparV9(c.fornecedor||'')}"></label><label>Categoria<select id="contaCategoriaV9">${categoriasContasV9.map(x=>`<option ${c.categoria===x?'selected':''}>${x}</option>`).join('')}</select></label><label>Data da compra<input type="date" id="contaCompraV9" required value="${c.dataCompra||hojeISOv9()}"></label><label>${id?'Valor da parcela':'Valor total da compra'}<input type="number" step="0.01" min="0.01" id="contaValorV9" required value="${c.valor||''}"></label><label>${id?'Vencimento':'Primeiro vencimento'}<input type="date" id="contaVencimentoV9" required value="${c.vencimento||hojeISOv9()}"></label>${id&&c.parcelas>1?`<label>Aplicar alterações<select id="contaEscopoV94"><option value="uma">Somente esta parcela</option><option value="pendentes">Todas as parcelas pendentes desta compra</option></select><small>O valor informado será o valor de cada parcela. Vencimentos mantêm a sequência mensal; pagamentos já registrados são preservados.</small></label>`:''}${id?'':`<label class="conta-check-v94"><input type="checkbox" id="contaParceladaV94" onchange="alternarParcelamentoV94()"> Compra parcelada</label><label id="contaParcelasAreaV94" hidden>Parcelas mensais<input type="number" id="contaParcelasV9" min="2" max="60" value="2" disabled></label>`}<label>Observação<textarea id="contaObsV9" maxlength="3000">${escaparV9(c.observacao||'')}</textarea></label></div><button type="submit">Salvar</button><p id="contaErroV9" role="alert"></p></form>`);
  document.getElementById('formContaV9').addEventListener('submit',async e=>{
   e.preventDefault();const btn=e.target.querySelector('button[type=submit]');btn.disabled=true;
   try{
    const v=id=>document.getElementById(id).value;
-   const valor=Number(v('contaValorV9')),n=id?1:Number(v('contaParcelasV9'));
+   const valor=Number(v('contaValorV9')),n=id?1:(document.getElementById('contaParceladaV94').checked?Number(v('contaParcelasV9')):1);
    if(!Number.isFinite(valor)||valor<=0||!Number.isInteger(n)||n<1||n>60||Math.round(valor*100)<n)throw Error('Informe um valor e número de parcelas válidos.');
    const dados={descricao:v('contaDescricaoV9').trim(),fornecedor:v('contaFornecedorV9').trim(),categoria:v('contaCategoriaV9'),dataCompra:v('contaCompraV9'),vencimento:v('contaVencimentoV9'),observacao:v('contaObsV9'),atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
    if(!dados.descricao)throw Error('Informe a descrição.');
-   if(id)await db.collection('contasPagar').doc(id).update({...dados,valor});
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(dados.dataCompra)||!/^\d{4}-\d{2}-\d{2}$/.test(dados.vencimento))throw Error('Informe as datas da compra e do vencimento.');
+   if(id){
+    const escopo=document.getElementById('contaEscopoV94')?.value;
+    const alvos=escopo==='pendentes'&&c.compraId?contasV9.filter(x=>x.compraId===c.compraId&&x.status!=='Pago'):[c];
+    if(!alvos.length)throw Error('Esta compra não tem parcelas pendentes.');
+    const batch=db.batch();
+    for(const alvo of alvos){
+     const vencimento=escopo==='pendentes'?vencimentoParcelaV94(dados.vencimento,Number(alvo.parcela)-Number(c.parcela)):dados.vencimento;
+     batch.update(db.collection('contasPagar').doc(alvo.id),{...dados,vencimento,valor});
+    }await batch.commit();
+   }
    else{
     const compraId=db.collection('contasPagar').doc().id;const batch=db.batch();const cents=Math.round(valor*100);const base=Math.floor(cents/n);const resto=cents%n;
     const [ano,mes,dia]=dados.vencimento.split('-').map(Number);
@@ -5238,6 +5250,30 @@ function pagarContaV9(id){
  document.getElementById('formPagamentoV9').addEventListener('submit',async e=>{e.preventDefault();const btn=e.target.querySelector('button');btn.disabled=true;try{const data=document.getElementById('pagamentoDataV9').value;if(data>hojeISOv9())throw Error('A data de pagamento não pode ser futura.');await db.collection('contasPagar').doc(id).update({status:'Pago',dataPagamento:data,formaPagamento:document.getElementById('pagamentoFormaV9').value,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});document.getElementById('dialogoV9').close();await carregarContasV9();}catch(ex){document.getElementById('pagamentoErroV9').textContent=ex.message;}finally{btn.disabled=false;}});
 }
 async function reabrirContaV9(id){if(!await mostrarConfirmacaoAdmin({titulo:'Reabrir conta',mensagem:'Remover a baixa e tornar esta parcela pendente?',textoConfirmar:'Reabrir'}))return;try{await db.collection('contasPagar').doc(id).update({status:'Pendente',dataPagamento:'',formaPagamento:'',atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});await carregarContasV9();}catch(e){await mostrarAvisoAdmin({titulo:'Falha',mensagem:e.message});}}
-async function excluirContaV9(id){if(!await mostrarConfirmacaoAdmin({titulo:'Excluir parcela',mensagem:'Excluir somente esta parcela? As outras parcelas da compra serão preservadas.',textoConfirmar:'Excluir'}))return;try{await db.collection('contasPagar').doc(id).delete();await carregarContasV9();}catch(e){await mostrarAvisoAdmin({titulo:'Falha',mensagem:e.message});}}
+
 
 function todosPetsAgendadosV9(){return agendamentos.flatMap(expandirPetsV9);}
+
+function alternarParcelamentoV94(){
+ const ativo=document.getElementById('contaParceladaV94').checked;
+ document.getElementById('contaParcelasAreaV94').hidden=!ativo;
+ const campo=document.getElementById('contaParcelasV9');campo.disabled=!ativo;campo.required=ativo;
+}
+async function excluirContaV9(id){
+ const c=contasV9.find(x=>x.id===id);if(!c)return;
+ const grupo=c.compraId?contasV9.filter(x=>x.compraId===c.compraId):[c];
+ abrirDialogoV9('Excluir conta',`<p>Selecione o que deseja excluir de <strong>${escaparV9(c.descricao)}</strong>.</p><p>A exclusão é definitiva e inclui os registros de pagamento selecionados.</p><button onclick="confirmarExclusaoContaV94('${id}',false)">Excluir somente esta parcela</button>${grupo.length>1?`<button onclick="confirmarExclusaoContaV94('${id}',true)">Excluir compra inteira (${grupo.length} parcelas)</button>`:''}<p id="exclusaoContaErroV94" role="alert"></p>`);
+}
+async function confirmarExclusaoContaV94(id,todas){
+ const c=contasV9.find(x=>x.id===id);if(!c)return;
+ const grupo=todas&&c.compraId?contasV9.filter(x=>x.compraId===c.compraId):[c];
+ const dialog=document.getElementById('dialogoV9');const botoes=dialog.querySelectorAll('button');botoes.forEach(b=>b.disabled=true);
+ try{const batch=db.batch();grupo.forEach(x=>batch.delete(db.collection('contasPagar').doc(x.id)));await batch.commit();dialog.close();await carregarContasV9();}
+ catch(e){document.getElementById('exclusaoContaErroV94').textContent=e.message;}finally{botoes.forEach(b=>b.disabled=false);}
+}
+
+function vencimentoParcelaV94(data,offset){
+ const [ano,mes,dia]=data.split('-').map(Number);const dt=new Date(ano,mes-1+offset,1,12);
+ dt.setDate(Math.min(dia,new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate()));
+ return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}

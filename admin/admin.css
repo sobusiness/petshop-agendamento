@@ -2966,3 +2966,29 @@ input:focus, select:focus { border-color: var(--pet-primary); box-shadow: 0 0 0 
 .v9-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px;align-items:end;margin:16px 0}.v9-panel{background:#fff;border:1px solid #efd5de;border-radius:16px;padding:20px;margin:14px 0}.v9-panel h3{color:#b94269;margin:8px 0}.v9-grid label,.v9-dialog label{display:flex;flex-direction:column;gap:7px}.v9-table-wrap{overflow:auto}.v9-table{width:100%;border-collapse:collapse;text-align:left}.v9-table td,.v9-table th{padding:12px;border-bottom:1px solid #f0dce4}.v9-table th{color:#a4365a}.v9-table td input[type=number]{max-width:130px}.v9-table td button{margin:3px}.v9-dialog{width:min(880px,94vw);max-height:90vh;border:0;border-radius:20px;padding:24px;color:#553544;box-shadow:0 20px 80px #44223355}.v9-dialog::backdrop{background:#30202c99}.v9-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}.v9-dialog input,.v9-dialog select,.v9-dialog textarea{font:inherit;padding:10px;border:1px solid #d9bcc8;border-radius:8px;max-width:100%;box-sizing:border-box}.v9-dialog button{cursor:pointer;background:#c85279;color:white;border:0;padding:10px 14px;border-radius:8px;margin:8px 0}.v9-service{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:8px 0;flex-wrap:wrap}.v9-service input{max-width:110px}.v9-bar{height:10px;background:#fbe9ef;border-radius:10px;overflow:hidden}.v9-bar span{display:block;height:100%;background:#ce5a81;border-radius:10px}#listaPetsV9 button{font-size:13px;padding:7px;margin:5px}#edicaoErroV9,#contaErroV9,#pagamentoErroV9{color:#a31835}
 
 .admin-tabs{flex-wrap:wrap;gap:8px}.admin-tabs .tab-button{flex:1 1 120px;min-width:0}#secao-contas-pagar .v9-grid{align-items:stretch}.v9-table td{vertical-align:top}#listaClientesAdmin textarea,#formNovoCliente textarea{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ecd1dc;border-radius:10px;font:inherit}
+
+/* V9.0.4 — janelas centradas e contas a pagar */
+dialog.v9-dialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;max-width:calc(100vw - 32px);max-height:calc(100dvh - 32px);overflow:auto}
+.v9-dialog header{padding-bottom:16px;border-bottom:1px solid #f0dce4;margin-bottom:18px}
+.v9-dialog p{line-height:1.65;margin:12px 0}
+.v9-dialog [hidden]{display:none!important}
+.v9-dialog .conta-check-v94{flex-direction:row;align-items:center;align-self:center;padding:12px;background:#fff4f7;border-radius:10px}
+.conta-check-v94 input{width:18px;height:18px;accent-color:#c85279}
+#secao-contas-pagar{background:linear-gradient(160deg,#fff,#fff8fa);padding:28px;border-radius:24px}
+#secao-contas-pagar h2{color:#4d303d;font-size:28px;letter-spacing:-.5px}
+#secao-contas-pagar>p{color:#8b7180;margin:8px 0 22px;line-height:1.6}
+#secao-contas-pagar .v9-panel{box-shadow:0 6px 24px #7c365609;border-color:#efdae2}
+#contasIndicadoresV9{grid-template-columns:repeat(4,minmax(0,1fr))}
+#contasIndicadoresV9 article{padding:22px;border-top:3px solid #c85279}
+#contasIndicadoresV9 span{color:#8b7180;font-size:13px}
+#contasIndicadoresV9 h3{font-size:25px;margin:12px 0 0}
+#contasProximasV9 p{padding:12px 0;border-bottom:1px solid #f0dce4;line-height:1.8}
+#contasProximasV9 button{padding:6px 10px;margin:4px;font-size:12px}
+#secao-contas-pagar button{border:0;border-radius:10px;cursor:pointer}
+#secao-contas-pagar .v9-table{min-width:760px;font-size:14px}
+#secao-contas-pagar .v9-table th{background:#fff4f7;padding:16px}
+#secao-contas-pagar .v9-table td{padding:18px 16px;line-height:1.7}
+#secao-contas-pagar .v9-table tbody tr:hover{background:#fff9fb}
+.conta-status-v94{display:inline-block;border-radius:30px;padding:4px 10px;font-size:12px;font-weight:700;background:#fff1d5;color:#805800}
+.conta-status-v94.pago{background:#e2f5eb;color:#26734d}.conta-status-v94.vencido{background:#ffe5e9;color:#a42a45}
+@media(max-width:700px){#secao-contas-pagar{padding:16px}#contasIndicadoresV9{grid-template-columns:repeat(2,minmax(0,1fr))}.v9-dialog .v9-grid{grid-template-columns:1fr}}
