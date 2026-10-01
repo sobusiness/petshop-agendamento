@@ -625,3 +625,6 @@ form h2,
 
 /* V9.0.1 — seleção multipet junto ao cadastro encontrado */
 #petCadastradoBox #selecionarTodosPetsCadastrados{width:100%;margin-top:12px;padding:10px 14px;font-size:14px;line-height:1.35;white-space:normal}
+
+/* V9.0.2 — um único resumo, com subtotais quando houver vários pets */
+.resumo-pet-v92{padding:12px 0;border-bottom:1px solid #edd2dd}.resumo-pet-v92:last-child{border-bottom:0}.resumo-pet-v92>strong{color:#a83a62}.resumo-pet-v92 .resumo-item{padding:8px 0}#multipetV9 .alerta-resumo{margin:6px 0}
