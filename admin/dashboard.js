@@ -1909,7 +1909,7 @@ function renderizarClientesAdmin() {
                 </select></label>
             </div>
 
-            <label><span>Observação do profissional (somente Admin)</span><textarea id="cliente-profissional-${item.id}" rows="4">${escaparV9(item.observacaoProfissional || "")}</textarea></label>
+            <label class="cliente-observacao-profissional"><span>Observação do profissional (somente Admin)</span><textarea id="cliente-profissional-${item.id}" rows="4">${escaparV9(item.observacaoProfissional || "")}</textarea></label>
             <div class="cliente-card-actions cliente-card-actions-duplo">
                 <button onclick="salvarClienteAdmin('${item.id}')">Salvar Alterações</button>
                 <button class="secondary-button" onclick="excluirClienteAdmin('${item.id}')">Excluir Cadastro</button>

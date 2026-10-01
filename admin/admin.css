@@ -3019,3 +3019,10 @@ dialog.exclusao-dialog-v95{width:620px;padding:26px;text-align:left}
 .exclusao-dialog-v95 button:focus-visible{outline:3px solid #e7b0c2;outline-offset:3px}
 .exclusao-dialog-v95 button:disabled{opacity:.55;cursor:wait}
 @media(max-width:540px){dialog.exclusao-dialog-v95{padding:20px}.exclusao-opcoes-v95{grid-template-columns:1fr}.exclusao-dialog-v95 header h2{font-size:21px}.exclusao-rodape-v95 button{width:100%}}
+
+/* V9.0.6 — observação profissional no padrão do cadastro */
+.cliente-observacao-profissional{display:flex;flex-direction:column;gap:6px;margin:12px 0;font-family:inherit;font-size:inherit}
+.cliente-observacao-profissional>span{color:var(--pet-primary-dark);font-weight:800;font-family:inherit}
+#listaClientesAdmin .cliente-observacao-profissional textarea,
+#formNovoCliente .cliente-observacao-profissional textarea{width:100%;min-height:100px;padding:12px 14px;border:1px solid var(--pet-border);border-radius:14px;background:rgba(255,255,255,.96);color:var(--pet-text);font:inherit;line-height:1.5;resize:vertical;outline:none}
+.cliente-observacao-profissional textarea:focus{border-color:var(--pet-primary)!important;box-shadow:0 0 0 3px rgba(214,90,126,.14)}
