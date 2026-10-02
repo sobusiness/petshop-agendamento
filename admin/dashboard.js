@@ -5357,7 +5357,7 @@ async function atualizarDadosPainelV917(botao) {
     atualizarIntervaloAdminV919('bloqueiosAgenda','data',inicio,fim)
    ]);
   }else invalidarDadosAdminV917(colecoesPorSecao[secao]||[]);
-  if(secao==='servicos')await lerCatalogoV9(true);
+  if(secao==='servicos'){invalidarDadosAdminV917(['catalogoV920']);await acompanharCatalogoV920();}
   await abrirSecao(secao);
  } finally {if(botao){botao.disabled=false;botao.textContent='Atualizar dados';}}
 }
@@ -5383,3 +5383,63 @@ async function consultarDiasAgendaAdminV919(datas){
  consultasDiasAdminV919.set(chave,leitura);
  try{return await leitura;}finally{consultasDiasAdminV919.delete(chave);}
 }
+
+// V9.0.20: redesenha somente a seção visível, preservando filtros e formulários.
+const dependenciasTelasV920={
+ agendamentos:['agendamentos','bloqueiosAgenda'],faturamento:['agendamentos','pacotes'],
+ 'dias-horarios':['bloqueiosAgenda'],clientes:['agendamentos','clientes','clientesExcluidos'],
+ crm:['agendamentos','clientes','clientesExcluidos','crmHistorico'],
+ clube:['agendamentos','clientes','clientesExcluidos','clubePetlyneResgates','clubePetlyneResumo'],
+ pacotes:['agendamentos','pacotes','clientes','clientesExcluidos'],servicos:['catalogoV920'],
+ 'prospect-callback':['agendamentos','prospectCallbacks'],logs:['logsSistema'],'contas-pagar':['contasPagar']
+};
+let timerRenderV920=null,renderEmCursoV920=false;
+const mudancasRenderV920=new Set();
+function mostrarStatusSincronizacaoV920(texto){const el=document.getElementById('statusSincronizacaoV920');if(el)el.textContent=texto;}
+function agendarRenderAutomaticoV920(chave){
+ if(chave==='catalogoV920'){const r=fontesAdminV916.get(chave)?.snapshot?.docs[0]?.data()?.regras;catalogoV9=Array.isArray(r)?r:regrasPadraoV9();servicosAdmin=catalogoV9;ultimoCatalogoV916=Date.now();persistirCatalogoV919();}
+ mudancasRenderV920.add(chave);
+ if(timerRenderV920||renderEmCursoV920||document.visibilityState==='hidden')return;
+ timerRenderV920=setTimeout(async()=>{
+  timerRenderV920=null;renderEmCursoV920=true;
+  const mudancas=new Set(mudancasRenderV920);mudancasRenderV920.clear();
+  try{
+   if(!auth.currentUser)return;
+   const secao=document.querySelector('.admin-section.active')?.id.replace('secao-','');
+   if(!(dependenciasTelasV920[secao]||[]).some(c=>mudancas.has(c)))return;
+   if(dependenciasTelasV920[secao].includes('agendamentos'))await carregarAgendamentos();
+   if(dependenciasTelasV920[secao].includes('pacotes'))await carregarPacotesAdmin();
+   if(dependenciasTelasV920[secao].includes('bloqueiosAgenda'))await carregarBloqueiosAgenda();
+   if(dependenciasTelasV920[secao].includes('clientes'))await carregarClientesAdmin();
+   if(secao==='agendamentos')renderizarAgenda();
+   if(secao==='faturamento')atualizarFaturamento();
+   if(secao==='dias-horarios'){renderizarCalendarioBloqueios();renderizarBloqueiosAgenda();}
+   if(secao==='clientes')renderizarClientesAdmin();
+   if(secao==='crm'){await carregarHistoricoCRM();calcularCRM();renderizarCRM();}
+   if(secao==='clube'){await Promise.all([carregarClubePetlyneResgates(),carregarClubePetlyneResumos()]);renderizarClubePetlyne();}
+   if(secao==='pacotes')renderizarPacotes();
+   if(secao==='servicos'){servicosAdmin=catalogoV9;renderizarServicosAdmin();}
+   if(secao==='prospect-callback'){await carregarProspectCallbacks();renderizarProspectCallbacks();}
+   if(secao==='logs'){await carregarLogsSistema();renderizarMetricasMonitoramento();}
+   if(secao==='contas-pagar')await carregarContasV9();
+  }catch(e){console.warn('Atualização da tela:',e);mostrarStatusSincronizacaoV920('Não foi possível atualizar a tela. Clique em Atualizar dados.');}
+  finally{renderEmCursoV920=false;if(mudancasRenderV920.size)agendarRenderAutomaticoV920([...mudancasRenderV920][0]);}
+ },180);
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='hidden'&&mudancasRenderV920.size)agendarRenderAutomaticoV920([...mudancasRenderV920][0]);});
+// O catálogo tem um único documento compartilhado por todas as telas do Admin.
+async function acompanharCatalogoV920(){
+ const snapshot=await consultaAdminV917('catalogoV920',db.collection('servicos').where(firebase.firestore.FieldPath.documentId(),'==','v9_catalogo'));
+ const regras=snapshot.docs[0]?.data()?.regras;
+ catalogoV9=Array.isArray(regras)?regras:regrasPadraoV9();servicosAdmin=catalogoV9;ultimoCatalogoV916=Date.now();persistirCatalogoV919();
+ return catalogoV9;
+}
+const iniciarDashboardOriginalV920=iniciarDashboard;
+iniciarDashboard=async function(){await acompanharCatalogoV920();return iniciarDashboardOriginalV920();};
+
+setInterval(()=>{
+ if(!auth.currentUser||document.visibilityState==='hidden')return;
+ const secao=document.querySelector('.admin-section.active')?.id.replace('secao-','');
+ const chave=dependenciasTelasV920[secao]?.[0];
+ if(chave&&fontesAdminV916.get(chave)?.snapshot)agendarRenderAutomaticoV920(chave);
+},60000); // Apenas redesenho com os dados compartilhados: não faz consulta periódica.

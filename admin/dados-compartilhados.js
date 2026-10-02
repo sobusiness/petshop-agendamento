@@ -1,4 +1,4 @@
-/* V9.0.19: consultas sob demanda e cache compartilhado durante a sessão da aba. */
+/* V9.0.20: atualização em tempo real compartilhada, sem polling de coleções. */
 const fontesAdminV916=new Map();
 const PREFIXO_CACHE_V917='petlyne-v919:';
 const esquemasCacheV919={
@@ -41,20 +41,33 @@ async function persistirCacheV919(chave,f){
   if(fontesAdminV916.get(chave)===f&&f.snapshot===snapshot)sessionStorage.setItem(chaveCacheV917(chave),texto);
  }catch(e){/* Armazenamento indisponível/cheio: memória continua válida. */}
 }
+// Um listener por consulta/coleção, iniciado apenas quando a tela precisa dos dados.
 async function consultaAdminV917(chave,consulta){
  let f=fontesAdminV916.get(chave);
  if(f?.pendente)return f.pendente;
- if(f?.snapshot){f.consulta=consulta;return f.snapshot;}
+ if(f?.unsubscribe&&f.snapshot)return f.snapshot;
  f=f||{};f.consulta=consulta;fontesAdminV916.set(chave,f);
- f.pendente=(async()=>{
-  try{
-   const item=await lerCachePersistidoV919(chave);
-   if(item&&Array.isArray(item.dados)&&fontesAdminV916.get(chave)===f){f.snapshot=snapshotCacheV917(item.dados);f.em=item.em;return f.snapshot;}
-  }catch(e){}
-  const snapshot=await consulta.get({source:'server'});
-  if(fontesAdminV916.get(chave)===f){f.snapshot=snapshot;f.em=Date.now();await persistirCacheV919(chave,f);}
-  return snapshot;
- })();
+ f.pendente=new Promise((resolve,reject)=>{
+  let primeiro=true;
+  f.unsubscribe=consulta.onSnapshot({includeMetadataChanges:true},snapshot=>{
+   if(fontesAdminV916.get(chave)!==f)return;
+   const anterior=f.snapshot;
+   const mudou=!anterior||JSON.stringify(anterior.docs.map(d=>[d.id,d.data()]))!==JSON.stringify(snapshot.docs.map(d=>[d.id,d.data()]));
+   f.snapshot=snapshot;f.em=Date.now();
+   if(typeof mostrarStatusSincronizacaoV920==='function')mostrarStatusSincronizacaoV920(snapshot.metadata?.fromCache?'Aguardando conexão para sincronizar…':'Atualização automática ativa');
+   if(mudou){f.revisao=(f.revisao||0)+1;invalidarModulosDadosV919([chave]);persistirCacheV919(chave,f);}
+   // A primeira abertura online espera a confirmação do servidor, nunca o cache antigo da aba.
+   if(primeiro&&(!snapshot.metadata?.fromCache||navigator.onLine===false)){
+    primeiro=false;resolve(snapshot);
+   }
+   if(mudou&&typeof agendarRenderAutomaticoV920==='function')agendarRenderAutomaticoV920(chave);
+  },erro=>{
+   f.unsubscribe?.();f.unsubscribe=null;f.erro=erro;
+   if(primeiro){primeiro=false;reject(erro);}
+   if(typeof mostrarStatusSincronizacaoV920==='function')mostrarStatusSincronizacaoV920('Sem sincronização: confira a conexão ou clique em Atualizar dados.');
+   console.warn('Sincronização interrompida:',chave,erro);
+  });
+ });
  try{return await f.pendente;}finally{f.pendente=null;}
 }
 function obterDadosAdminV916(colecao){return consultaAdminV917(colecao,db.collection(colecao));}
@@ -66,11 +79,11 @@ function invalidarModulosDadosV919(colecoes){
 }
 function invalidarDadosAdminV917(colecoes){
  const corresponde=k=>!colecoes||colecoes.some(c=>k===c||k.startsWith(c+':'));
- [...fontesAdminV916.keys()].filter(corresponde).forEach(k=>fontesAdminV916.delete(k));
+ [...fontesAdminV916.keys()].filter(corresponde).forEach(k=>{fontesAdminV916.get(k)?.unsubscribe?.();fontesAdminV916.delete(k);});
  try{const prefixo=PREFIXO_CACHE_V917+(auth.currentUser?.uid||'anonimo')+':';for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k?.startsWith(prefixo)&&corresponde(k.slice(prefixo.length)))sessionStorage.removeItem(k);}}catch(e){}
  invalidarModulosDadosV919(colecoes);
 }
-function encerrarDadosAdminV916(){fontesAdminV916.clear();try{for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&/^petlyne-v9\d+:/.test(k))sessionStorage.removeItem(k);}}catch(e){}}
+function encerrarDadosAdminV916(){fontesAdminV916.forEach(f=>f.unsubscribe?.());fontesAdminV916.clear();try{for(let i=sessionStorage.length-1;i>=0;i--){const k=sessionStorage.key(i);if(k&&/^petlyne-v9\d+:/.test(k))sessionStorage.removeItem(k);}}catch(e){}}
 function ordenarCacheV919(dados,esquema){
  if(!esquema?.campo)return dados;
  const valor=v=>v&&typeof v.seconds==='number'?v.seconds*1000+(v.nanoseconds||0)/1e6:v??'';
@@ -86,6 +99,7 @@ async function reconciliarOperacoesV919(operacoes){
  for(const [col,ops]of grupos){
   const f=fontesAdminV916.get(col);
   if(!f?.snapshot){invalidarDadosAdminV917([col]);continue;}
+  if(f.unsubscribe)continue; // O listener incorpora gravações sem leitura extra nem reconstrução da janela.
   const esquema=esquemasCacheV919[col];
   const tamanhoAntes=f.snapshot.size;
   const mapa=new Map(f.snapshot.docs.map(d=>[d.id,{id:d.id,dados:d.data()}]));
