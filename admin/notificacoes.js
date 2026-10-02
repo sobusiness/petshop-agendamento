@@ -46,6 +46,7 @@ async function posicionarAgendamentoNotificacaoV913(id){
  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
  const card=[...document.querySelectorAll('#calendarioAgenda [data-agendamento-id]')].find(el=>el.getAttribute('data-agendamento-id')===id&&!el.classList.contains('agenda-event-bloqueio'));
  if(!card)throw Error('Não foi possível localizar este agendamento na agenda. Atualize o painel e tente novamente.');
+ if(typeof modoMobileAtivoV914==='function'&&modoMobileAtivoV914()){card.scrollIntoView({behavior:'smooth',block:'start'});card.classList.add('notificacao-destino-v910');setTimeout(()=>card.classList.remove('notificacao-destino-v910'),7000);return;}
  const {bottom,top}=obterElementosScrollAgenda();
  if(!bottom)throw Error('Não foi possível posicionar a agenda.');
  const caixa=bottom.getBoundingClientRect(),alvo=card.getBoundingClientRect();

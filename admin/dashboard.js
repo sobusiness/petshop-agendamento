@@ -539,6 +539,7 @@ function configurarScrollSuperiorAgenda() {
 }
 
 function atualizarScrollSuperiorAgenda() {
+    if (document.body.classList.contains("admin-mobile-v914")) return;
     const { top, bottom, content, grid } = obterElementosScrollAgenda();
     if (!top || !bottom || !content || !grid) return;
 
@@ -560,6 +561,7 @@ function atualizarScrollSuperiorAgenda() {
 }
 
 function posicionarAgendaNaUltimaData() {
+    if (document.body.classList.contains("admin-mobile-v914")) return;
     if (agendaPosicionadaNaUltimaData || filtroAgendaPeriodo !== "todos") return;
     const { bottom, top } = obterElementosScrollAgenda();
     if (!bottom || !top) return;
