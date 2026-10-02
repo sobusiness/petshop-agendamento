@@ -3062,22 +3062,3 @@ dialog.exclusao-dialog-v95{width:620px;padding:26px;text-align:left}
 /* V9.0.11 — notificações acima das seções do painel */
 .admin-header{position:relative;z-index:1000;overflow:visible}
 #notificacoesPainelV910{z-index:1001}
-/* V9.0.14 — modo mobile do painel */
-#modoMobileV914{display:inline-flex;align-items:center;gap:7px;background:#fff;color:var(--pet-primary-dark);border:1px solid var(--pet-border);min-height:44px;font-size:12px;padding:10px 12px;white-space:nowrap}
-.admin-mobile-v914 .admin-header{flex-direction:column;align-items:stretch;gap:16px;padding:16px}
-.admin-mobile-v914 .admin-brand{gap:10px}.admin-mobile-v914 .admin-logo{width:52px;height:52px}.admin-mobile-v914 .admin-brand h1{font-size:19px}.admin-mobile-v914 .admin-brand p{font-size:12px;line-height:1.5}
-.admin-mobile-v914 .admin-header-acoes-v910{justify-content:flex-end}.admin-mobile-v914 .admin-container{max-width:760px;margin:16px auto;padding:0 10px 30px}
-.admin-mobile-v914 .admin-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:10px;border-radius:16px}.admin-mobile-v914 .admin-tabs .tab-button{min-height:46px;padding:10px 8px;font-size:12px;line-height:1.3;min-width:0}
-.admin-mobile-v914 .admin-section{padding:16px;border-radius:18px;min-width:0}.admin-mobile-v914 .admin-section h2{font-size:23px}.admin-mobile-v914 .section-title-row{flex-direction:column;align-items:stretch;gap:12px}
-.admin-mobile-v914 input,.admin-mobile-v914 select,.admin-mobile-v914 textarea{font-size:16px;min-width:0}.admin-mobile-v914 button{min-height:44px}
-.admin-mobile-v914 .cliente-form-grid,.admin-mobile-v914 .v9-grid,.admin-mobile-v914 .service-form,.admin-mobile-v914 .charts-grid,.admin-mobile-v914 .finance-analysis-grid{grid-template-columns:1fr}
-.admin-mobile-v914 .kpi-grid,.admin-mobile-v914 #contasIndicadoresV9,.admin-mobile-v914 .prospect-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.admin-mobile-v914 .cliente-card-actions,.admin-mobile-v914 .prospect-actions,.admin-mobile-v914 .clientes-toolbar{flex-wrap:wrap;gap:8px}.admin-mobile-v914 .prospect-card{flex-direction:column;align-items:stretch}.admin-mobile-v914 .prospect-actions{justify-content:flex-start}
-.admin-mobile-v914 #agendaScrollTop{display:none}.admin-mobile-v914 #agendaScrollBottom{overflow:visible;border:0;background:transparent}.admin-mobile-v914 #calendarioAgenda{display:block!important;width:100%!important;min-width:0!important;overflow:visible!important;border:0;background:transparent}
-.agenda-dia-mobile-v914{margin:16px 0 24px}.agenda-dia-mobile-v914>h3{font-size:15px;color:var(--pet-primary-dark);padding:10px 0;margin-bottom:10px;border-bottom:1px solid var(--pet-border)}.agenda-lista-mobile-v914{display:grid;gap:12px}
-.admin-mobile-v914 #secao-agendamentos .agenda-event{padding:14px;line-height:1.5;border-radius:14px}.admin-mobile-v914 .agenda-event-header{display:flex;justify-content:space-between}.admin-mobile-v914 #secao-agendamentos .agenda-event-header>strong{font-size:18px}.admin-mobile-v914 #secao-agendamentos .status-badge{font-size:11px;padding:4px 8px}
-.agenda-cliente-mobile-v914{display:flex;flex-direction:column;font-size:13px;gap:3px;margin:10px 0}.agenda-rodape-mobile-v914{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;font-size:12px;margin:12px 0}.agenda-rodape-mobile-v914 strong{font-size:16px;color:var(--pet-primary-dark)}
-.admin-mobile-v914 #secao-agendamentos .agenda-event-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px}.admin-mobile-v914 .agenda-pet-v99{padding:12px}.admin-mobile-v914 .agenda-pet-titulo-v99 strong{font-size:14px}.admin-mobile-v914 .agenda-pet-servico-v99,.admin-mobile-v914 .agenda-pet-observacao-v99{font-size:13px}.admin-mobile-v914 .agenda-pet-titulo-v99>span{font-size:12px}
-.mobile-bloqueio-v914,.mobile-vazio-v914{padding:16px;background:#fff7fa;border:1px solid var(--pet-border);border-radius:12px;font-size:13px;line-height:1.6;margin:8px 0}
-.admin-mobile-v914 .v9-table-wrap,.admin-mobile-v914 .finance-table-scroll{max-width:100%;overflow-x:auto}.admin-mobile-v914 .v9-dialog{width:min(620px,94vw)}
-.admin-mobile-v914 #notificacoesPainelV910{position:absolute;right:0;top:54px;width:min(420px,calc(100vw - 32px))}
