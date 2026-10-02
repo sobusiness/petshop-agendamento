@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Petlyne - Dashboard Administrativo</title>
+    <link rel="icon" type="image/png" href="../favicon.png">
+    <link rel="stylesheet" href="admin.css?v=9.0.14">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+
+<body>
+
+<header class="admin-header">
+    <div class="admin-brand">
+        <img src="../logopetlyne.png" alt="Petlyne" class="admin-logo">
+        <div>
+            <h1>Petlyne - Painel Administrativo</h1>
+            <p>Gestão de agendamentos, faturamento e serviços</p>
+        </div>
+    </div>
+
+    <div class="admin-header-acoes-v910"><button id="modoMobileV914" type="button" aria-pressed="false" onclick="alternarModoMobileV914()">Modo mobile</button><div class="notificacoes-area-v910"><button id="notificacoesBotaoV910" type="button" aria-label="Notificações" aria-expanded="false" aria-controls="notificacoesPainelV910" onclick="alternarNotificacoesV910()"><i class="fa-regular fa-bell" aria-hidden="true"></i><span id="notificacoesContagemV910" hidden></span></button><div id="notificacoesPainelV910" hidden><header><h2>Notificações</h2><button type="button" aria-label="Fechar notificações" onclick="fecharNotificacoesV910()">×</button></header><p>Contas e renovações: próximos 7 dias.</p><div id="notificacoesListaV910"></div></div></div><button class="logout-button" onclick="sair()">Sair</button></div>
+</header>
+
+<main class="admin-container">
+
+    <nav class="admin-tabs">
+        <button class="tab-button active" onclick="abrirSecao('agendamentos')">Agendamentos</button>
+        <button class="tab-button" onclick="abrirSecao('faturamento')">Faturamento</button>
+        <button class="tab-button" onclick="abrirSecao('dias-horarios')">Dias e Horários</button>
+        <button class="tab-button" onclick="abrirSecao('clientes')">Clientes</button>
+        <button class="tab-button" onclick="abrirSecao('crm')">CRM Growth</button>
+        <button class="tab-button" onclick="abrirSecao('clube')">Clube PetLyne</button>
+        <button class="tab-button" onclick="abrirSecao('pacotes')">Gestão de Pacotes</button>
+        <button class="tab-button" onclick="abrirSecao('servicos')">Configurações de Produtos / Serviços</button>
+        <button class="tab-button" onclick="abrirSecao('prospect-callback')"><i class="fa-brands fa-whatsapp"></i> Prospect Callback</button>
+        <button class="tab-button" onclick="abrirSecao('logs')">Monitoramento</button>
+    <button class="tab-button" onclick="abrirSecao('contas-pagar')">Contas a pagar</button></nav>
+
+    <section id="secao-agendamentos" class="admin-section active">
+        <div class="section-title-row">
+            <div>
+                <h2>Agendamentos</h2>
+                <p>Acompanhe os agendamentos por dia e horário.</p>
+            </div>
+
+            <div class="filter-actions agenda-filter-actions">
+                <input type="text" id="filtroProtocoloAgenda" placeholder="Pesquisar protocolo. Ex: LYNE-12345" oninput="renderizarAgenda()">
+                <button onclick="filtrarAgendamentosHoje()">Hoje</button>
+                <button onclick="filtrarAgendaPeriodo('ultimos7')">Últimos 7 dias</button>
+                <button onclick="filtrarAgendaPeriodo('ultimos15')">Últimos 15 dias</button>
+                <button class="secondary-button" onclick="limparFiltroAgendamentos()">Limpar Filtro</button>
+            </div>
+        </div>
+<div id="agendaFiltroInfo" class="filter-info"></div>
+
+        <div id="agendaPainelOperacional" class="agenda-ops-panel" aria-live="polite">
+            <div class="agenda-ops-heading">
+                <div>
+                    <span class="agenda-ops-eyebrow">Painel operacional</span>
+                    <strong id="agendaOpsData">Hoje</strong>
+                </div>
+                <div class="agenda-occupancy-summary">
+                    <span id="agendaOpsOcupacaoTexto">0 de 14 horários ocupados</span>
+                    <strong id="agendaOpsOcupacao">0%</strong>
+                </div>
+            </div>
+            <div class="agenda-occupancy-track" aria-hidden="true"><span id="agendaOpsOcupacaoBarra"></span></div>
+            <div class="agenda-ops-grid">
+                <article class="agenda-ops-card"><span>Agendamentos</span><strong id="agendaOpsTotal">0</strong></article>
+                <article class="agenda-ops-card"><span>Concluídos</span><strong id="agendaOpsConcluidos">0</strong></article>
+                <article class="agenda-ops-card"><span>Pendentes</span><strong id="agendaOpsPendentes">0</strong></article>
+                <article class="agenda-ops-card"><span>Previsto</span><strong id="agendaOpsPrevisto">R$ 0,00</strong></article>
+                <article class="agenda-ops-card"><span>Avulsos</span><strong id="agendaOpsLyne">0</strong></article>
+                <article class="agenda-ops-card"><span>Pacotes</span><strong id="agendaOpsPack">0</strong></article>
+            </div>
+        </div>
+
+        <div class="agenda-legend" aria-label="Legenda da agenda">
+            <span><i class="legend-dot legend-confirmado"></i>Agendado</span>
+            <span><i class="legend-dot legend-concluido"></i>Concluído</span>
+            <span><i class="legend-dot legend-pack"></i>Pacote</span>
+            <span><i class="legend-dot legend-bloqueio"></i>Bloqueio</span>
+        </div>
+
+        <div class="agenda-scroll-tools">
+            <button type="button" class="secondary-button" onclick="moverScrollAgenda(-450)">← Voltar datas</button>
+            <button type="button" class="secondary-button" onclick="moverScrollAgenda(450)">Avançar datas →</button>
+        </div>
+
+        <div class="calendar-scroll-top" id="agendaScrollTop">
+            <div id="agendaScrollTopContent"></div>
+        </div>
+
+        <div class="calendar-wrapper" id="agendaScrollBottom">
+            <div id="calendarioAgenda" class="agenda-grid"></div>
+        </div>
+    </section>
+
+    <section id="secao-faturamento" class="admin-section finance-intelligence finance-v8">
+        <div class="finance-hero finance-hero-v8">
+            <div>
+                <span class="finance-eyebrow">PETLYNE FINANCE INTELLIGENCE</span>
+                <h2>Centro de Inteligência Financeira</h2>
+                <p>Veja quanto entrou, de onde veio a receita e como o negócio está evoluindo.</p>
+            </div>
+            <div class="finance-hero-badge">
+                <span>Período analisado</span>
+                <strong id="financePeriodLabel">Todo o histórico</strong>
+                <small id="financeSelectionSummary">Sem filtros adicionais</small>
+            </div>
+        </div>
+
+        <div class="finance-toolbar finance-toolbar-v8">
+            <div class="finance-period-chips" id="financePeriodChips">
+                <button data-periodo="hoje" onclick="filtrarFaturamento('hoje')">Dia</button>
+                <button data-periodo="semana" onclick="filtrarFaturamento('semana')">Semana</button>
+                <button data-periodo="mes" onclick="filtrarFaturamento('mes')">Mês</button>
+                <button data-periodo="ano" onclick="filtrarFaturamento('ano')">Ano</button>
+                <button data-periodo="todos" onclick="filtrarFaturamento('todos')">Histórico</button>
+            </div>
+            <div class="finance-period-navigation">
+                <button type="button" class="finance-nav-button" onclick="navegarPeriodoFinanceiro(-1)" aria-label="Período anterior">←</button>
+                <strong id="financePeriodNavLabel">Período atual</strong>
+                <button type="button" class="finance-nav-button" onclick="navegarPeriodoFinanceiro(1)" aria-label="Próximo período">→</button>
+            </div>
+            <button class="finance-filter-toggle" type="button" onclick="alternarFiltrosFinanceiros()">Filtros avançados</button>
+        </div>
+
+        <div class="faturamento-filter-card finance-filters" id="financeFiltersPanel">
+            <div class="faturamento-filter-row">
+                <label><span>Data inicial</span><input type="date" id="dataInicioFaturamento"></label>
+                <label><span>Data final</span><input type="date" id="dataFimFaturamento"></label>
+                <label><span>Espécie</span><select id="filtroEspecieFaturamento" onchange="atualizarFaturamento()"><option value="">Todas</option><option value="Cão">Cão</option><option value="Gato">Gato</option></select></label>
+                <label><span>Porte</span><select id="filtroPorteFaturamento" onchange="atualizarFaturamento()"><option value="">Todos</option><option value="Pequeno">Pequeno</option><option value="Médio">Médio</option><option value="Grande">Grande</option></select></label>
+                <label><span>Serviço</span><select id="filtroServicoFaturamento" onchange="atualizarFaturamento()"><option value="">Todos</option><option value="banho">Banho</option><option value="tosa">Tosa</option><option value="avulsos">Serviços avulsos</option></select></label>
+                <button onclick="filtrarFaturamento('personalizado')">Aplicar período</button>
+                <button class="secondary-button" onclick="limparFiltroFaturamento()">Limpar tudo</button>
+            </div>
+        </div>
+
+        <div class="finance-active-filters" id="financeActiveFilters" aria-live="polite"></div>
+
+        <div class="finance-kpi-grid finance-kpi-grid-v8">
+            <article class="finance-kpi primary"><div class="finance-kpi-icon">R$</div><div><span>Faturamento realizado</span><strong id="kpiValorTotal">R$ 0,00</strong><small id="kpiReceitaComparacao">Sem comparação</small></div></article>
+            <article class="finance-kpi finance-kpi-clickable" onclick="aplicarFiltroOrigemFinanceiro('avulso')"><div class="finance-kpi-icon">AV</div><div><span>Avulsos</span><strong id="kpiReceitaAvulso">R$ 0,00</strong><small id="kpiReceitaAvulsoPct">0% da receita</small></div></article>
+            <article class="finance-kpi finance-kpi-clickable" onclick="aplicarFiltroOrigemFinanceiro('pacote')"><div class="finance-kpi-icon">PK</div><div><span>Pacotes realizados</span><strong id="kpiReceitaPacote">R$ 0,00</strong><small id="kpiReceitaPacotePct">0% da receita</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">#</div><div><span>Atendimentos</span><strong id="kpiAtendimentos">0</strong><small id="kpiAtendimentosComparacao">No período</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">TM</div><div><span>Ticket médio</span><strong id="kpiTicketMedio">R$ 0,00</strong><small id="kpiTicketComparacao">Receita por atendimento</small></div></article>
+            <article class="finance-kpi"><div class="finance-kpi-icon">PV</div><div><span>Pacotes vendidos</span><strong id="kpiPacotesVendidos">R$ 0,00</strong><small id="kpiPacotesVendidosQtd">0 pacotes no período</small></div></article>
+        </div>
+
+        <div class="finance-goal-panel finance-goal-panel-v8">
+            <div class="finance-goal-copy">
+                <span>Meta mensal geral</span>
+                <strong id="financeGoalValue">R$ 0 de R$ 0</strong>
+                <small id="financeGoalProjection">Defina uma meta para acompanhar a projeção.</small>
+            </div>
+            <div class="finance-goal-center">
+                <div class="finance-goal-track"><div id="financeGoalBar"></div></div>
+                <div class="finance-goal-metrics">
+                    <span>Esperado até hoje <strong id="financeGoalExpected">R$ 0</strong></span>
+                    <span>Projeção do mês <strong id="financeGoalForecast">R$ 0</strong></span>
+                </div>
+            </div>
+            <div class="finance-goal-control"><span>Meta</span><input id="metaMensalFaturamento" type="number" min="0" step="100" placeholder="5000" onchange="salvarMetaMensalFinanceira()"><strong id="financeGoalPercent">0%</strong></div>
+        </div>
+
+        <div class="finance-charts-grid finance-charts-grid-v8">
+            <section class="finance-chart-card finance-chart-wide finance-evolution-card">
+                <div class="finance-card-title"><div><span>EVOLUÇÃO</span><h3>Faturamento ao longo do tempo</h3><small>Clique em um ponto para filtrar toda a página.</small></div><strong id="financeTrendSummary"></strong></div>
+                <canvas id="graficoFaturamentoDia"></canvas>
+            </section>
+            <section class="finance-chart-card">
+                <div class="finance-card-title"><div><span>COMPOSIÇÃO</span><h3>Avulso x Pacote</h3><small>Clique em uma fatia para cruzar os dados.</small></div></div>
+                <canvas id="graficoEspecie"></canvas>
+            </section>
+            <section class="finance-chart-card">
+                <div class="finance-card-title"><div><span>CLIENTES</span><h3>Novos x Recorrentes</h3><small>Classificação pelo telefone e histórico.</small></div></div>
+                <canvas id="graficoPerfilCliente"></canvas>
+            </section>
+            <section class="finance-chart-card">
+                <div class="finance-card-title"><div><span>PERFORMANCE</span><h3>Faturamento por dia da semana</h3><small>Clique no dia para filtrar.</small></div></div>
+                <canvas id="graficoDiaSemana"></canvas>
+            </section>
+            <section class="finance-chart-card finance-chart-wide finance-service-card">
+                <div class="finance-card-title"><div><span>PORTFÓLIO</span><h3>Serviços que mais faturam</h3><small>Valores dos itens de serviço concluídos.</small></div></div>
+                <canvas id="graficoServico"></canvas>
+            </section>
+        </div>
+
+        <div class="finance-analysis-grid">
+            <section class="finance-insights-card">
+                <div class="finance-card-title"><div><span>LEITURA EXECUTIVA</span><h3>O que merece sua atenção</h3></div></div>
+                <div id="financeInsights" class="finance-insights-list"></div>
+            </section>
+            <section class="finance-package-card">
+                <div class="finance-card-title"><div><span>PACOTES</span><h3>Performance dos pacotes</h3></div></div>
+                <div class="finance-package-kpis">
+                    <div><span>Ativos</span><strong id="financePacotesAtivos">0</strong></div>
+                    <div><span>Realizado no filtro</span><strong id="financePacotesRealizado">R$ 0</strong></div>
+                    <div><span>Receita futura</span><strong id="financePacotesFuturo">R$ 0</strong></div>
+                    <div><span>Visitas restantes</span><strong id="financePacotesVisitas">0</strong></div>
+                </div>
+                <div id="financePacotesTipos" class="finance-package-types"></div>
+            </section>
+        </div>
+
+        <section class="finance-table-card">
+            <div class="finance-card-title finance-table-title"><div><span>CONFERÊNCIA</span><h3>Resumo diário</h3><small>Clique em um dia para abrir somente os lançamentos daquela data.</small></div><button type="button" class="secondary-button" onclick="limparFiltroInterativoFinanceiro('intervalo')">Limpar seleção do dia</button></div>
+            <div class="finance-table-scroll">
+                <table class="finance-table">
+                    <thead><tr><th>Data</th><th>Avulso</th><th>Pacote</th><th>Total</th><th>Atendimentos</th><th>Ticket médio</th></tr></thead>
+                    <tbody id="financeDailyTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="finance-table-card finance-detail-card">
+            <div class="finance-card-title finance-table-title"><div><span>FONTE DA VERDADE</span><h3>Detalhamento dos lançamentos</h3><small id="financeDetailCount">0 lançamentos</small></div></div>
+            <div class="finance-table-scroll finance-detail-scroll">
+                <table class="finance-table finance-detail-table">
+                    <thead><tr><th>Data</th><th>Cliente</th><th>Pet</th><th>Serviço</th><th>Origem</th><th>Valor</th></tr></thead>
+                    <tbody id="financeDetailTableBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+
+    <section id="secao-dias-horarios" class="admin-section schedule-control-center">
+        <div class="schedule-hero">
+            <div>
+                <span class="schedule-eyebrow">CENTRO DE CONTROLE DA AGENDA</span>
+                <h2>Dias e Horários</h2>
+                <p>Visualize disponibilidade, agendamentos e bloqueios em um só lugar.</p>
+            </div>
+            <div class="schedule-hero-actions">
+                <button type="button" class="secondary-button" onclick="irParaHojeBloqueio()">Hoje</button>
+                <button type="button" onclick="abrirComposerBloqueio()">+ Novo bloqueio</button>
+            </div>
+        </div>
+
+        <div class="schedule-kpi-grid">
+            <article class="schedule-kpi"><span>Bloqueios no mês</span><strong id="agendaKpiBloqueios">0</strong><small>períodos ativos</small></article>
+            <article class="schedule-kpi"><span>Horas bloqueadas</span><strong id="agendaKpiHoras">0h</strong><small>no mês selecionado</small></article>
+            <article class="schedule-kpi"><span>Dias afetados</span><strong id="agendaKpiDias">0</strong><small>com indisponibilidade</small></article>
+            <article class="schedule-kpi schedule-kpi-highlight"><span>Disponibilidade</span><strong id="agendaKpiDisponibilidade">100%</strong><small>dos horários úteis</small></article>
+            <article class="schedule-kpi"><span>Próximo bloqueio</span><strong id="agendaKpiProximo">—</strong><small id="agendaKpiProximoDetalhe">Agenda livre</small></article>
+        </div>
+
+        <div id="composerBloqueio" class="schedule-composer">
+            <div class="schedule-composer-head">
+                <div><strong>Novo bloqueio</strong><span>Selecione uma ou várias datas no calendário.</span></div>
+                <button type="button" class="schedule-icon-button" onclick="fecharComposerBloqueio()" aria-label="Fechar">×</button>
+            </div>
+            <div class="schedule-type-chips" id="bloqueioTipoChips">
+                <button type="button" class="active" data-tipo="Compromisso" onclick="selecionarTipoBloqueio(this)">Compromisso</button>
+                <button type="button" data-tipo="Folga" onclick="selecionarTipoBloqueio(this)">Folga</button>
+                <button type="button" data-tipo="Férias" onclick="selecionarTipoBloqueio(this)">Férias</button>
+                <button type="button" data-tipo="Manutenção" onclick="selecionarTipoBloqueio(this)">Manutenção</button>
+                <button type="button" data-tipo="Outro" onclick="selecionarTipoBloqueio(this)">Outro</button>
+            </div>
+            <div class="schedule-mode-row">
+                <label><span>Forma do bloqueio</span>
+                    <select id="bloqueioModo" onchange="atualizarModoBloqueio()">
+                        <option value="unico">Dia único ou seleção no calendário</option>
+                        <option value="periodo">Período contínuo</option>
+                        <option value="semanal">Recorrência semanal</option>
+                    </select>
+                </label>
+                <label id="bloqueioDataFinalLabel" class="is-hidden"><span>Data final</span><input type="date" id="bloqueioDataFinal"></label>
+                <label id="bloqueioRecorrenciaFimLabel" class="is-hidden"><span>Repetir até</span><input type="date" id="bloqueioRecorrenciaFim"></label>
+            </div>
+            <div class="bloqueio-form schedule-form-premium">
+                <label><span>Data inicial</span><input type="date" id="bloqueioData" onchange="selecionarDataManualBloqueio()"></label>
+                <label><span>Início</span><select id="bloqueioInicio"></select></label>
+                <label><span>Final</span><select id="bloqueioFim"></select></label>
+                <label class="schedule-motivo-field"><span>Motivo</span><input type="text" id="bloqueioMotivo" placeholder="Ex.: consulta, compromisso ou folga"></label>
+            </div>
+            <div class="schedule-selected-row">
+                <div><strong>Dias selecionados</strong><span id="diasSelecionadosBloqueio">Nenhum dia selecionado.</span></div>
+                <button type="button" class="schedule-link-button" onclick="limparSelecaoDiasBloqueio()">Limpar</button>
+            </div>
+            <div class="schedule-composer-actions">
+                <button type="button" class="secondary-button" onclick="bloquearDiasSelecionadosDiaTodo()">Bloquear dia todo</button>
+                <button type="button" class="secondary-button" onclick="desbloquearDiasSelecionados()">Desbloquear selecionados</button>
+                <button type="button" onclick="salvarBloqueioAgenda()">Salvar bloqueio</button>
+            </div>
+            <p class="schedule-rule-note">Não é possível bloquear períodos que já possuem atendimento avulso ou pacote marcado.</p>
+        </div>
+
+        <div class="schedule-workspace">
+            <section class="schedule-calendar-panel">
+                <div class="schedule-calendar-toolbar">
+                    <button class="schedule-nav-button" onclick="mudarMesBloqueio(-1)" aria-label="Mês anterior">‹</button>
+                    <div><span>Calendário</span><strong id="tituloMesBloqueio"></strong></div>
+                    <button class="schedule-nav-button" onclick="mudarMesBloqueio(1)" aria-label="Próximo mês">›</button>
+                </div>
+                <div class="schedule-legend">
+                    <span><i class="schedule-dot schedule-dot-booked"></i>Agendamento</span>
+                    <span><i class="schedule-dot schedule-dot-blocked"></i>Bloqueio</span>
+                    <span><i class="schedule-dot schedule-dot-mixed"></i>Ambos</span>
+                    <span><i class="schedule-dot schedule-dot-free"></i>Livre</span>
+                </div>
+                <div id="calendarioBloqueios" class="bloqueio-calendario schedule-calendar-grid"></div>
+            </section>
+
+            <aside class="schedule-day-panel">
+                <div class="schedule-day-header">
+                    <div><span>DIA SELECIONADO</span><h3 id="agendaDiaTitulo">Selecione uma data</h3><p id="agendaDiaResumo">Veja a operação completa do dia.</p></div>
+                    <button type="button" class="schedule-icon-button" onclick="abrirComposerParaDiaSelecionado()">+</button>
+                </div>
+                <div id="agendaDiaStats" class="schedule-day-stats"></div>
+                <div id="agendaDiaTimeline" class="schedule-day-timeline">
+                    <div class="schedule-empty-day">Toque em um dia do calendário para visualizar horários, atendimentos e bloqueios.</div>
+                </div>
+            </aside>
+        </div>
+
+        <section class="schedule-upcoming-panel">
+            <div class="schedule-upcoming-head"><div><span>PRÓXIMOS EVENTOS</span><h3>Bloqueios programados</h3></div><button type="button" class="secondary-button" onclick="abrirComposerBloqueio()">Adicionar</button></div>
+            <div id="listaBloqueiosAgenda" class="schedule-upcoming-list"></div>
+        </section>
+    </section>
+
+
+    
+<section id="secao-clientes" class="admin-section">
+    <div class="section-title-row">
+        <div>
+            <h2>Cadastro de Clientes</h2>
+            <p>Cadastre novos clientes ou pesquise um cadastro existente para editar ou excluir.</p>
+        </div>
+    </div>
+
+    <div class="novo-cliente-panel">
+        <div class="novo-cliente-header">
+            <div>
+                <h3>Novo Cliente</h3>
+                <p>Cadastre manualmente um cliente e o respectivo pet.</p>
+            </div>
+
+            <button
+                type="button"
+                class="secondary-button"
+                onclick="alternarFormularioNovoCliente()"
+            >
+                Cadastrar Novo Cliente
+            </button>
+        </div>
+
+        <div id="formNovoCliente" class="novo-cliente-form" style="display:none;">
+<label class="cliente-observacao-profissional"><span>Observação do profissional (somente Admin)</span><textarea id="novoClienteProfissional" rows="4"></textarea></label>
+            <div class="cliente-form-grid">
+                <label>
+                    <span>Nome do Cliente</span>
+                    <input type="text" id="novoClienteNome" placeholder="Nome completo">
+                </label>
+
+                <label>
+                    <span>Telefone</span>
+                    <input
+                        type="text"
+                        id="novoClienteTelefone"
+                        placeholder="(11) 99999-9999"
+                        maxlength="15"
+                    >
+                </label>
+
+                <label>
+                    <span>Nome do Pet</span>
+                    <input type="text" id="novoClientePet" placeholder="Nome do pet">
+                </label>
+
+                <label>
+                    <span>Espécie</span>
+                    <select id="novoClienteEspecie" onchange="atualizarRacasNovoCliente()">
+                        <option value="">Selecione</option>
+                        <option value="Cão">Cão</option>
+                        <option value="Gato">Gato</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Sexo</span>
+                    <select id="novoClienteSexo">
+                        <option value="">Selecione</option>
+                        <option value="Macho">Macho</option>
+                        <option value="Fêmea">Fêmea</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Raça</span>
+                    <select id="novoClienteRaca" onchange="atualizarPorteNovoCliente()">
+                        <option value="">Selecione a espécie primeiro</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Porte</span>
+                    <select id="novoClientePorte" disabled>
+                        <option value="">Selecione a raça</option>
+                        <option value="Pequeno">Pequeno</option>
+                        <option value="Médio">Médio</option>
+                        <option value="Grande">Grande</option>
+                        <option value="Único">Único</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>Observação PET</span>
+                    <select id="novoClienteObservacao">
+                        <option value="">Selecione</option>
+                        <option value="Sem Observação">Sem Observação</option>
+                        <option value="Bravo">Bravo</option>
+                        <option value="Não gosta de secador">Não gosta de secador</option>
+                        <option value="Alérgico">Alérgico</option>
+                        <option value="Ansioso">Ansioso</option>
+                        <option value="Idoso">Idoso</option>
+                        <option value="Filhote">Filhote</option>
+                    </select>
+                </label>
+            </div>
+
+            <div class="novo-cliente-actions">
+                <button type="button" onclick="gravarNovoCliente()">Gravar Cliente</button>
+                <button type="button" class="secondary-button" onclick="limparFormularioNovoCliente()">Limpar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="clientes-toolbar clientes-toolbar-unica">
+        <input
+            type="text"
+            id="filtroClientes"
+            placeholder="Pesquise por cliente, telefone ou pet"
+            oninput="renderizarClientesAdmin()"
+        >
+        <button onclick="carregarClientesAdmin()">Atualizar Lista</button>
+    </div>
+
+    <div id="resultadoBuscaClientes" class="clientes-resultados"></div>
+    <div id="listaClientesAdmin" class="clientes-list cliente-lista-unica"></div>
+</section>
+
+
+
+<section id="secao-crm" class="admin-section">
+    <div class="section-title-row crm-title-row">
+        <div>
+            <h2>CRM Growth</h2>
+            <p>Relacionamento com clientes de atendimento avulso. Registros de pacote (PACK) não entram neste módulo.</p>
+        </div>
+        <button type="button" class="secondary-button" onclick="atualizarCRM()">Atualizar CRM</button>
+    </div>
+
+    <div class="crm-scope-alert">
+        <strong>Escopo atual:</strong> clientes sem histórico PACK e com atendimento avulso LYNE, além de cadastros manuais que ainda não usaram o agendamento online.
+    </div>
+
+    <div class="crm-status-line"><span id="crmUltimaAtualizacao">Aguardando atualização</span></div>
+    <div id="crmIndicadoresGerais" class="crm-overview-grid"></div>
+    <div id="crmResumo" class="crm-summary-grid"></div>
+
+    <div class="crm-view-tabs">
+        <button type="button" class="crm-view-button active" data-visao="pendentes" onclick="setCRMVisao('pendentes')">Pendentes</button>
+        <button type="button" class="crm-view-button" data-visao="historico" onclick="setCRMVisao('historico')">Histórico</button>
+        <button type="button" class="crm-view-button" data-visao="metricas" onclick="setCRMVisao('metricas')">Resultados e comportamento</button>
+    </div>
+
+    <div id="crmPainel-pendentes" class="crm-view-panel active">
+    <div class="crm-toolbar">
+        <div>
+            <h3 id="crmListaTitulo">Todas as ações</h3>
+            <p id="crmListaDescricao">Selecione um card ou visualize todas as ações pendentes.</p>
+        </div>
+        <div class="crm-toolbar-actions">
+            <input type="text" id="crmBusca" placeholder="Pesquisar cliente, pet ou telefone" oninput="renderizarCRMLista()">
+            <button type="button" class="secondary-button" onclick="selecionarCategoriaCRM('todas')">Mostrar todas</button>
+        </div>
+    </div>
+
+    <div id="crmLista" class="crm-list"></div>
+    </div>
+
+    <div id="crmPainel-historico" class="crm-view-panel">
+      <div class="crm-panel-heading"><div><h3>Histórico de ações</h3><p>Consulte todas as mensagens que foram marcadas como enviadas.</p></div><input id="crmHistoricoBusca" type="text" placeholder="Pesquisar histórico" oninput="renderizarHistoricoCRM()"></div>
+      <div id="crmHistoricoLista" class="crm-history-list"></div>
+    </div>
+
+    <div id="crmPainel-metricas" class="crm-view-panel">
+      <div class="crm-panel-heading"><div><h3>Resultados e comportamento</h3><p>Indicadores calculados com os atendimentos concluídos e o histórico do CRM.</p></div></div>
+      <div id="crmMetricasConteudo"></div>
+    </div>
+</section>
+
+
+<section id="secao-clube" class="admin-section clube-premium-section">
+  <div class="section-title-row clube-title-row clube-hero-head">
+    <div>
+      <span class="clube-eyebrow">FIDELIDADE E EXPERIÊNCIA</span>
+      <h2>🐾 Clube PetLyne</h2>
+      <p>Acompanhe conquistas, benefícios liberados e clientes que merecem atenção.</p>
+    </div>
+    <button type="button" class="secondary-button clube-refresh-button" onclick="atualizarClubePetlyne()">Atualizar Clube</button>
+  </div>
+
+  <div class="clube-regra-alert clube-regra-premium">
+    <div class="clube-regra-icon">🏆</div>
+    <div><strong>Jornada de fidelidade</strong><p>A cada 10 atendimentos avulsos LYNE concluídos: hidratação no 5º banho e banho grátis no 10º. Pacotes PACK não participam desta jornada.</p></div>
+  </div>
+
+  <div class="clube-kpi-grid clube-kpi-premium" id="clubeIndicadores"></div>
+  <div id="clubeInteligencia" class="clube-inteligencia-grid"></div>
+
+  <div class="clube-command-bar">
+    <div class="clube-search-wrap"><span>⌕</span><input id="clubeBusca" type="text" placeholder="Pesquisar cliente, pet ou telefone" oninput="renderizarClubePetlyne()"></div>
+    <div class="clube-filter-chips" id="clubeChips">
+      <button type="button" class="active" data-clube-filtro="todos" onclick="definirFiltroClube('todos')">Todos</button>
+      <button type="button" data-clube-filtro="prioridade" onclick="definirFiltroClube('prioridade')">🔥 Prioridade</button>
+      <button type="button" data-clube-filtro="hidratacao" onclick="definirFiltroClube('hidratacao')">💧 Próx. hidratação</button>
+      <button type="button" data-clube-filtro="banhoGratis" onclick="definirFiltroClube('banhoGratis')">🎁 Próx. banho grátis</button>
+      <button type="button" data-clube-filtro="beneficios" onclick="definirFiltroClube('beneficios')">🏆 Liberados</button>
+      <button type="button" data-clube-filtro="inativos" onclick="definirFiltroClube('inativos')">⚠️ Sem retorno</button>
+      <button type="button" data-clube-filtro="resgatados" onclick="definirFiltroClube('resgatados')">Histórico</button>
+    </div>
+    <select id="clubeFiltro" class="clube-mobile-filter" onchange="definirFiltroClube(this.value)">
+      <option value="todos">Todos os clientes</option><option value="prioridade">Prioridade</option><option value="hidratacao">Próximos da hidratação</option><option value="banhoGratis">Próximos do banho grátis</option><option value="beneficios">Benefícios liberados</option><option value="inativos">Sem retorno</option><option value="resgatados">Com resgate registrado</option>
+    </select>
+  </div>
+
+  <div class="clube-list-heading"><div><h3 id="clubeListaTitulo">Jornada dos clientes</h3><p id="clubeListaSubtitulo">Ordenados automaticamente por prioridade.</p></div><strong id="clubeContagemLista">0 clientes</strong></div>
+  <div id="clubeLista" class="clube-list clube-list-premium"></div>
+</section>
+
+    <section id="secao-pacotes" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Gestão de Pacotes</h2>
+                <p>Cadastre pacotes mensais ou quinzenais e acompanhe os banhos realizados.</p>
+            </div>
+        </div>
+
+        <div class="pacotes-cockpit" aria-label="Resumo da carteira de pacotes">
+            <article class="pacote-kpi-card destaque">
+                <span>Pacotes ativos</span>
+                <strong id="pacoteKpiAtivos">0</strong>
+                <small>carteira atual</small>
+            </article>
+            <article class="pacote-kpi-card">
+                <span>Banhos pendentes</span>
+                <strong id="pacoteKpiPendentes">0</strong>
+                <small>a realizar</small>
+            </article>
+            <article class="pacote-kpi-card">
+                <span>Receita da carteira</span>
+                <strong id="pacoteKpiReceita">R$ 0,00</strong>
+                <small>pacotes ativos</small>
+            </article>
+            <article class="pacote-kpi-card alerta">
+                <span>Renovar em até 7 dias</span>
+                <strong id="pacoteKpiRenovar">0</strong>
+                <small>exigem contato</small>
+            </article>
+            <article class="pacote-kpi-card perigo">
+                <span>Atrasados</span>
+                <strong id="pacoteKpiAtrasados">0</strong>
+                <small>banhos pendentes vencidos</small>
+            </article>
+        </div>
+
+        <div class="pacote-radar" id="pacoteRadarRenovacao">
+            <div>
+                <span class="pacote-radar-eyebrow">Radar de renovação</span>
+                <strong id="pacoteRadarTitulo">Carteira em dia</strong>
+                <small id="pacoteRadarTexto">Nenhum pacote exige contato imediato.</small>
+            </div>
+            <button type="button" class="secondary-button" onclick="aplicarFiltroRapidoPacote('renovar')">Ver renovações</button>
+        </div>
+
+        <details class="pacote-cadastro-box">
+            <summary>
+                <span><strong>+ Cadastrar novo pacote</strong><small>Abra somente quando precisar incluir um novo plano.</small></span>
+                <span class="pacote-summary-icon">⌄</span>
+            </summary>
+
+        <div class="pacote-form pacote-form-labeled">
+            <label>
+                <span>Nome do Cliente</span>
+                <input type="text" id="pacoteNomeCliente" placeholder="Nome do cliente">
+            </label>
+
+            <label>
+                <span>Telefone</span>
+                <input type="text" id="pacoteTelefone" placeholder="(11) 99999-9999" maxlength="15">
+            </label>
+
+            <label>
+                <span>Nome do Pet</span>
+                <input type="text" id="pacoteNomePet" placeholder="Nome do pet">
+                <select id="pacotePetSelect" style="display:none;">
+                    <option value="">Selecione o pet</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Tipo de Pacote</span>
+                <select id="pacoteTipo" onchange="atualizarPrecoPacoteV9();atualizarHorariosPacoteDisponiveis()">
+                    <option value="Mensal">Mensal - 4 banhos</option>
+                    <option value="Quinzenal">Quinzenal - 2 banhos</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Data de Início</span>
+                <input type="date" id="pacoteDataInicio" onchange="atualizarPreviaPacote()">
+            </label>
+
+            <label>
+                <span>Primeiro Banho</span>
+                <input type="date" id="pacotePrimeiroBanho" onchange="atualizarHorariosPacoteDisponiveis()" oninput="atualizarHorariosPacoteDisponiveis()">
+            </label>
+
+            <label>
+                <span>Horário</span>
+                <select id="pacoteHorario" onmousedown="preencherHorariosPacote()" onfocus="preencherHorariosPacote()" onchange="atualizarPreviaPacote()">
+                    <option value="">Horário</option>
+                </select>
+            </label>
+
+            <label>
+                <span>Fim do Pacote</span>
+                <input type="text" id="pacoteDataFim" placeholder="Data fim calculada" readonly>
+            </label>
+
+            <label><span>Porte</span><select id="pacotePorte" onchange="atualizarPrecoPacoteV9()"><option value="">Selecione</option><option>Pequeno</option><option>Médio</option><option>Grande</option></select></label>
+            <label>
+                <span>Valor do Pacote</span>
+                <input type="number" id="pacoteValor" readonly placeholder="R$" step="0.01">
+            </label>
+
+            <button onclick="salvarPacote()">Cadastrar Pacote</button>
+        </div>
+
+        <div class="pacote-preview">
+            <strong>Próximos banhos calculados:</strong>
+            <div id="pacotePreviaDatas">Preencha o tipo, data do primeiro banho e horário.</div>
+        </div>
+        </details>
+
+        <div class="pacote-filter-chips" aria-label="Filtros rápidos">
+            <button type="button" class="active" data-pacote-filter="todos" onclick="aplicarFiltroRapidoPacote('todos', this)">Todos</button>
+            <button type="button" data-pacote-filter="ativos" onclick="aplicarFiltroRapidoPacote('ativos', this)">Ativos</button>
+            <button type="button" data-pacote-filter="proximos" onclick="aplicarFiltroRapidoPacote('proximos', this)">Próximo banho</button>
+            <button type="button" data-pacote-filter="atrasados" onclick="aplicarFiltroRapidoPacote('atrasados', this)">Atrasados</button>
+            <button type="button" data-pacote-filter="renovar" onclick="aplicarFiltroRapidoPacote('renovar', this)">Renovar</button>
+            <button type="button" data-pacote-filter="concluidos" onclick="aplicarFiltroRapidoPacote('concluidos', this)">Concluídos</button>
+        </div>
+
+        <div class="pacote-filters">
+            <input type="text" id="filtroPacoteCliente" placeholder="Filtrar cliente, telefone ou protocolo" oninput="renderizarPacotes()">
+            <select id="filtroPacoteStatus" onchange="renderizarPacotes()">
+                <option value="">Todos os status</option>
+                <option value="Ativo">Ativo</option>
+                <option value="Inativo">Inativo</option>
+            </select>
+            <button class="secondary-button" onclick="limparFiltrosPacotes()">Limpar Filtros</button>
+        </div>
+
+        <div id="listaPacotesAdmin" class="pacote-list"></div>
+    </section>
+
+
+    <section id="secao-servicos" class="admin-section catalog-premium">
+        <div class="catalog-hero">
+            <div>
+                <span class="catalog-eyebrow">EDITOR INTELIGENTE DE CATÁLOGO</span>
+                <h2>Produtos e Serviços</h2>
+                <p>Gerencie preços como uma planilha, aplique reajustes em massa e salve tudo de uma só vez.</p>
+            </div>
+            <div class="catalog-hero-actions">
+                <button class="secondary-button" onclick="descartarAlteracoesCatalogo()" id="btnDescartarCatalogo" disabled>Descartar</button>
+                <button onclick="salvarAlteracoesCatalogo()" id="btnSalvarCatalogo" disabled>Salvar alterações</button>
+            </div>
+        </div>
+
+        <div class="catalog-kpis" id="catalogoKpis"></div>
+
+        <div class="catalog-command-center">
+            <div class="catalog-search-wrap">
+                <span>⌕</span>
+                <input type="text" id="catalogoBusca" placeholder="Buscar serviço, espécie, porte ou variação" oninput="renderizarServicosAdmin()">
+            </div>
+            <div class="catalog-view-tabs" id="catalogoTabs">
+                <button class="active" data-catalog-tab="caes-banho" onclick="selecionarAbaCatalogo('caes-banho')">Banho • Cães</button>
+                <button data-catalog-tab="caes-tosa" onclick="selecionarAbaCatalogo('caes-tosa')">Tosa • Cães</button>
+                <button data-catalog-tab="gatos" onclick="selecionarAbaCatalogo('gatos')">Gatos</button>
+                <button data-catalog-tab="avulsos" onclick="selecionarAbaCatalogo('avulsos')">Avulsos</button>
+                <button data-catalog-tab="todos" onclick="selecionarAbaCatalogo('todos')">Todas as regras</button>
+            </div>
+        </div>
+
+        <div class="catalog-bulk-panel">
+            <div class="catalog-bulk-heading">
+                <div>
+                    <span>REAJUSTE EM MASSA</span>
+                    <h3>Simule antes de aplicar</h3>
+                </div>
+                <strong id="catalogoBulkPreview">Nenhuma simulação ativa</strong>
+            </div>
+            <div class="catalog-bulk-grid">
+                <label>
+                    <span>Aplicar em</span>
+                    <select id="catalogoBulkEscopo">
+                        <option value="aba">Aba atual</option>
+                        <option value="todos">Catálogo inteiro</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Tipo de ajuste</span>
+                    <select id="catalogoBulkTipo" onchange="atualizarPreviaReajusteCatalogo()">
+                        <option value="percentual">Percentual</option>
+                        <option value="fixo">Valor fixo</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Valor</span>
+                    <input type="number" id="catalogoBulkValor" placeholder="Ex.: 10" step="0.01" oninput="atualizarPreviaReajusteCatalogo()">
+                </label>
+                <label>
+                    <span>Arredondar</span>
+                    <select id="catalogoBulkArredondamento" onchange="atualizarPreviaReajusteCatalogo()">
+                        <option value="centavos">Manter centavos</option>
+                        <option value="inteiro">Para real inteiro</option>
+                        <option value="cinco">Para múltiplos de R$ 5</option>
+                    </select>
+                </label>
+                <button class="catalog-simulate-button" onclick="aplicarReajusteCatalogo()">Aplicar à edição</button>
+            </div>
+            <p class="catalog-bulk-note">O reajuste só chega ao Firebase quando você clicar em <strong>Salvar alterações</strong>.</p>
+        </div>
+
+        <div id="catalogoAlteracoesBar" class="catalog-changes-bar" hidden>
+            <div>
+                <strong id="catalogoAlteracoesQtd">0 alterações pendentes</strong>
+                <span>Revise os campos destacados antes de salvar.</span>
+            </div>
+            <button class="secondary-button" onclick="descartarAlteracoesCatalogo()">Desfazer tudo</button>
+        </div>
+
+        <div id="listaServicosAdmin" class="catalog-editor"></div>
+
+        <details class="catalog-create-panel">
+            <summary>
+                <span>＋</span>
+                <div>
+                    <strong>Adicionar nova regra</strong>
+                    <small>Cadastre um serviço ou uma nova combinação de preço.</small>
+                </div>
+            </summary>
+            <div class="service-form service-form-pricing catalog-create-grid">
+                <input type="text" id="nomeServico" placeholder="Nome do serviço">
+                <select id="especieServico">
+                    <option value="Cão">Cão</option>
+                    <option value="Gato">Gato</option>
+                    <option value="Ambos">Ambos</option>
+                </select>
+                <select id="porteServico">
+                    <option value="">Sem porte</option>
+                    <option value="Pequeno">Pequeno</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Grande">Grande</option>
+                </select>
+                <select id="pelagemServico">
+                    <option value="">Sem pelagem</option>
+                    <option value="Curto">Curto</option>
+                    <option value="Médio">Médio</option>
+                    <option value="Longo">Longo</option>
+                </select>
+                <select id="tipoTosaServico">
+                    <option value="">Sem tipo de tosa</option>
+                    <option value="Geral">Geral</option>
+                    <option value="Verão">Verão</option>
+                    <option value="Bebê">Bebê</option>
+                    <option value="Tesoura">Tesoura</option>
+                </select>
+                <input type="number" id="precoServico" placeholder="Preço" step="0.01">
+                <button onclick="salvarServico()">Adicionar regra</button>
+            </div>
+        </details>
+
+        <details class="catalog-history-panel">
+            <summary>Histórico local de alterações recentes</summary>
+            <div id="catalogoHistorico"></div>
+        </details>
+    </section>
+
+
+    
+    <section id="secao-prospect-callback" class="admin-section">
+        <div class="section-title-row">
+            <div>
+                <h2>Prospect Callback</h2>
+                <p>Novos potenciais clientes que informaram um telefone válido, não possuíam cadastro e não concluíram o agendamento em até 5 minutos.</p>
+            </div>
+            <div class="filter-actions">
+                <button onclick="carregarProspectCallbacks(true)"><i class="fa-solid fa-rotate"></i> Atualizar</button>
+            </div>
+        </div>
+
+        <div class="prospect-summary-grid">
+            <article class="agenda-ops-card"><span>🔥 Pendentes</span><strong id="prospectTotalPendente">0</strong></article>
+            <article class="agenda-ops-card"><span>💬 Contatados</span><strong id="prospectTotalContatado">0</strong></article>
+            <article class="agenda-ops-card"><span>✅ Convertidos</span><strong id="prospectTotalConvertido">0</strong></article>
+            <article class="agenda-ops-card"><span>📈 Conversão</span><strong id="prospectTaxaConversao">0%</strong></article>
+        </div>
+
+        <div class="prospect-toolbar">
+            <input id="prospectPesquisa" type="text" placeholder="Pesquisar telefone..." oninput="renderizarProspectCallbacks()">
+            <select id="prospectFiltroStatus" onchange="renderizarProspectCallbacks()">
+                <option value="ativos">Pendentes + Contatados</option>
+                <option value="Pendente">Somente pendentes</option>
+                <option value="Contatado">Somente contatados</option>
+                <option value="Convertido">Convertidos</option>
+                <option value="todos">Todos</option>
+            </select>
+        </div>
+
+        <div class="prospect-info">
+            <strong>Regra:</strong> um telefone só entra nesta fila depois de 5 minutos se não existir cadastro anterior e nenhum agendamento tiver sido concluído.
+        </div>
+        <div id="prospectCallbackLista" class="prospect-list"></div>
+    </section>
+
+<section id="secao-logs" class="admin-section">
+        <div class="section-title-row monitoring-title-row">
+            <div>
+                <h2>Centro de Monitoramento</h2>
+                <p>Identifique incidentes, acompanhe operações do Firestore e descubra rapidamente em qual etapa ocorreu uma falha.</p>
+            </div>
+            <div class="monitoring-live-box">
+                <span class="monitoring-live-dot"></span>
+                <div><strong>Monitorando</strong><small id="monitoramentoUltimaAtualizacao">Aguardando atualização</small></div>
+                <button type="button" onclick="atualizarCentroMonitoramento()">Atualizar agora</button>
+            </div>
+        </div>
+
+        <nav class="monitoring-tabs" aria-label="Áreas do Centro de Monitoramento">
+            <button class="monitoring-tab active" data-monitoring-tab="saude" onclick="abrirAbaMonitoramento('saude')">Saúde do Sistema</button>
+            <button class="monitoring-tab" data-monitoring-tab="eventos" onclick="abrirAbaMonitoramento('eventos')">Eventos</button>
+            <button class="monitoring-tab" data-monitoring-tab="firestore" onclick="abrirAbaMonitoramento('firestore')">Firestore</button>
+            <button class="monitoring-tab" data-monitoring-tab="diagnostico" onclick="abrirAbaMonitoramento('diagnostico')">Diagnóstico</button>
+        </nav>
+
+        <div id="monitoramento-saude" class="monitoring-panel active">
+            <div class="health-score-card">
+                <div class="health-score-ring" id="healthScoreRing"><strong id="healthScoreValue">100%</strong><span id="healthScoreLabel">Excelente</span></div>
+                <div><span class="eyebrow">Health Score</span><h3 id="healthScoreHeadline">Sistema operando normalmente</h3><p id="healthScoreExplanation">Calculado com base em erros, avisos, retentativas e falhas pendentes das últimas 24 horas.</p></div>
+            </div>
+            <div id="painelSaudeSistema" class="system-health-grid">
+                <article class="system-health-card status-card"><span>Status atual</span><strong id="saudeStatusAtual">Calculando...</strong><small id="saudeStatusDescricao">Analisando os registros recentes</small></article>
+                <article class="system-health-card"><span>Erros nas últimas 24h</span><strong id="saudeErros24h">0</strong><small id="saudeErrosTendencia">Comparação indisponível</small></article>
+                <article class="system-health-card"><span>Avisos nas últimas 24h</span><strong id="saudeAvisos24h">0</strong><small>Ocorrências sem bloqueio total</small></article>
+                <article class="system-health-card"><span>Retentativas registradas</span><strong id="saudeRetentativas24h">0</strong><small>Recuperações automáticas nas últimas 24h</small></article>
+                <article class="system-health-card"><span>Módulo mais afetado</span><strong id="saudeModuloCritico">Nenhum</strong><small id="saudeModuloCriticoQtd">Sem ocorrências recentes</small></article>
+                <article class="system-health-card"><span>Último incidente</span><strong id="saudeUltimoIncidente">Nenhum</strong><small id="saudeUltimoIncidenteData">Sistema sem falhas recentes</small></article>
+            </div>
+            <div class="monitoring-summary-grid">
+                <article><span>Leituras observadas hoje</span><strong id="resumoLeiturasHoje">0</strong><small>Estimativa instrumentada neste navegador</small></article>
+                <article><span>Gravações observadas hoje</span><strong id="resumoGravacoesHoje">0</strong><small>Inclui criação e atualização</small></article>
+                <article><span>Exclusões observadas hoje</span><strong id="resumoExclusoesHoje">0</strong><small>Operações delete capturadas</small></article>
+                <article><span>Tempo médio observado</span><strong id="resumoTempoMedio">0 ms</strong><small>Operações Firestore desta instalação</small></article>
+            </div>
+        </div>
+
+        <div id="monitoramento-eventos" class="monitoring-panel">
+            <div class="logs-filter-card">
+                <input id="buscaLogsSistema" type="text" placeholder="Pesquisar mensagem, função ou código" oninput="renderizarLogsSistema()">
+                <select id="filtroModuloLogs" onchange="renderizarLogsSistema()"><option value="">Todos os módulos</option><option value="Agendamento Online">Agendamento Online</option><option value="agendamentos">Agendamentos</option><option value="faturamento">Faturamento</option><option value="clientes">Clientes</option><option value="crm">CRM Growth</option><option value="clube">Clube PetLyne</option><option value="pacotes">Gestão de Pacotes</option><option value="servicos">Produtos / Serviços</option><option value="JavaScript">JavaScript</option></select>
+                <select id="filtroNivelLogs" onchange="renderizarLogsSistema()"><option value="">Todos os níveis</option><option value="erro">Erro</option><option value="aviso">Aviso</option><option value="info">Informação</option></select>
+                <select id="filtroStatusLogs" onchange="renderizarLogsSistema()"><option value="">Todos os status</option><option value="pendente">Pendentes</option><option value="resolvido">Resolvidos</option></select>
+            </div>
+            <div class="events-toolbar"><label><input type="checkbox" id="agruparEventosIguais" checked onchange="renderizarLogsSistema()"> Agrupar ocorrências iguais</label><span id="eventosQuantidadeResumo">0 eventos</span></div>
+            <div id="listaLogsSistema" class="system-logs-list"></div>
+        </div>
+
+        <div id="monitoramento-firestore" class="monitoring-panel">
+            <div class="monitoring-notice"><strong>Como interpretar:</strong> estes números são estimativas observadas pelo código do PetLyne neste navegador. O consumo oficial global continua sendo o exibido no Console do Firebase.</div>
+            <div class="firestore-kpi-grid">
+                <article><span>Leituras</span><strong id="metricasLeituras">0</strong><small id="metricasLeiturasSessao">0 nesta sessão</small></article>
+                <article><span>Gravações</span><strong id="metricasGravacoes">0</strong><small id="metricasGravacoesSessao">0 nesta sessão</small></article>
+                <article><span>Exclusões</span><strong id="metricasExclusoes">0</strong><small id="metricasExclusoesSessao">0 nesta sessão</small></article>
+                <article><span>Tempo médio</span><strong id="metricasTempoMedio">0 ms</strong><small id="metricasOperacoes">0 operações medidas</small></article>
+            </div>
+            <div class="monitoring-two-columns">
+                <article class="monitoring-table-card"><h3>Coleções mais acessadas</h3><div id="rankingColecoesFirestore"></div></article>
+                <article class="monitoring-table-card"><h3>Operações mais lentas</h3><div id="rankingOperacoesLentas"></div></article>
+            </div>
+            <div class="monitoring-two-columns monitoring-detail-grid">
+                <article class="monitoring-table-card"><h3>Funções que mais consomem</h3><p class="monitoring-card-help">Detalha coleção, número de execuções, documentos retornados e tempo médio.</p><div id="rankingFuncoesFirestore"></div></article>
+                <article class="monitoring-table-card"><h3>Oportunidades de economia</h3><p class="monitoring-card-help">Detectadas por repetições em até dois minutos e resultados iguais.</p><div id="diagnosticoDesperdiciosFirestore"></div></article>
+            </div>
+            <div class="monitoring-actions"><button type="button" class="secondary-button" onclick="exportarMetricasMonitoramento()">Exportar diagnóstico JSON</button><button type="button" class="danger-outline-button" onclick="limparMetricasMonitoramento()">Zerar métricas locais</button></div>
+        </div>
+
+        <div id="monitoramento-diagnostico" class="monitoring-panel">
+            <div class="diagnostic-header"><div><span class="eyebrow">Investigação rápida</span><h3>Fluxo da última ocorrência selecionada</h3><p>Selecione um evento para visualizar a etapa provável da falha e a ação recomendada.</p></div><select id="diagnosticoEventoSelecionado" onchange="renderizarDiagnosticoSelecionado()"><option value="">Ocorrência mais recente</option></select></div>
+            <div id="diagnosticoFluxo" class="diagnostic-flow"></div>
+            <div id="diagnosticoRecomendacao" class="diagnostic-recommendation"></div>
+        </div>
+    </section>
+
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="../js/precos-v9.js?v=9.0.0"></script>
+<script src="dashboard.js?v=9.0.14"></script>
+
+
+<div id="modalConfirmacaoAdmin" class="admin-modal-overlay">
+    <div class="admin-modal-card">
+        <div class="admin-modal-icon" id="modalConfirmacaoIcone">⚠️</div>
+        <h2 id="modalConfirmacaoTitulo">Confirmação</h2>
+        <p id="modalConfirmacaoMensagem"></p>
+
+        <div class="admin-modal-actions">
+            <button id="btnConfirmarModalAdmin" class="admin-modal-confirm">Confirmar</button>
+            <button id="btnCancelarModalAdmin" class="admin-modal-cancel">Cancelar</button>
+        </div>
+    </div>
+</div>
+
+<script src="mobile.js?v=9.0.14"></script>
+<script src="notificacoes.js?v=9.0.14"></script>
+</body>
+</html>
