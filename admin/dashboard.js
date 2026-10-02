@@ -629,7 +629,7 @@ function renderizarAgenda() {
         return;
     }
 
-    calendario.style.gridTemplateColumns = `64px repeat(${datas.length}, minmax(148px, 1fr))`;
+    calendario.style.gridTemplateColumns = `64px repeat(${datas.length}, minmax(220px, 260px))`;
 
     calendario.appendChild(criarCelula("Hora", "agenda-cell agenda-header"));
 
