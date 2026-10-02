@@ -3026,3 +3026,7 @@ dialog.exclusao-dialog-v95{width:620px;padding:26px;text-align:left}
 #listaClientesAdmin .cliente-observacao-profissional textarea,
 #formNovoCliente .cliente-observacao-profissional textarea{width:100%;min-height:100px;padding:12px 14px;border:1px solid var(--pet-border);border-radius:14px;background:rgba(255,255,255,.96);color:var(--pet-text);font:inherit;line-height:1.5;resize:vertical;outline:none}
 .cliente-observacao-profissional textarea:focus{border-color:var(--pet-primary)!important;box-shadow:0 0 0 3px rgba(214,90,126,.14)}
+
+/* V9.0.8 — edição do telefone do prospect */
+.prospect-edicao-acoes-v98{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:20px}
+#telefoneProspectErroV98{color:#a31835}

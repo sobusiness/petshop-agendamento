@@ -4991,7 +4991,7 @@ function renderizarProspectCallbacks() {
     const filtro = document.getElementById("prospectFiltroStatus")?.value || "ativos";
 
     const dados = elegiveis.filter(item => {
-        const tel = String(item.telefoneNormalizado || item.telefone || "").replace(/\D/g,"");
+        const tel = normalizarTelefoneCliente(item.telefone || item.telefoneNormalizado || "");
         if (pesquisa && !tel.includes(pesquisa)) return false;
         if (filtro === "ativos") return item.status === "Pendente" || item.status === "Contatado";
         if (filtro !== "todos" && item.status !== filtro) return false;
@@ -5007,8 +5007,6 @@ function renderizarProspectCallbacks() {
         const criado = prospectDataMs(item.criadoEm);
         const prioridade = prospectPrioridade(criado);
         const telefone = item.telefone || item.telefoneNormalizado || "";
-        const numeroWhats = String(item.telefoneNormalizado || telefone).replace(/\D/g,"");
-        const numeroBR = numeroWhats.startsWith("55") ? numeroWhats : `55${numeroWhats}`;
         const status = item.status || "Pendente";
         const reservas = agendamentos.filter(a => telefonesEquivalentesCliente(a.telefone, telefone) && normalizarTextoCliente(a.status) !== "cancelado");
         return `
@@ -5025,6 +5023,7 @@ function renderizarProspectCallbacks() {
                     </div>
                 </div>
                 <div class="prospect-actions">
+                    <button type="button" class="secondary-button" onclick="editarTelefoneProspectV98('${item.id}')">Editar telefone</button>
                     <button type="button" class="prospect-whatsapp" onclick="abrirWhatsAppProspect('${item.id}')"><i class="fa-brands fa-whatsapp"></i> Chamar no WhatsApp</button>
                     ${status === "Pendente" ? `<button class="secondary-button" onclick="marcarProspectContatado('${item.id}')">Marcar contatado</button>` : ""}
                     <button class="secondary-button" onclick="descartarProspectCallback('${item.id}')">Descartar</button>
@@ -5053,8 +5052,8 @@ function abrirWhatsAppProspect(id) {
     const item = prospectCallbacks.find(x => x.id === id);
     if (!item) return;
 
-    const telefone = String(item.telefoneNormalizado || item.telefone || "").replace(/\D/g, "");
-    if (!telefone) {
+    const telefone = normalizarTelefoneCliente(item.telefone || item.telefoneNormalizado || "");
+    if (!telefoneBrasileiroValidoCliente(telefone)) {
         mostrarAvisoAdmin?.({
             titulo: "Telefone n\u00E3o encontrado",
             mensagem: "Este prospect n\u00E3o possui um telefone v\u00E1lido para abrir o WhatsApp.",
@@ -5063,7 +5062,7 @@ function abrirWhatsAppProspect(id) {
         return;
     }
 
-    const numeroBR = telefone.startsWith("55") ? telefone : `55${telefone}`;
+    const numeroBR = `55${telefone}`;
     // Mesma função usada pelo CRM: normaliza NFC e faz encodeURIComponent.
     const texto = codificarMensagemWhatsApp(montarMensagemProspectCallback());
     const movel = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -5294,4 +5293,21 @@ function vencimentoParcelaV94(data,offset){
  const [ano,mes,dia]=data.split('-').map(Number);const dt=new Date(ano,mes-1+offset,1,12);
  dt.setDate(Math.min(dia,new Date(dt.getFullYear(),dt.getMonth()+1,0).getDate()));
  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+function editarTelefoneProspectV98(id){
+ const item=prospectCallbacks.find(x=>x.id===id);if(!item)return;
+ abrirDialogoV9('Editar telefone',`<form id="formTelefoneProspectV98"><label>Telefone com DDD<input id="telefoneProspectV98" type="tel" inputmode="tel" maxlength="20" required autocomplete="tel" value="${escaparV9(formatarTelefonePacote(normalizarTelefoneCliente(item.telefone||item.telefoneNormalizado||'')))}"></label><p>O WhatsApp usará o telefone salvo neste registro.</p><div class="prospect-edicao-acoes-v98"><button type="button" class="secondary-button" onclick="document.getElementById('dialogoV9').close()">Cancelar</button><button type="submit">Salvar telefone</button></div><p id="telefoneProspectErroV98" role="alert"></p></form>`);
+ document.getElementById('formTelefoneProspectV98').addEventListener('submit',e=>salvarTelefoneProspectV98(e,id));
+}
+async function salvarTelefoneProspectV98(e,id){
+ e.preventDefault();const btn=e.target.querySelector('[type=submit]');const erro=document.getElementById('telefoneProspectErroV98');erro.textContent='';btn.disabled=true;
+ try{
+  const numero=normalizarTelefoneCliente(document.getElementById('telefoneProspectV98').value);
+  if(!telefoneBrasileiroValidoCliente(numero))throw Error('Informe o DDD e o telefone com 10 ou 11 dígitos.');
+  const dados={telefone:formatarTelefonePacote(numero),telefoneNormalizado:numero,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()};
+  await db.collection('prospectCallbacks').doc(id).update(dados);
+  const item=prospectCallbacks.find(x=>x.id===id);if(item)Object.assign(item,dados);
+  document.getElementById('dialogoV9').close();renderizarProspectCallbacks();
+ }catch(ex){erro.textContent=ex.message;}finally{btn.disabled=false;}
 }
