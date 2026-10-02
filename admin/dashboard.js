@@ -350,7 +350,7 @@ function obterDatasAgendaPorPeriodo() {
     const datasComAgendamento = obterDatasAgendaAberta();
 
     if (filtroAgendaPeriodo === "hoje") {
-        return datasComAgendamento.filter(data => data === hoje);
+        return [hoje];
     }
 
     if (filtroAgendaPeriodo === "ultimos7") {
@@ -544,6 +544,7 @@ function atualizarScrollSuperiorAgenda() {
 
     configurarScrollSuperiorAgenda();
 
+    grid.style.width = "";
     const larguraGrid = grid.scrollWidth;
     const larguraMinima = bottom.clientWidth + 1;
     const larguraFinal = Math.max(larguraGrid, larguraMinima);
@@ -617,6 +618,7 @@ function renderizarAgenda() {
     const filtroInfo = document.getElementById("agendaFiltroInfo");
 
     calendario.innerHTML = "";
+    calendario.style.width = "";
 
     const datas = obterDatasAgendaPorPeriodo();
 
@@ -762,12 +764,15 @@ function criarCelula(conteudo, classe) {
 }
 
 function filtrarAgendamentosHoje() {
-    filtroAgendaPeriodo = "hoje";
-    renderizarAgenda();
+    filtrarAgendaPeriodo("hoje");
 }
 
 function filtrarAgendaPeriodo(periodo) {
     filtroAgendaPeriodo = periodo;
+    agendaPosicionadaNaUltimaData = periodo !== "todos";
+    const {top,bottom}=obterElementosScrollAgenda();
+    if(bottom)bottom.scrollLeft=0;
+    if(top)top.scrollLeft=0;
     renderizarAgenda();
 }
 
