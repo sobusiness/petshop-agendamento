@@ -508,21 +508,31 @@ function nomeBeneficioClubeCliente(tipo) {
     return tipo === "hidratacao" ? "Hidratação" : "Banho grátis";
 }
 
-async function consultarResumoClubeCliente(telefone, pets) {
+const consultasResumoClubeV919=new Map();
+const resumosClubeAusentesEmV919=new Map();
+async function consultarResumoClubeCliente(telefone,pets){
+ const chave=telefoneBaseClube(telefone);
+ if(consultasResumoClubeV919.has(chave))return consultasResumoClubeV919.get(chave);
+ const consulta=lerResumoClubeClienteV919(telefone,pets);
+ consultasResumoClubeV919.set(chave,consulta);
+ try{return await consulta;}finally{consultasResumoClubeV919.delete(chave);}
+}
+async function lerResumoClubeClienteV919(telefone, pets) {
     const telefoneBase = telefoneBaseClube(telefone);
     if (!telefoneBase || !pets?.length || typeof db === "undefined") return null;
 
+    if(cacheClubePetlyneCliente.get(telefoneBase)===null&&Date.now()-(resumosClubeAusentesEmV919.get(telefoneBase)||0)>=300000)cacheClubePetlyneCliente.delete(telefoneBase);
     if (cacheClubePetlyneCliente.has(telefoneBase)) {
         const resumo = cacheClubePetlyneCliente.get(telefoneBase);
         clubePetlyneClienteAtual = resumo;
-        mostrarPopupClubeCliente(resumo, pets, telefoneBase);
+        if(resumo)mostrarPopupClubeCliente(resumo, pets, telefoneBase);
         return resumo;
     }
 
     try {
         // Uma única leitura adicional: documento-resumo do Clube deste telefone.
         const snap = await db.collection("clubePetlyneResumo").doc(telefoneBase).get();
-        if (!snap.exists) return null;
+        if (!snap.exists) {cacheClubePetlyneCliente.set(telefoneBase,null);resumosClubeAusentesEmV919.set(telefoneBase,Date.now());return null;}
         const resumo = { id: snap.id, ...snap.data() };
         cacheClubePetlyneCliente.set(telefoneBase, resumo);
         clubePetlyneClienteAtual = resumo;
@@ -683,7 +693,7 @@ const CODIGOS_TRANSITORIOS_FIREBASE = new Set([
     "deadline-exceeded",
     "internal",
     "network-request-failed",
-    "resource-exhausted",
+    // Cota esgotada não se resolve com nova tentativa imediata.
     "unavailable",
     "unknown"
 ]);
@@ -1124,7 +1134,15 @@ function renderizarPetsCadastrados(pets) {
     box.style.display = "block";
 }
 
+const consultasTelefoneV918=new Map();
 async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
+    const chave=normalizarTelefone(telefoneDigitado);
+    if(consultasTelefoneV918.has(chave))return consultasTelefoneV918.get(chave);
+    const consulta=consultarCadastrosTelefoneV918(telefoneDigitado);
+    consultasTelefoneV918.set(chave,consulta);
+    try{return await consulta;}finally{consultasTelefoneV918.delete(chave);}
+}
+async function consultarCadastrosTelefoneV918(telefoneDigitado) {
     const telefoneInformado = normalizarTelefone(telefoneDigitado);
     if (!telefoneInformado) return [];
 
@@ -1154,23 +1172,16 @@ async function buscarCadastrosPorTelefoneFirebase(telefoneDigitado) {
     try {
         const consultas = [];
 
-        // Documentos atuais gravam telefoneNormalizado. Consultamos todas as variantes
-        // equivalentes para também reconhecer cadastros antigos com mudança do 9º dígito.
-        numerosEquivalentes.forEach(numero => {
-            consultas.push(() => db.collection("agendamentos")
-                .where("telefoneNormalizado", "==", numero)
-                .limit(30)
-                .get());
-        });
-
-        // Compatibilidade com documentos antigos que possuíam apenas o telefone formatado.
-        valoresLegados.forEach(valor => {
-            if (!valor) return;
-            consultas.push(() => db.collection("agendamentos")
-                .where("telefone", "==", valor)
-                .limit(30)
-                .get());
-        });
+        // Agrupa variantes para não executar uma consulta vazia por formatação.
+        const agruparConsultas=(campo, valores)=>{
+            const lista=[...valores].filter(Boolean);
+            for(let inicio=0;inicio<lista.length;inicio+=30){
+                const grupo=lista.slice(inicio,inicio+30);
+                consultas.push(()=>db.collection('agendamentos').where(campo,'in',grupo).limit(30).get());
+            }
+        };
+        agruparConsultas('telefoneNormalizado',numerosEquivalentes);
+        agruparConsultas('telefone',valoresLegados);
 
         const registrosPorId = new Map();
         let primeiroErro = null;
@@ -1743,7 +1754,15 @@ function calcularServicosSelecionados() {
 
 function atualizarResumoServicos() { atualizarResumoUnificadoV92(); }
 
+const consultasDisponibilidadeV917 = new Map();
 async function buscarDisponibilidadeDataFirebase(dataSelecionada, forcar = false) {
+    const chave = `${dataSelecionada}:${forcar ? 'confirmacao' : 'consulta'}`;
+    if (consultasDisponibilidadeV917.has(chave)) return consultasDisponibilidadeV917.get(chave);
+    const leitura = consultarDisponibilidadeV917(dataSelecionada, forcar);
+    consultasDisponibilidadeV917.set(chave, leitura);
+    try { return await leitura; } finally { consultasDisponibilidadeV917.delete(chave); }
+}
+async function consultarDisponibilidadeV917(dataSelecionada, forcar = false) {
     if (!dataSelecionada || typeof db === "undefined") return { agendamentos: [], bloqueios: [] };
 
     if (!forcar) {
@@ -1753,8 +1772,8 @@ async function buscarDisponibilidadeDataFirebase(dataSelecionada, forcar = false
 
     return executarComConfiabilidade(async () => {
         const [agendamentosSnapshot, bloqueiosSnapshot] = await Promise.all([
-            db.collection("agendamentos").where("data", "==", dataSelecionada).get(),
-            db.collection("bloqueiosAgenda").where("data", "==", dataSelecionada).where("status", "==", "Ativo").get()
+            db.collection("agendamentos").where("data", "==", dataSelecionada).get({source:'server'}),
+            db.collection("bloqueiosAgenda").where("data", "==", dataSelecionada).where("status", "==", "Ativo").get({source:'server'})
         ]);
 
         return salvarCache(cacheConsultasPetlyne.disponibilidadePorData, dataSelecionada, {
@@ -2430,7 +2449,7 @@ window.addEventListener("focus", () => atualizarAgendaAoRetornar());
 document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") atualizarAgendaAoRetornar(true);
 });
-setInterval(() => atualizarAgendaAoRetornar(), 5 * 60 * 1000);
+// V9.0.17: sem consultas periódicas em formulários abertos. Confirmação mantém leitura atual.
 
 /* Inicialização após extensões V9. */
 

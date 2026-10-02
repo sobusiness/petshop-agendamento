@@ -1,33 +1,26 @@
-auth.onAuthStateChanged(user => {
-    if (user) {
-        window.location.href = "dashboard.html";
-    }
-});
-
-async function entrar() {
-    const email = document.getElementById("email").value.trim();
-    const senha = document.getElementById("senha").value.trim();
-    const mensagem = document.getElementById("mensagemLogin");
-
-    mensagem.textContent = "";
-
-    if (!email || !senha) {
-        mensagem.textContent = "Preencha e-mail e senha.";
-        return;
-    }
-
-    try {
-        await auth.signInWithEmailAndPassword(email, senha);
-        window.location.href = "dashboard.html";
-    } catch (error) {
-        console.error(error);
-        mensagem.textContent = "E-mail ou senha incorretos.";
-    }
+let redirecionandoLoginV919=false;
+let loginEmAndamentoV919=false;
+function abrirPainelAposLoginV919(){
+    if(redirecionandoLoginV919)return;
+    redirecionandoLoginV919=true;
+    window.location.replace('dashboard.html');
 }
+auth.onAuthStateChanged(user=>{if(user)abrirPainelAposLoginV919();});
 
-
-document.addEventListener("keydown", function(event) {
-    if (event.key === "Enter") {
-        entrar();
-    }
-});
+async function entrar(){
+    if(loginEmAndamentoV919||redirecionandoLoginV919)return;
+    const email=document.getElementById('email').value.trim();
+    const senha=document.getElementById('senha').value.trim();
+    const mensagem=document.getElementById('mensagemLogin');
+    mensagem.textContent='';
+    if(!email||!senha){mensagem.textContent='Preencha e-mail e senha.';return;}
+    loginEmAndamentoV919=true;
+    try{
+        await auth.signInWithEmailAndPassword(email,senha);
+        abrirPainelAposLoginV919();
+    }catch(error){
+        console.error(error);
+        mensagem.textContent='E-mail ou senha incorretos.';
+    }finally{loginEmAndamentoV919=false;}
+}
+document.addEventListener('keydown',event=>{if(event.key==='Enter')entrar();});

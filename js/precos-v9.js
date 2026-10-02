@@ -17,10 +17,19 @@ function regrasPadraoV9(){
  return r;
 }
 let catalogoV9 = regrasPadraoV9();
-async function lerCatalogoV9(){
- const doc=await db.collection('servicos').doc('v9_catalogo').get();
- if(doc.exists && Array.isArray(doc.data().regras)) catalogoV9=doc.data().regras;
- return catalogoV9;
+let leituraCatalogoV916=null,ultimoCatalogoV916=0;
+function persistirCatalogoV919(){
+ if(typeof window==='undefined'||! /\/admin\//.test(window.location.pathname||''))return;
+ try{sessionStorage.setItem('petlyne-catalogo-v919',JSON.stringify({em:ultimoCatalogoV916,regras:catalogoV9}));}catch(e){}
+}
+async function lerCatalogoV9(forcar=false){
+ if(!forcar&&!ultimoCatalogoV916&&typeof window!=='undefined'&&/\/admin\//.test(window.location.pathname||'')){
+  try{const c=JSON.parse(sessionStorage.getItem('petlyne-catalogo-v919'));if(c&&Array.isArray(c.regras)&&Date.now()-c.em<300000){catalogoV9=c.regras;ultimoCatalogoV916=c.em;}}catch(e){}
+ }
+ if(!forcar&&ultimoCatalogoV916&&Date.now()-ultimoCatalogoV916<300000)return catalogoV9;
+ if(leituraCatalogoV916)return leituraCatalogoV916;
+ leituraCatalogoV916=(async()=>{const doc=await db.collection('servicos').doc('v9_catalogo').get({source:'server'});if(doc.exists&&Array.isArray(doc.data().regras))catalogoV9=doc.data().regras;ultimoCatalogoV916=Date.now();persistirCatalogoV919();return catalogoV9;})();
+ try{return await leituraCatalogoV916;}finally{leituraCatalogoV916=null;}
 }
 function precoRegraV9(nome,especie,porte='',tipoTosa=''){
  return catalogoV9.find(r=>r.ativo!==false && r.nome===nome && (r.especie===especie||r.especie==='Ambos') && (!r.porte||r.porte===porte) && (!r.tipoTosa||r.tipoTosa===tipoTosa));

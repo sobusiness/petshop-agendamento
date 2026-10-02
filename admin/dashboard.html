@@ -17,11 +17,11 @@
         <img src="../logopetlyne.png" alt="Petlyne" class="admin-logo">
         <div>
             <h1>Petlyne - Painel Administrativo</h1>
-            <p>Gestão de agendamentos, faturamento e serviços</p>
+            <p>Modo economia ativo · Dados externos atualizados pelo botão Atualizar dados</p>
         </div>
     </div>
 
-    <div class="admin-header-acoes-v910"><div class="notificacoes-area-v910"><button id="notificacoesBotaoV910" type="button" aria-label="Notificações" aria-expanded="false" aria-controls="notificacoesPainelV910" onclick="alternarNotificacoesV910()"><i class="fa-regular fa-bell" aria-hidden="true"></i><span id="notificacoesContagemV910" hidden></span></button><div id="notificacoesPainelV910" hidden><header><h2>Notificações</h2><button type="button" aria-label="Fechar notificações" onclick="fecharNotificacoesV910()">×</button></header><p>Contas e renovações: próximos 7 dias.</p><div id="notificacoesListaV910"></div></div></div><button class="logout-button" onclick="sair()">Sair</button></div>
+    <div class="admin-header-acoes-v910"><button type="button" class="logout-button" onclick="atualizarDadosPainelV917(this)" title="Busca os dados atuais no servidor">Atualizar dados</button><button class="logout-button" onclick="sair()">Sair</button></div>
 </header>
 
 <main class="admin-container">
@@ -43,7 +43,7 @@
         <div class="section-title-row">
             <div>
                 <h2>Agendamentos</h2>
-                <p>Acompanhe os agendamentos por dia e horário.</p>
+                <p>Acompanhe os agendamentos por dia e horário. Para buscar novas reservas, clique em Atualizar dados.</p>
             </div>
 
             <div class="filter-actions agenda-filter-actions">
@@ -920,8 +920,9 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
 <script src="../js/firebase-config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="../js/precos-v9.js?v=9.0.0"></script>
-<script src="dashboard.js?v=9.0.15"></script>
+<script src="../js/precos-v9.js?v=9.0.19"></script>
+<script src="dados-compartilhados.js?v=9.0.19"></script>
+<script src="dashboard.js?v=9.0.19"></script>
 
 
 <div id="modalConfirmacaoAdmin" class="admin-modal-overlay">
@@ -937,6 +938,6 @@
     </div>
 </div>
 
-<script src="notificacoes.js?v=9.0.13"></script>
+
 </body>
 </html>

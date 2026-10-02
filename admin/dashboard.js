@@ -275,15 +275,12 @@ async function abrirSecao(secao) {
 }
 
 async function carregarAgendamentos(forcar = false) {
-    const snapshot = await db.collection("agendamentos").orderBy("data", "asc").get();
-    agendamentos = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    }));
+    const snapshot = await obterDadosAdminV916("agendamentos");
+    agendamentos = snapshot.docs.map(doc => ({...doc.data(), id: doc.id})).sort((a,b)=>String(a.data||"").localeCompare(String(b.data||"")));
 }
 
 async function carregarServicosAdmin(forcar = false) {
-    const snapshot = await db.collection("servicos").orderBy("nome", "asc").get();
+    const snapshot = await consultaAdminV917("servicos", db.collection("servicos").orderBy("nome", "asc"));
 
     servicosAdmin = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -292,16 +289,13 @@ async function carregarServicosAdmin(forcar = false) {
 }
 
 async function carregarPacotesAdmin(forcar = false) {
-    const snapshot = await db.collection("pacotes").orderBy("criadoEm", "desc").get();
+    const snapshot = await obterDadosAdminV916("pacotes");
 
-    pacotesAdmin = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    }));
+    pacotesAdmin = snapshot.docs.map(doc => ({...doc.data(), id: doc.id})).sort((a,b)=>(b.criadoEm?.seconds||0)-(a.criadoEm?.seconds||0));
 }
 
 async function carregarBloqueiosAgenda(forcar = false) {
-    const snapshot = await db.collection("bloqueiosAgenda").orderBy("data", "asc").get();
+    const snapshot = await consultaAdminV917("bloqueiosAgenda", db.collection("bloqueiosAgenda").orderBy("data", "asc"));
 
     bloqueiosAgenda = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -330,7 +324,7 @@ function hojeISO() {
 function adicionarDias(dataBase, dias) {
     const data = new Date(dataBase + "T00:00:00");
     data.setDate(data.getDate() + dias);
-    return data.toISOString().slice(0, 10);
+    return obterDataLocalISO(data);
 }
 
 function obterDatasAgendaAberta() {
@@ -395,8 +389,8 @@ function horariosSobrepostos(inicioA, duracaoA, inicioB, duracaoB) {
     return aInicio < bFim && aFim > bInicio;
 }
 
-function existeConflitoHorario(data, horario, duracaoMinutos = 30, ignorarAgendamentoId = null) {
-    return agendamentos.some(item => {
+function existeConflitoHorario(data, horario, duracaoMinutos = 30, ignorarAgendamentoId = null, lista = agendamentos) {
+    return lista.some(item => {
         if (item.id === ignorarAgendamentoId) return false;
         if (item.data !== data) return false;
 
@@ -405,8 +399,8 @@ function existeConflitoHorario(data, horario, duracaoMinutos = 30, ignorarAgenda
 }
 
 
-function existeBloqueioHorario(data, horario, duracaoMinutos = 30, ignorarBloqueioId = null) {
-    return bloqueiosAgenda.some(bloqueio => {
+function existeBloqueioHorario(data, horario, duracaoMinutos = 30, ignorarBloqueioId = null, lista = bloqueiosAgenda) {
+    return lista.some(bloqueio => {
         if (bloqueio.id === ignorarBloqueioId) return false;
         if (bloqueio.status !== "Ativo") return false;
         if (bloqueio.data !== data) return false;
@@ -964,21 +958,28 @@ function obterLancamentosFinanceirosAtuais(intervalo = obterIntervaloFinanceiroA
     return aplicarInterativos ? aplicarFiltrosInterativosFinanceiros(base) : base;
 }
 
-async function limparAgendamentosOrfaosPacotes() {
-    const idsPacotesAtuais = new Set(pacotesAdmin.map(pacote => pacote.id));
-    const orfaosPendentes = agendamentos.filter(item =>
-        normalizarTextoCliente(item.origem) === "pacote" && item.pacoteId && !idsPacotesAtuais.has(item.pacoteId) && !agendamentoConcluidoCRM(item)
-    );
-    if (!orfaosPendentes.length) return 0;
-    for (let i = 0; i < orfaosPendentes.length; i += 450) {
-        const batch = db.batch();
-        orfaosPendentes.slice(i, i + 450).forEach(item => batch.delete(db.collection("agendamentos").doc(item.id)));
-        await batch.commit();
-    }
-    const idsRemovidos = new Set(orfaosPendentes.map(item => item.id));
-    agendamentos = agendamentos.filter(item => !idsRemovidos.has(item.id));
-    invalidarCacheModulo("agendamentos");
-    return orfaosPendentes.length;
+async function limparAgendamentosOrfaosPacotes(){
+ const conhecidos=new Set(pacotesAdmin.map(p=>p.id));
+ const candidatos=agendamentos.filter(a=>normalizarTextoCliente(a.origem)==='pacote'&&a.pacoteId&&!conhecidos.has(a.pacoteId)&&!agendamentoConcluidoCRM(a));
+ const grupos=new Map();candidatos.forEach(a=>{if(!grupos.has(a.pacoteId))grupos.set(a.pacoteId,[]);grupos.get(a.pacoteId).push(a);});
+ let removidos=0;
+ for(const [pacoteId,visitas]of grupos){
+  for(let i=0;i<visitas.length;i+=450){
+   const resultado=await db.runTransaction(async tx=>{
+    const pacote=await tx.get(db.collection('pacotes').doc(pacoteId));
+    if(pacote.exists)return {pacote,conferidos:[],excluidos:[]};
+    const conferidos=await Promise.all(visitas.slice(i,i+450).map(a=>tx.get(db.collection('agendamentos').doc(a.id))));
+    const excluir=conferidos.filter(d=>d.exists&&d.data().pacoteId===pacoteId&&normalizarTextoCliente(d.data().origem)==='pacote'&&!agendamentoConcluidoCRM(d.data()));
+    excluir.forEach(d=>tx.delete(db.collection('agendamentos').doc(d.id)));
+    return {pacote,conferidos,excluidos:excluir.map(d=>d.id)};
+   });
+   if(resultado.pacote.exists){await incorporarDocumentosCacheV919('pacotes',[resultado.pacote]);await carregarPacotesAdmin();break;}
+   const ids=new Set(resultado.excluidos);removidos+=ids.size;
+   await incorporarDocumentosCacheV919('agendamentos',resultado.conferidos.filter(d=>!ids.has(d.id)));
+  }
+ }
+ if(grupos.size)await carregarAgendamentos();
+ return removidos;
 }
 
 function filtrarFaturamento(tipo) {
@@ -1520,6 +1521,8 @@ function montarClienteAPartirAgendamento(item) {
 }
 
 async function carregarClientesAdmin(forcar = false) {
+    // Reconstrói clientes históricos somente após carregar a agenda compartilhada.
+    await carregarAgendamentos();
     const mapa = new Map();
     const telefonesPetsJaSalvos = new Set();
     const clientesExcluidos = new Set();
@@ -1527,7 +1530,7 @@ async function carregarClientesAdmin(forcar = false) {
     // Um cliente excluído do cadastro não deve ser recriado visualmente apenas
     // porque ainda existem agendamentos históricos vinculados a ele.
     try {
-        const snapshotExcluidos = await db.collection("clientesExcluidos").get();
+        const snapshotExcluidos = await obterDadosAdminV916("clientesExcluidos");
         snapshotExcluidos.docs.forEach(doc => {
             const dados = doc.data() || {};
             if (dados.chaveClientePet) clientesExcluidos.add(dados.chaveClientePet);
@@ -1537,7 +1540,7 @@ async function carregarClientesAdmin(forcar = false) {
     }
 
     try {
-        const snapshotClientes = await db.collection("clientes").get();
+        const snapshotClientes = await obterDadosAdminV916("clientes");
 
         snapshotClientes.docs.forEach(doc => {
             const data = { id: doc.id, ...doc.data(), origemCadastro: "clientes" };
@@ -2401,10 +2404,11 @@ async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false)
         return;
     }
 
+    const atuais = await consultarDiasAgendaAdminV919(datas);
     const conflitos = [];
 
     datas.forEach(data => {
-        if (existeConflitoHorario(data, inicio, duracao)) {
+        if (existeConflitoHorario(data, inicio, duracao, null, atuais.agendamentos)) {
             conflitos.push(formatarDataCurta(data));
         }
     });
@@ -2421,7 +2425,7 @@ async function criarBloqueiosAgenda(datas, inicio, fim, motivo, diaTodo = false)
     const duplicados = [];
 
     datas.forEach(data => {
-        if (existeBloqueioHorario(data, inicio, duracao)) {
+        if (existeBloqueioHorario(data, inicio, duracao, null, atuais.bloqueios)) {
             duplicados.push(formatarDataCurta(data));
         }
     });
@@ -2764,17 +2768,17 @@ function atualizarPreviaPacote() {
     }).join("");
 }
 
-function existeConflitoPacote(datas, horario) {
+function existeConflitoPacote(datas, horario, reservas = agendamentos, bloqueios = bloqueiosAgenda) {
     return datas
         .map(data => {
-            const agendamento = agendamentos.find(item => {
+            const agendamento = reservas.find(item => {
                 if (item.data !== data) return false;
                 return horariosSobrepostos(horario, 30, item.horario, 30);
             });
 
             if (agendamento) return { data, horario, agendamento };
 
-            const bloqueio = bloqueiosAgenda.find(item => {
+            const bloqueio = bloqueios.find(item => {
                 if (item.status !== "Ativo") return false;
                 if (item.data !== data) return false;
                 const duracaoBloqueio = horarioParaMinutos(item.fim) - horarioParaMinutos(item.inicio);
@@ -2808,7 +2812,8 @@ async function salvarPacote() {
     }
 
     const datas = calcularDatasPacote(tipo, primeiroBanho);
-    const conflitos = existeConflitoPacote(datas, horario);
+    const atuais = await consultarDiasAgendaAdminV919(datas);
+    const conflitos = existeConflitoPacote(datas, horario, atuais.agendamentos, atuais.bloqueios);
 
     if (conflitos.length > 0) {
         const mensagem = conflitos.map(item => `${formatarDataCurta(item.data)} às ${item.horario}`).join(", ");
@@ -3215,7 +3220,8 @@ async function atualizarVisitaPacote(pacoteId, visitaNumero) {
 
     const agendamentoId = visitaAtual.agendamentoId || null;
 
-    if (existeConflitoHorario(novaData, novoHorario, 60, agendamentoId) || existeBloqueioHorario(novaData, novoHorario, 60)) {
+    const atuais = await consultarDiasAgendaAdminV919([novaData]);
+    if (existeConflitoHorario(novaData, novoHorario, 60, agendamentoId, atuais.agendamentos) || existeBloqueioHorario(novaData, novoHorario, 60, null, atuais.bloqueios)) {
         await mostrarAvisoAdmin({
             titulo: "Horário indisponível",
             mensagem: "Não foi possível alterar este banho. Já existe agendamento ou bloqueio nesse horário.",
@@ -3956,7 +3962,7 @@ const CRM_CATEGORIAS = {
 
 async function carregarHistoricoCRM(forcar = false) {
     try {
-        const snapshot = await db.collection("crmHistorico").orderBy("criadoEm", "desc").get();
+        const snapshot = await consultaAdminV917("crmHistorico", db.collection("crmHistorico").orderBy("criadoEm", "desc"));
         crmHistorico = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
         console.warn("Histórico do CRM ainda não disponível:", error);
@@ -4139,6 +4145,7 @@ async function marcarAcaoCRMEnviada(chaveCodificada){
 }
 
 async function atualizarCRM() {
+    invalidarDadosAdminV917(["agendamentos","clientes","clientesExcluidos","crmHistorico"]);
     try {
         invalidarCacheModulo("agendamentos", "clientes", "crmHistorico");
         await Promise.all([executarCargaUnica("agendamentos", () => carregarAgendamentos(true), true), executarCargaUnica("clientes", () => carregarClientesAdmin(true), true), executarCargaUnica("crmHistorico", () => carregarHistoricoCRM(true), true)]);
@@ -4332,12 +4339,12 @@ function clubeFormatarData(data) { return data ? data.toLocaleDateString('pt-BR'
 
 async function carregarClubePetlyneResgates(forcar = false) {
     try {
-        const snapshot = await db.collection('clubePetlyneResgates').orderBy('criadoEm', 'desc').get();
+        const snapshot = await consultaAdminV917('clubePetlyneResgates', db.collection('clubePetlyneResgates').orderBy('criadoEm', 'desc'));
         clubePetlyneResgates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (erro) {
         console.warn('Não foi possível ordenar os resgates do Clube. Tentando consulta simples.', erro);
         try {
-            const snapshot = await db.collection('clubePetlyneResgates').get();
+            const snapshot = await obterDadosAdminV916('clubePetlyneResgates');
             clubePetlyneResgates = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         } catch (erroSimples) { console.error('Erro ao carregar resgates do Clube PetLyne:', erroSimples); clubePetlyneResgates = []; }
     }
@@ -4346,7 +4353,7 @@ async function carregarClubePetlyneResgates(forcar = false) {
 
 async function carregarClubePetlyneResumos() {
     try {
-        const snapshot = await db.collection("clubePetlyneResumo").get();
+        const snapshot = await obterDadosAdminV916("clubePetlyneResumo");
         clubePetlyneResumos = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() }));
     } catch (erro) {
         console.warn("Não foi possível carregar os resumos públicos do Clube.", erro);
@@ -4359,11 +4366,11 @@ function resumoClubePorTelefone(telefone) {
     return clubePetlyneResumos.find(r => normalizarTelefoneCliente(r.telefoneNormalizado) === base);
 }
 
-function construirResumoClubeTelefone(item) {
+function construirResumoClubeTelefone(item, resumoAtual = null) {
     const telefoneNormalizado = normalizarTelefoneCliente(item.telefone);
     if (!telefoneNormalizado) return null;
 
-    const existente = resumoClubePorTelefone(telefoneNormalizado) || {};
+    const existente = resumoAtual || resumoClubePorTelefone(telefoneNormalizado) || {};
     const utilizados = item.resgates || [];
     const pendH = item.beneficiosPendentes.find(b => b.tipo === "hidratacao");
     const pendB = item.beneficiosPendentes.find(b => b.tipo === "banhoGratis");
@@ -4400,36 +4407,36 @@ function construirResumoClubeTelefone(item) {
     };
 }
 
-async function sincronizarResumosClubePetlyne() {
-    const dados = calcularClientesClubePetlyne();
-    if (!dados.length) return;
-
-    const batch = db.batch();
-    const novos = [];
-
-    dados.forEach(item => {
-        const resumo = construirResumoClubeTelefone(item);
-        if (!resumo) return;
-        const ref = db.collection("clubePetlyneResumo").doc(resumo.telefoneNormalizado);
-        batch.set(ref, resumo, { merge:true });
-        novos.push({ id:resumo.telefoneNormalizado, ...resumo });
-    });
-
-    if (novos.length) {
-        await batch.commit();
-        clubePetlyneResumos = novos;
-    }
+function resumoClubeMudouV919(atual,novo){
+ return !atual||Object.entries(novo).some(([campo,valor])=>campo!=='atualizadoEm'&&atual[campo]!==valor);
 }
-
-async function atualizarResumoClubeAposMudanca(telefone) {
-    if (!telefone) return;
-    await Promise.all([carregarClubePetlyneResgates(), carregarClubePetlyneResumos()]);
-    const cliente = calcularClientesClubePetlyne().find(i => telefonesEquivalentesCliente(i.telefone, telefone));
-    if (!cliente) return;
-    const resumo = construirResumoClubeTelefone(cliente);
-    if (!resumo) return;
-    await db.collection("clubePetlyneResumo").doc(resumo.telefoneNormalizado).set(resumo, {merge:true});
-    await carregarClubePetlyneResumos();
+async function salvarResumoClubeSeguroV919(item){
+ const r=construirResumoClubeTelefone(item);if(!r)return;
+ const ref=db.collection('clubePetlyneResumo').doc(r.telefoneNormalizado);
+ await db.runTransaction(async tx=>{
+  const doc=await tx.get(ref);
+  const atual=doc.exists?doc.data():{};
+  const novo=construirResumoClubeTelefone(item,atual);
+  if(resumoClubeMudouV919(atual,novo))tx.set(ref,novo,{merge:true});
+ });
+}
+async function sincronizarResumosClubePetlyne(){
+ const dados=calcularClientesClubePetlyne();let mudou=false;
+ for(const item of dados){
+  const resumo=construirResumoClubeTelefone(item);if(!resumo)continue;
+  if(resumoClubeMudouV919(resumoClubePorTelefone(resumo.telefoneNormalizado),resumo)){
+   await salvarResumoClubeSeguroV919(item);mudou=true;
+  }
+ }
+ if(mudou)await carregarClubePetlyneResumos();
+}
+async function atualizarResumoClubeAposMudanca(telefone){
+ if(!telefone)return;
+ await Promise.all([carregarClubePetlyneResgates(),carregarClubePetlyneResumos()]);
+ const cliente=calcularClientesClubePetlyne().find(i=>telefonesEquivalentesCliente(i.telefone,telefone));
+ if(!cliente)return;
+ await salvarResumoClubeSeguroV919(cliente);
+ await carregarClubePetlyneResumos();
 }
 
 function calcularClientesClubePetlyne() {
@@ -4610,6 +4617,7 @@ async function registrarResgateClube(clienteChave, tipoBeneficio, ciclo) {
 }
 
 async function atualizarClubePetlyne() {
+    invalidarDadosAdminV917(["agendamentos","clientes","clientesExcluidos","clubePetlyneResumo","clubePetlyneResgates"]);
     const botao = document.querySelector('#secao-clube .secondary-button');
     if (botao) { botao.disabled = true; botao.textContent = 'Atualizando...'; }
     try {
@@ -4709,10 +4717,7 @@ async function carregarLogsSistema(forcar = false) {
         return;
     }
 
-    const snapshot = await db.collection("logsSistema")
-        .orderBy("criadoEm", "desc")
-        .limit(100)
-        .get();
+    const snapshot = await consultaAdminV917("logsSistema", db.collection("logsSistema").orderBy("criadoEm", "desc").limit(100));
 
     logsSistemaAdmin = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     atualizarPainelSaudeSistema();
@@ -4783,6 +4788,7 @@ function renderizarLogsSistema() {
 }
 
 async function atualizarLogsSistema() {
+    invalidarDadosAdminV917(["logsSistema"]);
     invalidarCacheModulo("logs");
     await carregarLogsSistema(true);
 }
@@ -4887,8 +4893,9 @@ function instalarMonitorFirestore(){
         const original=proto[metodo];
         const envolvida=function(...args){
             const inicio=performance.now(), ref=this, origem=origemChamadaMonitorada(); let retorno;
-            try{ retorno=original.apply(this,args); }catch(e){ registrarOperacaoMonitorada({tipo,ref,quantidade:1,duracao:performance.now()-inicio,sucesso:false,origem}); throw e; }
-            return Promise.resolve(retorno).then(r=>{ let q=1; try{q=qtdFn?qtdFn(r):1}catch(_){} registrarOperacaoMonitorada({tipo,ref,quantidade:q,duracao:performance.now()-inicio,sucesso:true,resultado:r,origem}); return r; },e=>{ registrarOperacaoMonitorada({tipo,ref,quantidade:1,duracao:performance.now()-inicio,sucesso:false,origem}); throw e; });
+            try{ retorno=original.apply(this,args); }catch(e){ if(!(tipo==='leitura'&&args[0]?.source==='cache'))registrarOperacaoMonitorada({tipo,ref,quantidade:1,duracao:performance.now()-inicio,sucesso:false,origem}); throw e; }
+            if(!retorno || typeof retorno.then!=='function'){registrarOperacaoMonitorada({tipo,ref,quantidade:1,duracao:performance.now()-inicio,sucesso:true,origem});return retorno;}
+            return Promise.resolve(retorno).then(r=>{ if(tipo==='leitura' && r?.metadata?.fromCache)return r; let q=1; try{q=qtdFn?qtdFn(r):1}catch(_){} registrarOperacaoMonitorada({tipo,ref,quantidade:q,duracao:performance.now()-inicio,sucesso:true,resultado:r,origem}); return r; },e=>{ if(!(tipo==='leitura'&&args[0]?.source==='cache'))registrarOperacaoMonitorada({tipo,ref,quantidade:1,duracao:performance.now()-inicio,sucesso:false,origem}); throw e; });
         };
         envolvida.__petlyneMonitorado=true; proto[metodo]=envolvida;
     };
@@ -4926,8 +4933,8 @@ function classificarEtapaDiagnostico(log){const t=`${log?.funcao||''} ${log?.cod
 function prepararDiagnosticoMonitoramento(){const sel=document.getElementById('diagnosticoEventoSelecionado');if(!sel)return;const atual=sel.value;sel.innerHTML='<option value="">Ocorrência mais recente</option>'+logsSistemaAdmin.filter(x=>!x.resolvido).slice(0,50).map(x=>`<option value="${x.id}">${escaparHtmlLogs(dataLogParaTexto(x.criadoEm))} — ${escaparHtmlLogs(x.codigo||x.funcao||x.modulo)}</option>`).join('');sel.value=atual;renderizarDiagnosticoSelecionado();}
 function renderizarDiagnosticoSelecionado(){const id=document.getElementById('diagnosticoEventoSelecionado')?.value;const log=(id?logsSistemaAdmin.find(x=>x.id===id):logsSistemaAdmin.find(x=>!x.resolvido))||null;const etapas=['Buscar cadastro','Validar horário','Salvar agendamento','Preparar WhatsApp','Finalizar'];const falha=log?classificarEtapaDiagnostico(log):-1;const fluxo=document.getElementById('diagnosticoFluxo');if(fluxo)fluxo.innerHTML=etapas.map((nome,i)=>`<div class="diagnostic-step ${!log?'neutral':i<falha?'success':i===falha?'failure':'waiting'}"><span>${!log?'—':i<falha?'✓':i===falha?'!':'·'}</span><strong>${nome}</strong><small>${!log?'Sem ocorrência selecionada':i<falha?'Etapa anterior concluída':i===falha?'Possível ponto da falha':'Não confirmado'}</small></div>`).join('<i class="diagnostic-connector"></i>');const rec=document.getElementById('diagnosticoRecomendacao');if(!rec)return;if(!log){rec.innerHTML='<strong>Nenhuma falha pendente</strong><p>O sistema não possui uma ocorrência aberta para diagnosticar.</p>';return;}const msg=String(log.mensagem||'');let acao='Abra os detalhes técnicos e reproduza a operação apenas se necessário.';if(/permission|insufficient/i.test(msg))acao='Verifique as regras do Firestore e confirme se a operação possui permissão.';else if(/unavailable|network|offline|timeout/i.test(msg))acao='Falha provavelmente temporária. Verifique conexão e retentativas antes de alterar o código.';else if(/showPicker/i.test(msg))acao='Ocorrência antiga e benigna do navegador. Marque como resolvida.';rec.innerHTML=`<div><span class="system-log-level">${escaparHtmlLogs(log.nivel||'erro')}</span><strong>${escaparHtmlLogs(log.codigo||log.funcao||'Ocorrência')}</strong></div><p>${escaparHtmlLogs(msg)}</p><h4>Ação recomendada</h4><p>${escaparHtmlLogs(acao)}</p>`;}
 async function atualizarCentroMonitoramento(){await atualizarLogsSistema();renderizarMetricasMonitoramento();prepararDiagnosticoMonitoramento();const e=document.getElementById('monitoramentoUltimaAtualizacao');if(e)e.textContent=`Atualizado às ${new Date().toLocaleTimeString('pt-BR')}`;}
-function iniciarAtualizacaoAutomaticaMonitoramento(){if(monitoramentoAutoRefresh)return;monitoramentoAutoRefresh=setInterval(()=>{if(document.getElementById('secao-logs')?.classList.contains('active'))atualizarCentroMonitoramento();},30000);}
-setTimeout(iniciarAtualizacaoAutomaticaMonitoramento,1000);
+function iniciarAtualizacaoAutomaticaMonitoramento(){/* V9.0.17: atualização manual. */}
+// Atualização do monitoramento somente mediante ação do usuário.
 
 
 // ============================================================
@@ -4964,7 +4971,7 @@ function prospectPrioridade(ms) {
 }
 
 async function carregarProspectCallbacks() {
-    const snapshot = await db.collection("prospectCallbacks").orderBy("criadoEm", "desc").limit(200).get();
+    const snapshot = await consultaAdminV917("prospectCallbacks", db.collection("prospectCallbacks").orderBy("criadoEm", "desc").limit(200));
     prospectCallbacks = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() }));
 }
 
@@ -5101,7 +5108,7 @@ async function descartarProspectCallback(id) {
 }
 
 /* V9 — manutenção administrativa; nenhum histórico é reprecificado. */
-carregarServicosAdmin=async function(){servicosAdmin=await lerCatalogoV9();};
+carregarServicosAdmin=async function(){if(!servicosAdmin.length)await lerCatalogoV9();servicosAdmin=catalogoV9;};
 renderizarServicosAdmin=function(){
  const sec=document.getElementById('secao-servicos');
  sec.innerHTML=`<h2>Produtos e Serviços</h2><p>Preços por porte, sem pelagem. Os protocolos existentes mantêm os valores gravados.</p><div class="v9-panel"><h3>Banhos, tosas e serviços avulsos</h3><div class="v9-table-wrap"><table class="v9-table"><thead><tr><th>Serviço</th><th>Espécie</th><th>Porte</th><th>Tipo de tosa</th><th>Preço</th><th>Ativo</th></tr></thead><tbody>${catalogoV9.map((r,i)=>`<tr><td>${escaparV9(r.nome)}</td><td>${escaparV9(r.especie)}</td><td>${escaparV9(r.porte||'Todos')}</td><td>${escaparV9(r.tipoTosa||'—')}</td><td><input aria-label="Preço ${escaparV9(r.nome+' '+r.porte+' '+r.tipoTosa)}" type="number" min="0.01" step="0.01" id="v9-preco-${i}" value="${r.preco}"></td><td><input aria-label="Ativo ${escaparV9(r.nome)}" type="checkbox" id="v9-ativo-${i}" ${r.ativo!==false?'checked':''}></td></tr>`).join('')}</tbody></table></div><button onclick="salvarCatalogoV9(this)">Salvar catálogo V9</button><span id="v9CatalogoMensagem" role="status"></span></div>`;
@@ -5110,7 +5117,7 @@ async function salvarCatalogoV9(btn){
  const regras=catalogoV9.map((r,i)=>({...r,preco:Number(document.getElementById('v9-preco-'+i).value),ativo:document.getElementById('v9-ativo-'+i).checked}));
  if(regras.some(r=>!Number.isFinite(r.preco)||r.preco<=0)){await mostrarAvisoAdmin({titulo:'Preço inválido',mensagem:'Informe valores maiores que zero.'});return;}
  btn.disabled=true;
- try{await db.collection('servicos').doc('v9_catalogo').set({nome:'Catálogo V9',versao:'9.0.0',vigencia:'2026-10-01',regras,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});catalogoV9=regras;servicosAdmin=regras;document.getElementById('v9CatalogoMensagem').textContent=' Catálogo salvo. Histórico preservado.';}
+ try{await db.collection('servicos').doc('v9_catalogo').set({nome:'Catálogo V9',versao:'9.0.0',vigencia:'2026-10-01',regras,atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});catalogoV9=regras;servicosAdmin=regras;ultimoCatalogoV916=Date.now();persistirCatalogoV919();document.getElementById('v9CatalogoMensagem').textContent=' Catálogo salvo. Histórico preservado.';}
  catch(e){await mostrarAvisoAdmin({titulo:'Falha ao salvar',mensagem:e.message});}finally{btn.disabled=false;}
 }
 function atualizarPrecoPacoteV9(){
@@ -5180,7 +5187,7 @@ async function salvarEdicaoAgendamentoV9(e){
   const mudou=data!==original.data||horario!==original.horario;
   if(mudou){
    if([0,1].includes(new Date(data+'T12:00:00').getDay())||inicio<540||fim>1020||inicio<780&&fim>720||inicio%30!==0||new Date(data+'T'+horario)<new Date())throw Error('Escolha um horário válido: 09h–17h, sem almoço, domingo ou segunda-feira (dias fechados na base enviada).');
-   const [s,b]=await Promise.all([db.collection('agendamentos').where('data','==',data).get(),db.collection('bloqueiosAgenda').where('data','==',data).get()]);
+   const [s,b]=await Promise.all([db.collection('agendamentos').where('data','==',data).get({source:'server'}),db.collection('bloqueiosAgenda').where('data','==',data).get({source:'server'})]);
    if(s.docs.some(d=>d.id!==id&&d.data().status!=='Cancelado'&&horariosSobrepostos(horario,duracao,d.data().horario,Number(d.data().duracaoMinutos||30))))throw Error('Já existe uma reserva neste horário.');
    if(b.docs.some(d=>d.data().status==='Ativo'&&horariosSobrepostos(horario,duracao,d.data().inicio,horarioParaMinutos(d.data().fim)-horarioParaMinutos(d.data().inicio))))throw Error('Este horário está bloqueado.');
   }
@@ -5209,7 +5216,7 @@ function hojeISOv9(){const d=new Date();return `${d.getFullYear()}-${String(d.ge
 const contasSecV9=document.createElement('section');contasSecV9.id='secao-contas-pagar';contasSecV9.className='admin-section';
 contasSecV9.innerHTML=`<h2>Contas a pagar</h2><p>Acompanhe compras, vencimentos e o dinheiro pago por categoria.</p><div class="v9-panel v9-grid"><label>Período<select id="contasPeriodoV94" onchange="renderizarContasV9()"><option value="mes">Mês selecionado</option><option value="todos">Todos os meses</option></select></label><label>Mês<input type="month" id="contasMesV9" value="${hojeISOv9().slice(0,7)}" onchange="renderizarContasV9()"></label><label>Buscar<input id="contasBuscaV94" placeholder="Compra ou fornecedor" oninput="renderizarContasV9()"></label><label>Categoria<select id="contasCategoriaV9" onchange="renderizarContasV9()"><option value="">Todas</option>${categoriasContasV9.map(c=>`<option>${c}</option>`).join('')}</select></label><label>Status<select id="contasStatusV9" onchange="renderizarContasV9()"><option value="">Todos</option><option>Pendente</option><option>Pago</option><option>Vencido</option></select></label><button onclick="editarContaV9()">Lançar compra / conta</button><button class="secondary-button" onclick="carregarContasV9()">Atualizar</button></div><div id="contasIndicadoresV9" class="v9-grid"></div><div class="v9-grid"><div class="v9-panel"><h3>Dinheiro pago por categoria</h3><div id="contasAnaliseV9"></div></div><div class="v9-panel"><h3>Próximos vencimentos</h3><div id="contasProximasV9"></div></div></div><div class="v9-panel v9-table-wrap"><table class="v9-table"><thead><tr><th>Vencimento</th><th>Compra / fornecedor</th><th>Categoria</th><th>Valor</th><th>Status / pagamento</th><th>Ações</th></tr></thead><tbody id="contasListaV9"></tbody></table></div>`;
 document.querySelector('main').appendChild(contasSecV9);
-async function carregarContasV9(){try{const s=await db.collection('contasPagar').get();contasV9=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||''));renderizarContasV9();}catch(e){await mostrarAvisoAdmin({titulo:'Não foi possível carregar as contas',mensagem:e.message});}}
+async function carregarContasV9(){try{const s=await obterDadosAdminV916('contasPagar');contasV9=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>(a.vencimento||'').localeCompare(b.vencimento||''));renderizarContasV9();}catch(e){await mostrarAvisoAdmin({titulo:'Não foi possível carregar as contas',mensagem:e.message});}}
 function statusContaV9(c){return c.status==='Pago'?'Pago':c.vencimento<hojeISOv9()?'Vencido':'Pendente';}
 function renderizarContasV9(){
  const mes=document.getElementById('contasMesV9').value,cat=document.getElementById('contasCategoriaV9').value,status=document.getElementById('contasStatusV9').value;
@@ -5321,4 +5328,58 @@ function renderizarPetsCardAgendaV99(a){
   const especie=normalizarTextoCliente(p.especie).includes('gato')?'🐱':'🐶';
   return `<section class="agenda-pet-v99"><div class="agenda-pet-titulo-v99"><strong>${especie} ${escaparV9(p.pet||'Pet')}</strong><span>${escaparV9([p.raca,p.porte].filter(Boolean).join(' • '))}</span></div>${principais.length?`<div class="agenda-pet-servico-v99"><b>Serviço</b><span>${principais.map(escaparV9).join('<br>')}</span></div>`:''}${adicionais.length?`<div class="agenda-pet-servico-v99"><b>${principais.length?'Adicionais':'Serviços'}</b><ul>${adicionais.map(n=>`<li>${escaparV9(n)}</li>`).join('')}</ul></div>`:''}${!servicos.length?'<span>Serviço não informado</span>':''}<div class="agenda-pet-observacao-v99"><b>Observação</b><span>${escaparV9(p.observacaoPet||'Sem observação')}</span></div></section>`;
  }).join('')}</div>`;
+}
+
+
+async function atualizarDadosPainelV917(botao) {
+ if(botao?.disabled)return;
+ if(botao){botao.disabled=true;botao.textContent='Atualizando…';}
+ try {
+  const secao=document.querySelector('.admin-section.active')?.id.replace('secao-','')||'agendamentos';
+  const colecoesPorSecao={
+   agendamentos:['agendamentos','bloqueiosAgenda'],
+   faturamento:['agendamentos','pacotes'],
+   'dias-horarios':['bloqueiosAgenda'],
+   clientes:['clientes','clientesExcluidos','agendamentos'],
+   crm:['agendamentos','clientes','clientesExcluidos','crmHistorico'],
+   clube:['agendamentos','clientes','clientesExcluidos','clubePetlyneResgates','clubePetlyneResumo'],
+   pacotes:['pacotes','agendamentos','clientes','clientesExcluidos'],
+   servicos:['servicos'],
+   'prospect-callback':['prospectCallbacks','agendamentos'],
+   logs:['logsSistema'],
+   'contas-pagar':['contasPagar']
+  };
+  if(secao==='agendamentos'&&['hoje','ultimos7','ultimos15'].includes(filtroAgendaPeriodo)){
+   const fim=hojeISO(),dias=filtroAgendaPeriodo==='hoje'?1:filtroAgendaPeriodo==='ultimos7'?7:15;
+   const inicio=adicionarDias(fim,-dias+1);
+   await Promise.all([
+    atualizarIntervaloAdminV919('agendamentos','data',inicio,fim),
+    atualizarIntervaloAdminV919('bloqueiosAgenda','data',inicio,fim)
+   ]);
+  }else invalidarDadosAdminV917(colecoesPorSecao[secao]||[]);
+  if(secao==='servicos')await lerCatalogoV9(true);
+  await abrirSecao(secao);
+ } finally {if(botao){botao.disabled=false;botao.textContent='Atualizar dados';}}
+}
+
+// Verificação final de conflitos: somente as datas envolvidas, sem reler o histórico.
+const consultasDiasAdminV919=new Map();
+async function consultarDiasAgendaAdminV919(datas){
+ const dias=[...new Set(datas)].sort();if(!dias.length)return {agendamentos:[],bloqueios:[]};
+ const chave=dias.join('|');if(consultasDiasAdminV919.has(chave))return consultasDiasAdminV919.get(chave);
+ const leitura=(async()=>{
+  const resultados={agendamentos:[],bloqueios:[]};
+  for(let i=0;i<dias.length;i+=30){
+   const grupo=dias.slice(i,i+30);
+   const [agenda,bloqueios]=await Promise.all([
+    db.collection('agendamentos').where('data','in',grupo).get({source:'server'}),
+    db.collection('bloqueiosAgenda').where('data','in',grupo).get({source:'server'})
+   ]);
+   resultados.agendamentos.push(...agenda.docs.map(d=>({...d.data(),id:d.id})));
+   resultados.bloqueios.push(...bloqueios.docs.map(d=>({...d.data(),id:d.id})));
+  }
+  return resultados;
+ })();
+ consultasDiasAdminV919.set(chave,leitura);
+ try{return await leitura;}finally{consultasDiasAdminV919.delete(chave);}
 }
