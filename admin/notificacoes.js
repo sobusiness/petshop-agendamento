@@ -26,7 +26,7 @@ function destacarDestinoNotificacaoV910(atributo,id){const el=[...document.query
 async function abrirDestinoNotificacaoV910(indice){
  const n=notificacoesV910[indice];if(!n)return;fecharNotificacoesV910();
  try{
-  if(n.tipo==='agenda'){await abrirSecao('agendamentos');await carregarAgendamentos(true);const a=agendamentos.find(x=>x.id===n.id);if(!a)throw Error('Este agendamento não está mais disponível.');filtroAgendaPeriodo='todos';document.getElementById('filtroProtocoloAgenda').value='';agendaPosicionadaNaUltimaData=true;renderizarAgenda();destacarDestinoNotificacaoV910('data-agendamento-id',n.id);}
+  if(n.tipo==='agenda'){await abrirSecao('agendamentos');await carregarAgendamentos(true);const a=agendamentos.find(x=>x.id===n.id);if(!a)throw Error('Este agendamento não está mais disponível.');filtroAgendaPeriodo='todos';document.getElementById('filtroProtocoloAgenda').value='';agendaPosicionadaNaUltimaData=true;renderizarAgenda();await posicionarAgendamentoNotificacaoV913(n.id);}
   if(n.tipo==='contas'){await abrirSecao('contas-pagar');await carregarContasV9();document.getElementById('contasPeriodoV94').value='todos';document.getElementById('contasCategoriaV9').value='';document.getElementById('contasStatusV9').value='';document.getElementById('contasBuscaV94').value='';renderizarContasV9();if(!destacarDestinoNotificacaoV910('data-conta-id',n.id))throw Error('Esta conta não está mais disponível.');}
   if(n.tipo==='pacotes'){await abrirSecao('pacotes');await carregarPacotesAdmin(true);document.getElementById('filtroPacoteCliente').value='';document.getElementById('filtroPacoteStatus').value='';filtroRapidoPacoteAtual='todos';renderizarPacotes();if(!destacarDestinoNotificacaoV910('data-pacote-id',n.id))throw Error('Este pacote não está mais disponível.');}
  }catch(e){await mostrarAvisoAdmin({titulo:'Notificação',mensagem:e.message});}
@@ -39,3 +39,24 @@ auth.onAuthStateChanged(user=>{
 });
 document.addEventListener('click',e=>{if(!e.target.closest('.notificacoes-area-v910'))fecharNotificacoesV910();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharNotificacoesV910();});
+
+async function posicionarAgendamentoNotificacaoV913(id){
+ // A agenda recalcula sua largura em 0ms e 250ms após renderizar.
+ await new Promise(resolve=>setTimeout(resolve,300));
+ await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ const card=[...document.querySelectorAll('#calendarioAgenda [data-agendamento-id]')].find(el=>el.getAttribute('data-agendamento-id')===id&&!el.classList.contains('agenda-event-bloqueio'));
+ if(!card)throw Error('Não foi possível localizar este agendamento na agenda. Atualize o painel e tente novamente.');
+ const {bottom,top}=obterElementosScrollAgenda();
+ if(!bottom)throw Error('Não foi possível posicionar a agenda.');
+ const caixa=bottom.getBoundingClientRect(),alvo=card.getBoundingClientRect();
+ const esquerda=bottom.scrollLeft+alvo.left-caixa.left-76;
+ const max=Math.max(0,bottom.scrollWidth-bottom.clientWidth);
+ // Movimento horizontal imediato evita disputa entre as barras sincronizadas.
+ bottom.scrollLeft=Math.max(0,Math.min(max,esquerda));
+ if(top)top.scrollLeft=bottom.scrollLeft;
+ await new Promise(resolve=>requestAnimationFrame(resolve));
+ const pos=card.getBoundingClientRect();
+ window.scrollTo({top:Math.max(0,window.scrollY+pos.top-90),behavior:'smooth'});
+ card.classList.add('notificacao-destino-v910');
+ setTimeout(()=>card.classList.remove('notificacao-destino-v910'),7000);
+}
