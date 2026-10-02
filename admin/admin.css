@@ -3030,3 +3030,19 @@ dialog.exclusao-dialog-v95{width:620px;padding:26px;text-align:left}
 /* V9.0.8 — edição do telefone do prospect */
 .prospect-edicao-acoes-v98{display:flex;justify-content:flex-end;gap:12px;flex-wrap:wrap;margin-top:20px}
 #telefoneProspectErroV98{color:#a31835}
+
+/* V9.0.9 — leitura dos serviços por pet na agenda */
+#secao-agendamentos .agenda-cell,#secao-agendamentos .agenda-event{min-width:0}
+#secao-agendamentos .agenda-event-header{flex-wrap:wrap}
+#secao-agendamentos .agenda-event-header>strong{white-space:normal;overflow-wrap:anywhere;min-width:0}
+.agenda-pets-v99{display:grid;gap:8px;min-width:0;margin:6px 0}
+.agenda-pet-v99{min-width:0;border:1px solid rgba(185,74,106,.17);border-radius:8px;background:rgba(255,255,255,.65);padding:9px;display:grid;gap:7px;text-align:left;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+.agenda-pet-titulo-v99{display:flex;flex-direction:column;gap:3px}
+.agenda-pet-titulo-v99 strong{font-size:12px;color:var(--pet-primary-dark)}
+.agenda-pet-titulo-v99>span{font-size:10px;color:#8a6d78}
+.agenda-pet-servico-v99,.agenda-pet-observacao-v99{display:flex;flex-direction:column;gap:3px;font-size:11px}
+.agenda-pet-servico-v99>b,.agenda-pet-observacao-v99>b{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#a0647a}
+.agenda-pet-servico-v99 ul{padding-left:14px;margin:0;display:grid;gap:2px;list-style:disc}
+.agenda-pet-observacao-v99{border-top:1px solid rgba(185,74,106,.12);padding-top:6px}
+#secao-agendamentos .agenda-meta-line{flex-wrap:wrap;line-height:1.5}
+#secao-agendamentos .agenda-client-line>span{white-space:normal;overflow-wrap:anywhere}

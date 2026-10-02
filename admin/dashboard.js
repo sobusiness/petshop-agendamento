@@ -690,18 +690,14 @@ function renderizarAgenda() {
                                         <span title="${clienteAgenda.replace(/"/g, '&quot;')}"><b>👤</b> ${clienteAgenda}</span>
                                         <span title="${telefoneAgenda.replace(/"/g, '&quot;')}"><b>☎</b> ${telefoneAgenda}</span>
                                     </div>
-                                    <div class="agenda-compact-line agenda-service-line" title="${servicos.replace(/"/g, '&quot;')}">
-                                        <b>✂</b> ${servicos}
-                                    </div>
+                                    ${renderizarPetsCardAgendaV99(agendamento)}
                                     ${agendamento.beneficioClube ? `<div class="agenda-compact-line agenda-beneficio-clube"><b>🎁</b> Prêmio Clube PetLyne: ${agendamento.beneficioClube.tipo === "hidratacao" ? "Hidratação" : "Banho grátis"} • ${agendamento.beneficioClube.pet || agendamento.pet || ""} • <strong>${agendamento.beneficioClube.status || "Reservado"}</strong></div>` : ""}
                                     <div class="agenda-compact-line agenda-meta-line">
                                         <span class="agenda-value"><b>${valorServico}</b></span>
                                         <span>${agendamento.especie || "Não informada"}</span>
                                         <span class="agenda-protocolo">${agendamento.protocolo || ""}</span>
                                     </div>
-                                    <div class="agenda-compact-line agenda-observation-line" title="${(agendamento.observacaoPet || "Sem observação").replace(/"/g, '&quot;')}">
-                                        <b>📝</b> ${agendamento.observacaoPet || "Sem observação"}
-                                    </div>
+
                                 ` : `Continuação de ${agendamento.horario}`}
                             </div>
                             ${ehInicio ? `
@@ -5310,4 +5306,13 @@ async function salvarTelefoneProspectV98(e,id){
   const item=prospectCallbacks.find(x=>x.id===id);if(item)Object.assign(item,dados);
   document.getElementById('dialogoV9').close();renderizarProspectCallbacks();
  }catch(ex){erro.textContent=ex.message;}finally{btn.disabled=false;}
+}
+
+function renderizarPetsCardAgendaV99(a){
+ return `<div class="agenda-pets-v99">${petsAgendamentoV9(a).map(p=>{
+  const servicos=(p.servicos||[]).map(s=>{const prefixo=p.pet+' — ';return String(s.nome||'Serviço').startsWith(prefixo)?String(s.nome).slice(prefixo.length):String(s.nome||'Serviço');});
+  const principais=servicos.filter(principalEdicaoV97),adicionais=servicos.filter(n=>!principalEdicaoV97(n));
+  const especie=normalizarTextoCliente(p.especie).includes('gato')?'🐱':'🐶';
+  return `<section class="agenda-pet-v99"><div class="agenda-pet-titulo-v99"><strong>${especie} ${escaparV9(p.pet||'Pet')}</strong><span>${escaparV9([p.raca,p.porte].filter(Boolean).join(' • '))}</span></div>${principais.length?`<div class="agenda-pet-servico-v99"><b>Serviço</b><span>${principais.map(escaparV9).join('<br>')}</span></div>`:''}${adicionais.length?`<div class="agenda-pet-servico-v99"><b>${principais.length?'Adicionais':'Serviços'}</b><ul>${adicionais.map(n=>`<li>${escaparV9(n)}</li>`).join('')}</ul></div>`:''}${!servicos.length?'<span>Serviço não informado</span>':''}<div class="agenda-pet-observacao-v99"><b>Observação</b><span>${escaparV9(p.observacaoPet||'Sem observação')}</span></div></section>`;
+ }).join('')}</div>`;
 }
