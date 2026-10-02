@@ -5135,27 +5135,43 @@ async function editarAgendamentoV9(id){
  const a=agendamentos.find(x=>x.id===id);if(!a)return;
  await lerCatalogoV9();
  edicaoReservaV9={id,original:a,pets:petsAgendamentoV9(a).map(p=>({...p,servicos:(p.servicos||[]).map(s=>({...s}))}))};
- const html=`<p>Protocolo <strong>${escaparV9(a.protocolo)}</strong> • ${escaparV9(a.cliente)}. Valores existentes são preservados; novos serviços usam o catálogo V9.</p><form id="formEdicaoV9"><div class="v9-grid"><label>Data<input type="date" id="edicaoDataV9" required value="${escaparV9(a.data)}"></label><label>Horário<input type="time" id="edicaoHoraV9" required step="1800" value="${escaparV9(a.horario)}"></label></div><div id="edicaoPetsV9"></div><p id="edicaoTotalV9"></p><button type="submit">Salvar alterações</button><p id="edicaoErroV9" role="alert"></p></form>`;
+ const html=`<p>Protocolo <strong>${escaparV9(a.protocolo)}</strong> • ${escaparV9(a.cliente)}. Valores existentes são preservados; novos serviços usam o catálogo V9. Escolher banho ou tosa substitui o serviço principal; os adicionais são mantidos.</p><form id="formEdicaoV9"><div class="v9-grid"><label>Data<input type="date" id="edicaoDataV9" required value="${escaparV9(a.data)}"></label><label>Horário<input type="time" id="edicaoHoraV9" required step="1800" value="${escaparV9(a.horario)}"></label></div><div id="edicaoPetsV9"></div><p id="edicaoTotalV9"></p><button type="submit">Salvar alterações</button><p id="edicaoErroV9" role="alert"></p></form>`;
  abrirDialogoV9('Editar agendamento',html);renderizarEdicaoPetsV9();
  document.getElementById('formEdicaoV9').addEventListener('submit',salvarEdicaoAgendamentoV9);
 }
 function renderizarEdicaoPetsV9(){
  document.getElementById('edicaoPetsV9').innerHTML=edicaoReservaV9.pets.map((p,i)=>{
  const regras=catalogoV9.filter(r=>r.ativo!==false&&(r.especie===p.especie||r.especie==='Ambos')&&(!r.porte||r.porte===p.porte)&&(!/Trimming/.test(r.nome)||normalizarTextoCliente(p.raca).includes('golden')));
- return `<section class="v9-panel"><h3>${escaparV9(p.pet)} • ${escaparV9(p.porte||'Porte não informado')}</h3><p>${escaparV9(p.raca||'')}</p><div>${p.servicos.map((s,j)=>`<div class="v9-service"><span>${escaparV9(s.nome)}</span><label>R$ <input aria-label="Valor ${escaparV9(s.nome)}" type="number" min="0" step="0.01" value="${Number(s.valor||0)}" onchange="alterarValorServicoV9(${i},${j},this.value)"></label><button type="button" onclick="removerServicoEdicaoV9(${i},${j})">Remover</button></div>`).join('')}</div><div class="v9-grid"><label>Adicionar serviço<select id="edicaoServicoV9-${i}"><option value="">Selecione</option>${regras.map(r=>`<option value="${escaparV9(r.id)}">${escaparV9(r.nome+' '+(r.tipoTosa||''))} — ${formatarMoeda(r.preco)}</option>`).join('')}</select></label><button type="button" onclick="adicionarServicoEdicaoV9(${i})">Adicionar</button></div></section>`;
+ return `<section class="v9-panel"><h3>${escaparV9(p.pet)} • ${escaparV9(p.porte||'Porte não informado')}</h3><p>${escaparV9(p.raca||'')}</p><div>${p.servicos.map((s,j)=>`<div class="v9-service"><span>${escaparV9(s.nome)}</span><label>R$ <input aria-label="Valor ${escaparV9(s.nome)}" type="number" min="0" step="0.01" value="${Number(s.valor||0)}" oninput="alterarValorServicoV9(${i},${j},this.value)"></label><button type="button" onclick="removerServicoEdicaoV9(${i},${j})">Remover</button></div>`).join('')}</div><div class="v9-grid"><label>Trocar principal / adicionar serviço<select id="edicaoServicoV9-${i}"><option value="">Selecione</option>${regras.map(r=>`<option value="${escaparV9(r.id)}">${escaparV9(r.nome+' '+(r.tipoTosa||''))} — ${formatarMoeda(r.preco)}</option>`).join('')}</select></label><button type="button" onclick="adicionarServicoEdicaoV9(${i})">Adicionar</button></div></section>`;
  }).join('');atualizarTotalEdicaoV9();
 }
 function alterarValorServicoV9(i,j,v){edicaoReservaV9.pets[i].servicos[j].valor=Number(v);atualizarTotalEdicaoV9();}
 function removerServicoEdicaoV9(i,j){edicaoReservaV9.pets[i].servicos.splice(j,1);renderizarEdicaoPetsV9();}
+function principalEdicaoV97(nome){return /^(Banho(?:\s|$)|Tosa(?:\s+(Bebê|Geral|Tesoura|Verão)|$)|Trimming)/i.test(nome||'');}
+function aplicarServicoEdicaoV97(i,regraId){
+ const r=catalogoV9.find(r=>r.id===regraId);if(!r)return false;
+ const p=edicaoReservaV9.pets[i];
+ const novo={nome:r.nome+(r.tipoTosa?' '+r.tipoTosa:'')+(r.porte?' ('+r.porte+')':''),valor:Number(r.preco),regraId:r.id};
+ if(principalEdicaoV97(r.nome)){
+  p.servicos=p.servicos.filter(s=>!principalEdicaoV97(s.nome));p.servicos.unshift(novo);
+  p.servicoPrincipal=r.nome;p.tipoTosa=r.tipoTosa||'';
+ }else if(!p.servicos.some(s=>s.regraId===r.id||s.nome===novo.nome))p.servicos.push(novo);
+ return true;
+}
 function adicionarServicoEdicaoV9(i){
- const r=catalogoV9.find(r=>r.id===document.getElementById('edicaoServicoV9-'+i).value);if(!r)return;
- edicaoReservaV9.pets[i].servicos.push({nome:r.nome+(r.tipoTosa?' '+r.tipoTosa:'')+(r.porte?' ('+r.porte+')':''),valor:Number(r.preco),regraId:r.id});renderizarEdicaoPetsV9();
+ if(aplicarServicoEdicaoV97(i,document.getElementById('edicaoServicoV9-'+i).value))renderizarEdicaoPetsV9();
+}
+function assinaturaEdicaoV97(v){
+ if(Array.isArray(v))return '['+v.map(assinaturaEdicaoV97).join(',')+']';
+ if(v&&typeof v==='object')return '{'+Object.keys(v).sort().map(k=>JSON.stringify(k)+':'+assinaturaEdicaoV97(v[k])).join(',')+'}';
+ return JSON.stringify(v);
 }
 function atualizarTotalEdicaoV9(){document.getElementById('edicaoTotalV9').textContent='Total: '+formatarMoeda(edicaoReservaV9.pets.reduce((t,p)=>t+p.servicos.reduce((v,s)=>v+Number(s.valor||0),0),0));}
 async function salvarEdicaoAgendamentoV9(e){
  e.preventDefault();const btn=e.target.querySelector('[type=submit]');btn.disabled=true;
  const erro=document.getElementById('edicaoErroV9');erro.textContent='';
  try{
+  edicaoReservaV9.pets.forEach((p,i)=>{const escolha=document.getElementById('edicaoServicoV9-'+i)?.value;if(escolha)aplicarServicoEdicaoV97(i,escolha);});
   const {id,original,pets}=edicaoReservaV9;
   if(pets.some(p=>!p.servicos.length||p.servicos.some(s=>!Number.isFinite(s.valor)||s.valor<0)))throw Error('Cada pet precisa ter um serviço e valores válidos.');
   const data=document.getElementById('edicaoDataV9').value,horario=document.getElementById('edicaoHoraV9').value;
@@ -5174,7 +5190,7 @@ async function salvarEdicaoAgendamentoV9(e){
    const ref=db.collection('agendamentos').doc(id);const atual=await tx.get(ref);
    if(!atual.exists)throw Error('O agendamento foi removido.');
    const anterior=atual.data();
-   if(anterior.data!==original.data||anterior.horario!==original.horario||Number(anterior.valorTotal)!==Number(original.valorTotal)||JSON.stringify(anterior.servicos)!==JSON.stringify(original.servicos))throw Error('O agendamento foi alterado por outra sessão. Reabra a edição.');
+   if(anterior.data!==original.data||anterior.horario!==original.horario||Number(anterior.valorTotal)!==Number(original.valorTotal)||assinaturaEdicaoV97(anterior.servicos)!==assinaturaEdicaoV97(original.servicos)||assinaturaEdicaoV97(anterior.pets)!==assinaturaEdicaoV97(original.pets))throw Error('O agendamento foi alterado por outra sessão. Reabra a edição.');
    let packRef,packDoc;
    if(original.pacoteId){packRef=db.collection('pacotes').doc(original.pacoteId);packDoc=await tx.get(packRef);}
    tx.update(ref,campos);
@@ -5182,7 +5198,7 @@ async function salvarEdicaoAgendamentoV9(e){
    tx.set(db.collection('historicoEdicoesAgendamento').doc(),{protocolo:original.protocolo,agendamentoId:id,antes:{data:anterior.data,horario:anterior.horario,servicos:anterior.servicos,valorTotal:anterior.valorTotal},depois:{data,horario,servicos:campos.servicos,valorTotal:campos.valorTotal},criadoEm:firebase.firestore.FieldValue.serverTimestamp()});
   });
   document.getElementById('dialogoV9').close();await carregarAgendamentos(true);renderizarAgenda();atualizarFaturamento();
- }catch(ex){erro.textContent=ex.message;}finally{btn.disabled=false;}
+ }catch(ex){erro.textContent=ex.message;erro.scrollIntoView({block:'nearest',behavior:'smooth'});}finally{btn.disabled=false;}
 }
 
 // Contas a pagar: valores de compra e saída de caixa são acompanhados separadamente.
