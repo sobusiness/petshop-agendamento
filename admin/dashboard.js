@@ -676,7 +676,7 @@ function renderizarAgenda() {
                     const especieIcone = normalizarTextoCliente(agendamento.especie).includes("gato") ? "🐱" : "🐶";
 
                     cell.innerHTML = `
-                        <div class="agenda-event ${ehPacote ? "agenda-event-pack" : "agenda-event-lyne"} ${statusNormalizado === "concluido" ? "agenda-event-done" : "agenda-event-open"} ${!ehInicio ? "agenda-event-bloqueio" : ""}">
+                        <div data-agendamento-id="${escaparV9(agendamento.id)}" class="agenda-event ${ehPacote ? "agenda-event-pack" : "agenda-event-lyne"} ${statusNormalizado === "concluido" ? "agenda-event-done" : "agenda-event-open"} ${!ehInicio ? "agenda-event-bloqueio" : ""}">
                             <div class="agenda-event-header">
                                 <strong>${ehInicio ? `${especieIcone} ${agendamento.pet || "Pet"}` : "Horário bloqueado"}</strong>
                                 <div class="agenda-header-badges">
@@ -3067,6 +3067,7 @@ function renderizarPacotes() {
 
         const div = document.createElement("article");
         div.className = `pacote-card pacote-card-premium ${saudeClasse}`;
+        div.dataset.pacoteId = pacote.id;
 
         div.innerHTML = `
             <div class="pacote-premium-header">
@@ -5220,7 +5221,7 @@ function renderizarContasV9(){
  document.getElementById('contasAnaliseV9').innerHTML=grupos.map(([c,v])=>`<p>${escaparV9(c)} <strong>${formatarMoeda(v)} • ${(v/total*100).toFixed(1).replace('.',',')}%</strong></p><div class="v9-bar"><span style="width:${v/total*100}%"></span></div>`).join('')||'<p>Nenhum pagamento registrado neste mês.</p>';
  document.getElementById('contasProximasV9').innerHTML=categoria.filter(c=>c.status!=='Pago').slice(0,8).map(c=>`<p>${formatarDataCurta(c.vencimento)} • ${escaparV9(c.descricao)} — <strong>${formatarMoeda(c.valor)}</strong> (${statusContaV9(c)}) <button onclick="editarContaV9('${c.id}')">Editar</button><button class="secondary-button" onclick="excluirContaV9('${c.id}')">Excluir</button></p>`).join('')||'<p>Nenhuma conta pendente.</p>';
  const lista=(document.getElementById('contasPeriodoV94').value==='todos'?categoria:vencimentos).filter(c=>!status||statusContaV9(c)===status);
- document.getElementById('contasListaV9').innerHTML=lista.map(c=>`<tr><td>${formatarDataCurta(c.vencimento)}</td><td><strong>${escaparV9(c.descricao)}</strong><br>${escaparV9(c.fornecedor||'')}<br><small>Compra: ${formatarDataCurta(c.dataCompra)}${c.parcelas>1?' • Parcela '+c.parcela+'/'+c.parcelas:''}</small></td><td>${escaparV9(c.categoria)}</td><td>${formatarMoeda(c.valor)}</td><td><span class="conta-status-v94 ${statusContaV9(c).toLowerCase()}">${statusContaV9(c)}</span>${c.dataPagamento?'<br>'+formatarDataCurta(c.dataPagamento):''}</td><td><button onclick="editarContaV9('${c.id}')">Editar</button>${c.status!=='Pago'?`<button onclick="pagarContaV9('${c.id}')">Pagar</button>`:`<button class="secondary-button" onclick="reabrirContaV9('${c.id}')">Reabrir</button>`}<button class="secondary-button" onclick="excluirContaV9('${c.id}')">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6">Nenhuma conta neste filtro.</td></tr>';
+ document.getElementById('contasListaV9').innerHTML=lista.map(c=>`<tr data-conta-id="${escaparV9(c.id)}"><td>${formatarDataCurta(c.vencimento)}</td><td><strong>${escaparV9(c.descricao)}</strong><br>${escaparV9(c.fornecedor||'')}<br><small>Compra: ${formatarDataCurta(c.dataCompra)}${c.parcelas>1?' • Parcela '+c.parcela+'/'+c.parcelas:''}</small></td><td>${escaparV9(c.categoria)}</td><td>${formatarMoeda(c.valor)}</td><td><span class="conta-status-v94 ${statusContaV9(c).toLowerCase()}">${statusContaV9(c)}</span>${c.dataPagamento?'<br>'+formatarDataCurta(c.dataPagamento):''}</td><td><button onclick="editarContaV9('${c.id}')">Editar</button>${c.status!=='Pago'?`<button onclick="pagarContaV9('${c.id}')">Pagar</button>`:`<button class="secondary-button" onclick="reabrirContaV9('${c.id}')">Reabrir</button>`}<button class="secondary-button" onclick="excluirContaV9('${c.id}')">Excluir</button></td></tr>`).join('')||'<tr><td colspan="6">Nenhuma conta neste filtro.</td></tr>';
 }
 function editarContaV9(id){
  const c=contasV9.find(c=>c.id===id)||{};
